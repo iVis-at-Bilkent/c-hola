@@ -41,6 +41,7 @@
     "camelcase": "^4.1.0",
     "chai": "4.0.2",
     "cross-env": "^5.0.0",
+    "cytoscape-view-utilities": "^2.2.0",
     "eslint": "^3.9.1",
     "mocha": "3.4.2",
     "webpack": "^2.6.1",
@@ -53,9 +54,10 @@
     "updater-license": "^1.0.0"
   },
   "peerDependencies": {
-    "cytoscape": "^3.2.0"
+    "cytoscape": "^3.2.0",
+    "jquery": "^1.7.0 || ^2.0.0 || ^3.0.0"
   },
   "dependencies": {
-    "cose-base": "https://github.com/iVis-at-Bilkent/cose-base#unstable"
+    "cose-base": "^1.0.0"
   }
 }
