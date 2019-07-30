@@ -1936,7 +1936,11 @@ var cholaLayout = function () {
         for (var i = 0; i < allNodes.length; i++) {
           var node = allNodes[i];
           count = 0;
+          if (node.id === "n4") {
+            console.log("found n4");
+          }
           if ((this.getNodeDegree(node) === 0 || this.getNodeDegree(node) === 1) && !compoundNodes.includes(node)) {
+
             count++;
             node.owner.remove(node);
           }
