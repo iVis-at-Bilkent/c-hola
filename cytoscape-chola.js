@@ -73,7 +73,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 8);
+/******/ 	return __webpack_require__(__webpack_require__.s = 9);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -82,7 +82,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
-		module.exports = factory(__webpack_require__(10));
+		module.exports = factory(__webpack_require__(11));
 	else if(typeof define === 'function' && define.amd)
 		define(["layout-base"], factory);
 	else if(typeof exports === 'object')
@@ -1522,48 +1522,6 @@ module.exports = coseBase;
 "use strict";
 
 
-/**
- * TODO
- * Choose the type of layout that best suits your usecase as a starting point.
- *
- * A discrete layout is one that algorithmically sets resultant positions.  It
- * does not have intermediate positions.
- *
- * A continuous layout is one that updates positions continuously, like a force-
- * directed / physics simulation layout.
- */
-module.exports = __webpack_require__(9);
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-// Simple, internal Object.assign() polyfill for options objects etc.
-
-module.exports = Object.assign != null ? Object.assign.bind(Object) : function (tgt) {
-  for (var _len = arguments.length, srcs = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    srcs[_key - 1] = arguments[_key];
-  }
-
-  srcs.forEach(function (src) {
-    Object.keys(src).forEach(function (k) {
-      return tgt[k] = src[k];
-    });
-  });
-
-  return tgt;
-};
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 
 function cholaConstants() {}
@@ -1583,7 +1541,7 @@ cholaConstants.TILING_PADDING_HORIZONTAL = 10;
 module.exports = cholaConstants;
 
 /***/ }),
-/* 4 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1603,7 +1561,7 @@ for (var prop in LEdge) {
 module.exports = cholaEdge;
 
 /***/ }),
-/* 5 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1623,7 +1581,7 @@ for (var prop in LGraph) {
 module.exports = cholaGraph;
 
 /***/ }),
-/* 6 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1643,7 +1601,7 @@ for (var prop in LGraphManager) {
 module.exports = cholaGraphManager;
 
 /***/ }),
-/* 7 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1753,13 +1711,398 @@ cholaNode.prototype.isCompound = function () {
 module.exports = cholaNode;
 
 /***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * TODO
+ * Choose the type of layout that best suits your usecase as a starting point.
+ *
+ * A discrete layout is one that algorithmically sets resultant positions.  It
+ * does not have intermediate positions.
+ *
+ * A continuous layout is one that updates positions continuously, like a force-
+ * directed / physics simulation layout.
+ */
+module.exports = __webpack_require__(10);
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+// Simple, internal Object.assign() polyfill for options objects etc.
+
+module.exports = Object.assign != null ? Object.assign.bind(Object) : function (tgt) {
+  for (var _len = arguments.length, srcs = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    srcs[_key - 1] = arguments[_key];
+  }
+
+  srcs.forEach(function (src) {
+    Object.keys(src).forEach(function (k) {
+      return tgt[k] = src[k];
+    });
+  });
+
+  return tgt;
+};
+
+/***/ }),
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var impl = __webpack_require__(1);
+// -----------------------------------------------------------------------------
+// Section: Initializations
+// -----------------------------------------------------------------------------
+
+var CoSELayout = __webpack_require__(0).CoSELayout;
+var CoSEConstants = __webpack_require__(0).CoSEConstants;
+var CoSENode = __webpack_require__(0).CoSENode;
+var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
+var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
+var cholaConstants = __webpack_require__(1);
+var cholaGraphManager = __webpack_require__(4);
+var cholaNode = __webpack_require__(5);
+var cholaEdge = __webpack_require__(2);
+var cholaGraph = __webpack_require__(3);
+var PointD = __webpack_require__(0).layoutBase.PointD;
+var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
+var Layout = __webpack_require__(0).layoutBase.Layout;
+var HashMap = __webpack_require__(0).layoutBase.HashMap;
+
+// Constructor
+function cholaLayout() {
+  Layout.call(this);
+}
+
+cholaLayout.prototype = Object.create(Layout.prototype);
+
+for (var property in Layout) {
+  cholaLayout[property] = Layout[property];
+}
+
+cholaLayout.prototype.defineCoseConstants = function (options) {
+  if (options.nodeRepulsion != null) CoSEConstants.DEFAULT_REPULSION_STRENGTH = FDLayoutConstants.DEFAULT_REPULSION_STRENGTH = options.nodeRepulsion;
+  if (options.idealEdgeLength != null) CoSEConstants.DEFAULT_EDGE_LENGTH = FDLayoutConstants.DEFAULT_EDGE_LENGTH = options.idealEdgeLength;
+  if (options.edgeElasticity != null) CoSEConstants.DEFAULT_SPRING_STRENGTH = FDLayoutConstants.DEFAULT_SPRING_STRENGTH = options.edgeElasticity;
+  if (options.nestingFactor != null) CoSEConstants.PER_LEVEL_IDEAL_EDGE_LENGTH_FACTOR = FDLayoutConstants.PER_LEVEL_IDEAL_EDGE_LENGTH_FACTOR = options.nestingFactor;
+  if (options.gravity != null) CoSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
+  if (options.numIter != null) CoSEConstants.MAX_ITERATIONS = FDLayoutConstants.MAX_ITERATIONS = options.numIter;
+  if (options.gravityRange != null) CoSEConstants.DEFAULT_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_GRAVITY_RANGE_FACTOR = options.gravityRange;
+  if (options.gravityCompound != null) CoSEConstants.DEFAULT_COMPOUND_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_COMPOUND_GRAVITY_STRENGTH = options.gravityCompound;
+  if (options.gravityRangeCompound != null) CoSEConstants.DEFAULT_COMPOUND_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_COMPOUND_GRAVITY_RANGE_FACTOR = options.gravityRangeCompound;
+  if (options.initialEnergyOnIncremental != null) CoSEConstants.DEFAULT_COOLING_FACTOR_INCREMENTAL = FDLayoutConstants.DEFAULT_COOLING_FACTOR_INCREMENTAL = options.initialEnergyOnIncremental;
+
+  if (options.quality == 'draft') LayoutConstants.QUALITY = 0;else if (options.quality == 'proof') LayoutConstants.QUALITY = 2;else LayoutConstants.QUALITY = 1;
+
+  CoSEConstants.NODE_DIMENSIONS_INCLUDE_LABELS = FDLayoutConstants.NODE_DIMENSIONS_INCLUDE_LABELS = LayoutConstants.NODE_DIMENSIONS_INCLUDE_LABELS = options.nodeDimensionsIncludeLabels;
+  CoSEConstants.DEFAULT_INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL = LayoutConstants.DEFAULT_INCREMENTAL = !options.randomize;
+  CoSEConstants.ANIMATE = FDLayoutConstants.ANIMATE = LayoutConstants.ANIMATE = options.animate;
+  CoSEConstants.TILE = options.tile;
+  CoSEConstants.TILING_PADDING_VERTICAL = typeof options.tilingPaddingVertical === 'function' ? options.tilingPaddingVertical.call() : options.tilingPaddingVertical;
+  CoSEConstants.TILING_PADDING_HORIZONTAL = typeof options.tilingPaddingHorizontal === 'function' ? options.tilingPaddingHorizontal.call() : options.tilingPaddingHorizontal;
+};
+
+cholaLayout.prototype.newGraphManager = function (options) {
+  this.graphManager = new cholaGraphManager(this);
+  return this.graphManager;
+};
+
+/**
+* This method creates a new node associated with the input view node.
+*/
+cholaLayout.prototype.newNode = function (loc, size) {
+  return new cholaNode(this.graphManager, loc, size, null);
+};
+
+cholaLayout.prototype.getGraphManager = function () {
+  return this.graphManager;
+};
+
+/**
+* This method creates a new edge associated with the input view edge.
+*/
+cholaLayout.prototype.newEdge = function (source, target, vEdge) {
+  return new cholaEdge(source, target, vEdge);
+};
+
+cholaLayout.prototype.newGraph = function (vGraph) {
+  return new cholaGraph(null, this.graphManager, vGraph);
+};
+
+cholaLayout.prototype.getTopMostNodes = function (nodes) {
+  var nodesMap = {};
+  for (var i = 0; i < nodes.length; i++) {
+    nodesMap[nodes[i].id()] = true;
+  }
+  var roots = nodes.filter(function (ele, i) {
+    if (typeof ele === "number") {
+      ele = i;
+    }
+    var parent = ele.parent()[0];
+    while (parent != null) {
+      if (nodesMap[parent.id()]) {
+        return false;
+      }
+      parent = parent.parent()[0];
+    }
+    return true;
+  });
+  return roots;
+};
+
+cholaLayout.prototype.processChildrenList = function (options, parent, children, layout, layoutType, idToLNode, cholaNodesMap, cholaNodeToCoseNode) {
+  var size = children.length;
+  var includeLabelsOption = options.nodeDimensionsIncludeLabels;
+  for (var i = 0; i < size; i++) {
+    var theChild = children[i];
+    var children_of_children = theChild.children();
+    var theNode;
+    var dimensions = theChild.layoutDimensions({
+      nodeDimensionsIncludeLabels: includeLabelsOption
+    });
+
+    if (theChild.outerWidth() != null && theChild.outerHeight() != null) {
+      if (layoutType === "chola") {
+        theNode = parent.add(new cholaNode(layout.graphManager, new PointD(theChild.position('x') - dimensions.w / 2, theChild.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h))));
+        theNode.id = theChild.data("id");
+      } else if (layoutType === "cose") {
+        theNode = parent.add(new CoSENode(layout.graphManager, new PointD(theChild.position('x') - dimensions.w / 2, theChild.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h))));
+        theNode.id = theChild._private.data.id;
+      }
+    } else {
+      if (layoutType === "chola") {
+        theNode = parent.add(new cholaNode(this.graphManager));
+        theNode.id = theChild.data("id");
+      } else if (layoutType === "cose") {
+        theNode = parent.add(new CoSENode(this.graphManager));
+        theNode.id = theChild._private.data.id;
+      }
+    }
+    // Attach id to the layout node
+
+    // Attach the paddings of cy node to layout node
+    theNode.paddingLeft = parseInt(theChild.css('padding'));
+    theNode.paddingTop = parseInt(theChild.css('padding'));
+    theNode.paddingRight = parseInt(theChild.css('padding'));
+    theNode.paddingBottom = parseInt(theChild.css('padding'));
+
+    //Attach the label properties to compound if labels will be included in node dimensions
+    if (options.nodeDimensionsIncludeLabels) {
+      if (theChild.isParent()) {
+        var createClasslabelWidth = theChild.boundingBox({ includeLabels: true, includeNodes: false }).w;
+        var labelHeight = theChild.boundingBox({ includeLabels: true, includeNodes: false }).h;
+        var labelPos = theChild.css("text-halign");
+        theNode.labelWidth = labelWidth;
+        theNode.labelHeight = labelHeight;
+        theNode.labelPos = labelPos;
+      }
+    }
+
+    // Map the layout node
+    if (layoutType === "chola") {
+      idToLNode[theChild.data("id")] = theNode;
+      cholaNodesMap.put(theNode.id, theNode);
+    } else if (layoutType === "cose") {
+      idToLNode[theChild.data("id")] = theNode;
+      cholaNodeToCoseNode.put(cholaNodesMap.get(theNode.id), theNode);
+    }
+
+    if (isNaN(theNode.rect.x)) {
+      theNode.rect.x = 0;
+    }
+
+    if (isNaN(theNode.rect.y)) {
+      theNode.rect.y = 0;
+    }
+
+    if (children_of_children != null && children_of_children.length > 0) {
+      var theNewGraph;
+      theNewGraph = layout.getGraphManager().add(layout.newGraph(), theNode);
+      this.processChildrenList(options, theNewGraph, children_of_children, layout, layoutType, idToLNode, cholaNodesMap, cholaNodeToCoseNode);
+    }
+  }
+};
+
+//return the list of compound nodes
+cholaLayout.prototype.findCompoundNodes = function (gm) {
+  var allNodes = gm.getAllNodes();
+  var compoundNodes = [];
+  for (var i = 0; i < allNodes.length; i++) {
+    var node = allNodes[i];
+    if (node.isCompound()) {
+      compoundNodes.push(node);
+    }
+  }
+  return compoundNodes;
+};
+
+//removes all leaf nodes except compound leaf nodes
+cholaLayout.prototype.removeLeafNodes = function (gm, compoundNodes, idList) {
+  var allNodes = gm.getAllNodes();
+  var count = 0;
+  do {
+    count = 0;
+    for (var i = 0; i < allNodes.length; i++) {
+      var node = allNodes[i];
+      if (this.getNodeDegree(node) === 1 && !compoundNodes.includes(node)) {
+        //we do not remove leaf nodes if they are the only remaining children of a parent compound node
+        if (node.getParent().id !== undefined && compoundNodes.includes(node.getParent()) && node.getParent().child.nodes.length === 1) {
+          continue;
+        }
+        var edge = node.edges[0];
+        if (edge.source.owner !== edge.target.owner) {
+          continue;
+        }
+        count++;
+        node.owner.remove(node);
+        idList.push(node.id);
+      }
+    }
+    gm.resetAllEdges();
+    gm.resetAllNodes();
+    gm.getAllEdges();
+    allNodes = gm.getAllNodes();
+  } while (count !== 0);
+};
+
+// Get degree of a node depending of its edges and independent of its children
+cholaLayout.prototype.getNodeDegree = function (node) {
+  var id = node.id;
+  var edges = node.getEdges();
+  var degree = 0;
+
+  // For the edges connected
+  for (var i = 0; i < edges.length; i++) {
+    var edge = edges[i];
+    if (edge.getSource().id !== edge.getTarget().id) {
+      degree = degree + 1;
+    }
+  }
+  return degree;
+};
+
+cholaLayout.prototype.deleteLeafNodes = function (cy, idList) {
+  var cyNodes = cy.nodes();
+  for (var i = 0; i < cyNodes.length; i++) {
+    var cyNode = cyNodes[i];
+    if (idList.includes(cyNode._private.data.id)) {
+      cy.remove(cyNodes[i]);
+      console.log("Removing ");
+      console.log(cyNode._private.data.id);
+    }
+  }
+};
+
+// transfer cytoscape edges to cose edges
+cholaLayout.prototype.processEdges = function (layout, gm, edges, idToLNode) {
+  for (var i = 0; i < edges.length; i++) {
+    var edge = edges[i];
+    var sourceNode = idToLNode[edge.data("source")];
+    var targetNode = idToLNode[edge.data("target")];
+    if (sourceNode !== targetNode && sourceNode.getEdgesBetween(targetNode).length == 0) {
+      var e1 = gm.add(layout.newEdge(), sourceNode, targetNode);
+      e1.id = edge.id();
+    }
+  }
+};
+
+cholaLayout.prototype.coseOnCore = function (options, idToLNode, cholaNodesMap, cholaNodeToCoseNode) {
+  var newCoSENodes = [];
+  var newCoSEEdges = [];
+
+  // Create a CoSE layout object
+  var coseLayout = new CoSELayout();
+
+  this.defineCoseConstants(options);
+
+  var gm = coseLayout.newGraphManager();
+  this.coseGm = gm;
+
+  var nodes = options.eles.nodes();
+  var edges = options.eles.edges();
+  var topMostNodes = this.getTopMostNodes(nodes);
+  this.processChildrenList(options, gm.addRoot(), topMostNodes, coseLayout, "cose", idToLNode, cholaNodesMap, cholaNodeToCoseNode);
+  this.processEdges(coseLayout, gm, edges, idToLNode);
+
+  coseLayout.runLayout();
+};
+
+// // transfer cytoscape nodes to cose nodes
+// processChildrenList(parent, children, layout) {
+//   var size = children.length;
+//   for (var i = 0; i < size; i++) {
+//     var theChild = children[i];
+//     var children_of_children = theChild.children();
+//     var theNode;
+//
+//     var dimensions = theChild.layoutDimensions({
+//       nodeDimensionsIncludeLabels: this.options.nodeDimensionsIncludeLabels
+//     });
+//
+//     if (theChild.outerWidth() != null && theChild.outerHeight() != null) {
+//       theNode = parent.add(new CoSENode(layout.graphManager, new PointD(theChild.position('x') - dimensions.w / 2, theChild.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h))));
+//     } else {
+//       theNode = parent.add(new CoSENode(this.graphManager));
+//     }
+//     // Attach id to the layout node
+//     theNode.id = theChild.data("id");
+//     // Attach the paddings of cy node to layout node
+//     theNode.paddingLeft = parseInt(theChild.css('padding'));
+//     theNode.paddingTop = parseInt(theChild.css('padding'));
+//     theNode.paddingRight = parseInt(theChild.css('padding'));
+//     theNode.paddingBottom = parseInt(theChild.css('padding'));
+//
+//     //Attach the label properties to compound if labels will be included in node dimensions
+//     if (this.options.nodeDimensionsIncludeLabels) {
+//       if (theChild.isParent()) {
+//         var labelWidth = theChild.boundingBox({ includeLabels: true, includeNodes: false }).w;
+//         var labelHeight = theChild.boundingBox({ includeLabels: true, includeNodes: false }).h;
+//         var labelPos = theChild.css("text-halign");
+//         theNode.labelWidth = labelWidth;
+//         theNode.labelHeight = labelHeight;
+//         theNode.labelPos = labelPos;
+//       }
+//     }
+//
+//     // Map the layout node
+//     this.idToLNode[theChild.data("id")] = theNode;
+//
+//     if (isNaN(theNode.rect.x)) {
+//       theNode.rect.x = 0;
+//     }
+//
+//     if (isNaN(theNode.rect.y)) {
+//       theNode.rect.y = 0;
+//     }
+//
+//     if (children_of_children != null && children_of_children.length > 0) {
+//       var theNewGraph;
+//       theNewGraph = layout.getGraphManager().add(layout.newGraph(), theNode);
+//       this.processChildrenList(theNewGraph, children_of_children, layout);
+//     }
+//   }
+// };
+
+
+module.exports = cholaLayout;
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var impl = __webpack_require__(6);
 
 // registers the extension on a cytoscape lib ref
 var register = function register(cytoscape) {
@@ -1778,7 +2121,7 @@ if (typeof cytoscape !== 'undefined') {
 module.exports = register;
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1786,7 +2129,11 @@ module.exports = register;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _Object$freeze;
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 // n.b. .layoutPositions() handles all these options for you
 
@@ -1797,20 +2144,21 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(3);
-var cholaGraphManager = __webpack_require__(6);
-var cholaNode = __webpack_require__(7);
-var cholaEdge = __webpack_require__(4);
-var cholaGraph = __webpack_require__(5);
+var cholaConstants = __webpack_require__(1);
+var cholaGraphManager = __webpack_require__(4);
+var cholaNode = __webpack_require__(5);
+var cholaLayout = __webpack_require__(8);
+var cholaEdge = __webpack_require__(2);
+var cholaGraph = __webpack_require__(3);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
 
-var assign = __webpack_require__(2);
+var assign = __webpack_require__(7);
 
-var defaults = Object.freeze({
-  quality: "default",
+var defaults = Object.freeze((_Object$freeze = {
+  quality: 'default',
   // use random node positions at beginning of layout
   // if this is set to false, then quality option must be "proof"
   randomize: true,
@@ -1822,8 +2170,6 @@ var defaults = Object.freeze({
   animationEasing: undefined,
   // fit the viewport to the repositioned nodes
   fit: true,
-  // padding around layout
-  padding: 10,
   // whether to include labels in node dimensions. Valid in "proof" quality
   nodeDimensionsIncludeLabels: false,
 
@@ -1838,99 +2184,74 @@ var defaults = Object.freeze({
   // power iteration tolerance
   piTol: 0.0000001,
 
+  // number of ticks per frame; higher is faster but more jerky
+  refresh: 30,
+  // Padding on fit
+  padding: 20,
   // Node repulsion (non overlapping) multiplier
-  nodeRepulsion: 4500,
-  // Ideal edge (non nested) length
-  idealEdgeLength: 50,
-  // Divisor to compute edge forces
-  edgeElasticity: 0.45,
-  // Nesting factor (multiplier) to compute ideal edge length for nested edges
-  nestingFactor: 0.1,
-  // Gravity force (constant)
-  gravity: 0.25,
-  // Maximum number of iterations to perform
-  numIter: 2500,
-  // For enabling tiling
-  tile: false,
-  // Represents the amount of the vertical space to put between the zero degree members during the tiling operation(can also be a function)
-  tilingPaddingVertical: 10,
-  // Represents the amount of the horizontal space to put between the zero degree members during the tiling operation(can also be a function)
-  tilingPaddingHorizontal: 10,
-  // Gravity range (constant) for compounds
-  gravityRangeCompound: 1.5,
-  // Gravity force (constant) for compounds
-  gravityCompound: 1.0,
-  // Gravity range (constant)
-  gravityRange: 3.8,
-  // Initial cooling factor for incremental layout
-  initialEnergyOnIncremental: 0.3,
+  nodeRepulsion: 4500
+}, _defineProperty(_Object$freeze, 'animate', 'end'), _defineProperty(_Object$freeze, 'animationDuration', 500), _defineProperty(_Object$freeze, 'idealEdgeLength', 50), _defineProperty(_Object$freeze, 'edgeElasticity', 0.45), _defineProperty(_Object$freeze, 'nestingFactor', 0.1), _defineProperty(_Object$freeze, 'gravity', 0.25), _defineProperty(_Object$freeze, 'numIter', 2500), _defineProperty(_Object$freeze, 'tile', true), _defineProperty(_Object$freeze, 'tilingPaddingVertical', 10), _defineProperty(_Object$freeze, 'tilingPaddingHorizontal', 10), _defineProperty(_Object$freeze, 'gravityRangeCompound', 1.5), _defineProperty(_Object$freeze, 'gravityCompound', 1.0), _defineProperty(_Object$freeze, 'gravityRange', 3.8), _defineProperty(_Object$freeze, 'initialEnergyOnIncremental', 0.5), _defineProperty(_Object$freeze, 'ready', function ready() {}), _defineProperty(_Object$freeze, 'stop', function stop() {}), _Object$freeze));
 
-  // layout event callbacks
-  ready: function ready() {}, // on layoutready
-  stop: function stop() {} // on layoutstop
-});
+var chola = function () {
+  function chola(options) {
+    _classCallCheck(this, chola);
 
-var cholaLayout = function () {
-  function cholaLayout(options) {
-    _classCallCheck(this, cholaLayout);
-
-    Layout.call(this);
+    //Layout.call(this);
     this.options = assign({}, defaults, options);
     this.cholaGm;
     this.coseGm;
     this.idList = [];
     this.cholaNodeToCoseNode = new HashMap();
-    this.coseEdgeToCholaEdges = new HashMap();
     this.cholaNodesMap = new HashMap();
+    this.idToLNode;
   }
 
-  _createClass(cholaLayout, [{
+  _createClass(chola, [{
     key: 'run',
     value: function run() {
       var ready;
       var frameId;
       var cholaIdToLNode = this.cholaIdToLNode = {};
       var coseIdToLNode = this.coseIdToLNode = {};
+      var cholaNodesMap = this.cholaNodesMap;
       var options = this.options;
 
-      this.defineConstants(options);
-
-      var cholalayout = this.layout = new cholaLayout();
+      var layout = this.layout = new cholaLayout();
       var self = this;
       var cyNodes;
-
       self.stopped = false;
 
       this.cy = this.options.cy;
 
       this.cy.trigger({ type: 'layoutstart', layout: this });
 
-      var gm = cholalayout.newGraphManager();
+      var gm = layout.newGraphManager();
       this.cholaGm = gm;
 
       var nodes = this.options.eles.nodes();
       var edges = this.options.eles.edges();
-      var topMostNodes = this.getTopMostNodes(nodes);
-      this.processChildrenList(gm.addRoot(), topMostNodes, cholalayout, "chola");
-
-      for (var i = 0; i < edges.length; i++) {
-        var edge = edges[i];
-        var sourceNode = this.cholaIdToLNode[edge.data("source")];
-        var targetNode = this.cholaIdToLNode[edge.data("target")];
-        if (sourceNode !== targetNode && sourceNode.getEdgesBetween(targetNode).length == 0) {
-          var e1 = gm.add(cholalayout.newEdge(), sourceNode, targetNode);
-          e1.id = edge.id();
-        }
-      }
+      var topMostNodes = layout.getTopMostNodes(nodes);
+      layout.processChildrenList(this.options, gm.addRoot(), topMostNodes, layout, "chola", cholaIdToLNode, cholaNodesMap);
+      layout.processEdges(layout, gm, edges, cholaIdToLNode);
 
       //finds and saves the compound nodes
-      //  var compoundNodes = this.findCompoundNodes();
+      var compoundNodes = layout.findCompoundNodes(this.cholaGm);
       //removes the leaf nodes
-      //  this.removeLeafNodes(compoundNodes);
+      layout.removeLeafNodes(this.cholaGm, compoundNodes, this.idList);
+      layout.deleteLeafNodes(this.cy, this.idList);
       //transfers cHolaNodes to CoseNodes
+      layout.coseOnCore(options, coseIdToLNode, cholaNodesMap, this.cholaNodeToCoseNode);
 
-      this.coseOnCore();
-      //let self = this;
+      // Reflect changes back to chola nodes
+      // First update all cholaNodes nodes.
+      var cholaNodes = this.cholaGm.getAllNodes();
+      for (var i = 0; i < cholaNodes.length; i++) {
+        var _cholaNode = cholaNodes[i];
+        var coseNode = this.cholaNodeToCoseNode.get(_cholaNode);
+        var loc = coseNode.getLocation();
+        _cholaNode.setLocation(loc.x, loc.y);
+      }
+
       var getPositions = function getPositions(ele, i) {
         if (typeof ele === "number") {
           ele = i;
@@ -1943,315 +2264,17 @@ var cholaLayout = function () {
         };
       };
 
-      this.cy.nodes().layoutPositions(this, this.options, getPositions);
-      //this.cy.nodes().positions(getPositions);
-    }
-    //return the list of compound nodes
-
-  }, {
-    key: 'findCompoundNodes',
-    value: function findCompoundNodes() {
-      var allNodes = this.cholaGm.getAllNodes();
-      var compoundNodes = [];
-      for (var i = 0; i < allNodes.length; i++) {
-        var node = allNodes[i];
-        if (node.isCompound()) {
-          compoundNodes.push(node);
-        }
-      }
-      return compoundNodes;
-    }
-  }, {
-    key: 'getTopMostNodes',
-    value: function getTopMostNodes(nodes) {
-      var nodesMap = {};
-      for (var i = 0; i < nodes.length; i++) {
-        nodesMap[nodes[i].id()] = true;
-      }
-      var roots = nodes.filter(function (ele, i) {
-        if (typeof ele === "number") {
-          ele = i;
-        }
-        var parent = ele.parent()[0];
-        while (parent != null) {
-          if (nodesMap[parent.id()]) {
-            return false;
-          }
-          parent = parent.parent()[0];
-        }
-        return true;
-      });
-      return roots;
-    }
-  }, {
-    key: 'removeLeafNodes',
-
-
-    //removes all leaf nodes except compound leaf nodes
-    value: function removeLeafNodes(compoundNodes) {
-      var allNodes = this.cholaGm.getAllNodes();
-      var count = 0;
-      do {
-        count = 0;
-        for (var i = 0; i < allNodes.length; i++) {
-          var node = allNodes[i];
-          if (this.getNodeDegree(node) === 1 && !compoundNodes.includes(node)) {
-            //we do not remove leaf nodes if they are the only remaining children of a parent compound node
-            if (node.getParent().id !== undefined && compoundNodes.includes(node.getParent()) && node.getParent().child.nodes.length === 1) {
-              continue;
-            }
-            var edge = node.edges[0];
-            if (edge.source.owner !== edge.target.owner) {
-              continue;
-            }
-            count++;
-            node.owner.remove(node);
-            this.idList.push(node.id);
-          }
-        }
-        this.cholaGm.resetAllEdges();
-        this.cholaGm.resetAllNodes();
-        this.cholaGm.getAllEdges();
-        allNodes = this.cholaGm.getAllNodes();
-      } while (count !== 0);
-    }
-  }, {
-    key: 'getNodeDegree',
-
-
-    // Get degree of a node depending of its edges and independent of its children
-    value: function getNodeDegree(node) {
-      var id = node.id;
-      var edges = node.getEdges();
-      var degree = 0;
-
-      // For the edges connected
-      for (var i = 0; i < edges.length; i++) {
-        var edge = edges[i];
-        if (edge.getSource().id !== edge.getTarget().id) {
-          degree = degree + 1;
-        }
-      }
-      return degree;
-    }
-  }, {
-    key: 'findCyCoreNodes',
-    value: function findCyCoreNodes(idList) {
-      var cyNodes = this.cy.nodes();
-      for (var i = 0; i < cyNodes.length; i++) {
-        var cyNode = cyNodes[i];
-        if (idList.includes(cyNode._private.data.id)) {
-          this.cy.remove(cyNodes[i]);
-          console.log("Removing ");
-          console.log(cyNode._private.data.id);
-        }
-      }
-      //return [cyCoreNodes, cyLeafNodes];
-    }
-  }, {
-    key: 'coseOnCore',
-    value: function coseOnCore() {
-      var newCoSENodes = [];
-      var newCoSEEdges = [];
-
-      // Create a CoSE layout object
-      var coseLayout = new CoSELayout();
-      //coseLayout.isSubLayout = false;
-      //  coseLayout.useMultiLevelScaling = false;
-      //coseLayout.useFRGridVariant = true;
-      //  coseLayout.randomize = true;
-      //  coseLayout.springConstant *= 1.5;
-
-      var coseConstants = new CoSEConstants();
-      coseConstants.TILE = true;
-
-      var gm = coseLayout.newGraphManager();
-      this.coseGm = gm;
-
-      //  this.findCyCoreNodes(this.idList);
-
-      var nodes = this.options.eles.nodes();
-      var edges = this.options.eles.edges();
-      var topMostNodes = this.getTopMostNodes(nodes);
-      this.processChildrenList(gm.addRoot(), topMostNodes, coseLayout, "cose");
-
-      for (var i = 0; i < edges.length; i++) {
-        var edge = edges[i];
-        var sourceNode = this.coseIdToLNode[edge.source.id];
-        var targetNode = this.coseIdToLNode[edge.target.id];
-        if (typeof sourceNode === 'undefined') {
-          var a = 1;
-        }
-        if (sourceNode !== targetNode && sourceNode.getEdgesBetween(targetNode).length == 0) {
-          var e1 = gm.add(coseLayout.newEdge(), sourceNode, targetNode);
-          e1.id = edge.id;
-        }
-      }
-
-      // Run CoSELayout
-      //coseLayout.run();
-
-      coseLayout.runLayout();
-
-      // Reflect changes back to chola nodes
-      // First update all cholaNodes nodes.
-      var cholaNodes = this.cholaGm.getAllNodes();
-      for (var _i = 0; _i < cholaNodes.length; _i++) {
-        var _cholaNode = cholaNodes[_i];
-        var coseNode = this.cholaNodeToCoseNode.get(_cholaNode);
-        var loc = coseNode.getLocation();
-        _cholaNode.setLocation(loc.x, loc.y);
-      }
-    }
-  }, {
-    key: 'defineConstants',
-    value: function defineConstants(options) {
-      if (options.nodeRepulsion != null) CoSEConstants.DEFAULT_REPULSION_STRENGTH = FDLayoutConstants.DEFAULT_REPULSION_STRENGTH = options.nodeRepulsion;
-      if (options.idealEdgeLength != null) CoSEConstants.DEFAULT_EDGE_LENGTH = FDLayoutConstants.DEFAULT_EDGE_LENGTH = options.idealEdgeLength;
-      if (options.edgeElasticity != null) CoSEConstants.DEFAULT_SPRING_STRENGTH = FDLayoutConstants.DEFAULT_SPRING_STRENGTH = options.edgeElasticity;
-      if (options.nestingFactor != null) CoSEConstants.PER_LEVEL_IDEAL_EDGE_LENGTH_FACTOR = FDLayoutConstants.PER_LEVEL_IDEAL_EDGE_LENGTH_FACTOR = options.nestingFactor;
-      if (options.gravity != null) CoSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
-      if (options.numIter != null) CoSEConstants.MAX_ITERATIONS = FDLayoutConstants.MAX_ITERATIONS = options.numIter;
-      if (options.gravityRange != null) CoSEConstants.DEFAULT_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_GRAVITY_RANGE_FACTOR = options.gravityRange;
-      if (options.gravityCompound != null) CoSEConstants.DEFAULT_COMPOUND_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_COMPOUND_GRAVITY_STRENGTH = options.gravityCompound;
-      if (options.gravityRangeCompound != null) CoSEConstants.DEFAULT_COMPOUND_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_COMPOUND_GRAVITY_RANGE_FACTOR = options.gravityRangeCompound;
-      if (options.initialEnergyOnIncremental != null) CoSEConstants.DEFAULT_COOLING_FACTOR_INCREMENTAL = FDLayoutConstants.DEFAULT_COOLING_FACTOR_INCREMENTAL = options.initialEnergyOnIncremental;
-
-      if (options.quality == 'proof') LayoutConstants.QUALITY = 2;else LayoutConstants.QUALITY = 0;
-
-      CoSEConstants.NODE_DIMENSIONS_INCLUDE_LABELS = FDLayoutConstants.NODE_DIMENSIONS_INCLUDE_LABELS = LayoutConstants.NODE_DIMENSIONS_INCLUDE_LABELS = options.nodeDimensionsIncludeLabels;
-      CoSEConstants.DEFAULT_INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL = LayoutConstants.DEFAULT_INCREMENTAL = !options.randomize;
-      CoSEConstants.ANIMATE = FDLayoutConstants.ANIMATE = LayoutConstants.ANIMATE = options.animate;
-      CoSEConstants.TILE = options.tile;
-      CoSEConstants.TILING_PADDING_VERTICAL = typeof options.tilingPaddingVertical === 'function' ? options.tilingPaddingVertical.call() : options.tilingPaddingVertical;
-      CoSEConstants.TILING_PADDING_HORIZONTAL = typeof options.tilingPaddingHorizontal === 'function' ? options.tilingPaddingHorizontal.call() : options.tilingPaddingHorizontal;
-
-      CoSEConstants.DEFAULT_INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL = LayoutConstants.DEFAULT_INCREMENTAL = true;
-    }
-  }, {
-    key: 'getGraphManager',
-    value: function getGraphManager() {
-      return this.graphManager;
-    }
-  }, {
-    key: 'newGraphManager',
-
-
-    /**
-     * This method creates a new graph manager associated with this layout.
-     */
-    value: function newGraphManager() {
-      this.graphManager = new cholaGraphManager(this);
-      return this.graphManager;
-    }
-  }, {
-    key: 'newNode',
-
-
-    /**
-     * This method creates a new node associated with the input view node.
-     */
-    value: function newNode(loc, size) {
-      return new cholaNode(this.graphManager, loc, size, null);
-    }
-  }, {
-    key: 'newEdge',
-
-
-    /**
-     * This method creates a new edge associated with the input view edge.
-     */
-    value: function newEdge(source, target, vEdge) {
-      return new cholaEdge(source, target, vEdge);
-    }
-  }, {
-    key: 'newGraph',
-    value: function newGraph(vGraph) {
-      return new cholaGraph(null, this.graphManager, vGraph);
-    }
-  }, {
-    key: 'processChildrenList',
-    value: function processChildrenList(parent, children, layout, layoutType) {
-      var size = children.length;
-      var includeLabelsOption = this.options.nodeDimensionsIncludeLabels;
-      for (var i = 0; i < size; i++) {
-        var theChild = children[i];
-        var children_of_children = theChild.children();
-        var theNode;
-        var dimensions = theChild.layoutDimensions({
-          nodeDimensionsIncludeLabels: includeLabelsOption
-        });
-
-        if (theChild.outerWidth() != null && theChild.outerHeight() != null) {
-          if (layoutType === "chola") {
-            theNode = parent.add(new cholaNode(layout.graphManager, new PointD(theChild.position('x') - dimensions.w / 2, theChild.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h))));
-            theNode.id = theChild.data("id");
-          } else if (layoutType === "cose") {
-            theNode = parent.add(new CoSENode(layout.graphManager, new PointD(theChild.position('x') - dimensions.w / 2, theChild.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h))));
-            theNode.id = theChild._private.data.id;
-          }
-        } else {
-          if (layoutType === "chola") {
-            theNode = parent.add(new cholaNode(this.graphManager));
-            theNode.id = theChild.data("id");
-          } else if (layoutType === "cose") {
-            theNode = parent.add(new CoSENode(this.graphManager));
-            theNode.id = theChild._private.data.id;
-          }
-        }
-        // Attach id to the layout node
-
-        // Attach the paddings of cy node to layout node
-        theNode.paddingLeft = parseInt(theChild.css('padding'));
-        theNode.paddingTop = parseInt(theChild.css('padding'));
-        theNode.paddingRight = parseInt(theChild.css('padding'));
-        theNode.paddingBottom = parseInt(theChild.css('padding'));
-
-        //Attach the label properties to compound if labels will be included in node dimensions
-        if (this.options.nodeDimensionsIncludeLabels) {
-          if (theChild.isParent()) {
-            var createClasslabelWidth = theChild.boundingBox({ includeLabels: true, includeNodes: false }).w;
-            var labelHeight = theChild.boundingBox({ includeLabels: true, includeNodes: false }).h;
-            var labelPos = theChild.css("text-halign");
-            theNode.labelWidth = labelWidth;
-            theNode.labelHeight = labelHeight;
-            theNode.labelPos = labelPos;
-          }
-        }
-
-        // Map the layout node
-        if (layoutType === "chola") {
-          this.cholaIdToLNode[theChild.data("id")] = theNode;
-          this.cholaNodesMap.put(theNode.id, theNode);
-        } else if (layoutType === "cose") {
-          this.cholaNodeToCoseNode.put(this.cholaNodesMap.get(theNode.id), theNode);
-          this.coseIdToLNode[theChild.data("id")] = theNode;
-        }
-
-        if (isNaN(theNode.rect.x)) {
-          theNode.rect.x = 0;
-        }
-
-        if (isNaN(theNode.rect.y)) {
-          theNode.rect.y = 0;
-        }
-
-        if (children_of_children != null && children_of_children.length > 0) {
-          var theNewGraph;
-          theNewGraph = layout.getGraphManager().add(layout.newGraph(), theNode);
-          this.processChildrenList(theNewGraph, children_of_children, layout, layoutType);
-        }
-      }
+      this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
   }]);
 
-  return cholaLayout;
+  return chola;
 }();
 
-module.exports = cholaLayout;
+module.exports = chola;
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 (function webpackUniversalModuleDefinition(root, factory) {
