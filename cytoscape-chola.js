@@ -2056,9 +2056,16 @@ var Assignment = __webpack_require__(2);
 
 function Arrangement(neighbors) {
   this.nbrs = neighbors;
-  this.semis = [[], [], [], []];
+  this.div = 4;
+  for (;; this.div *= 2) {
+    if (neighbors.length <= this.div) break;else continue;
+  }
+
+  this.semis = [];
+  for (var i = 0; i < this.div; i++) {
+    this.semis.push([]);
+  }
   this.quads = [];
-  this.qas = { '0022': { 1: { 8: ['0001', '0030'], 1: ['0003'], 4: ['0010'] }, 2: { 9: ['0002', '0033'], 12: ['0011', '0020'], 5: ['0013'] }, 3: { 13: ['0012', '0023'] }, 4: {} }, '0112': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0302', '0333'], 14: ['0111'], 7: ['0113'] }, 4: { 15: ['0112'] } }, '0111': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0033'], 10: ['0101', '0130'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0133'], 13: ['0333'], 14: ['0111'], 7: ['0113'] }, 4: {} }, '0002': { 1: { 8: ['0001'], 1: ['0003'] }, 2: { 9: ['0002'] }, 3: {}, 4: {} }, '0001': { 1: { 8: ['0001'], 1: ['0003'] }, 2: {}, 3: {}, 4: {} }, '0011': { 1: { 8: ['0001', '0030'], 1: ['0003'], 4: ['0010'] }, 2: { 9: ['0033'], 12: ['0011'], 5: ['0013'] }, 3: {}, 4: {} }, '1212': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '0200', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0302', '0333', '1011', '1301', '1330'], 14: ['0111', '0201', '0230', '3011', '3301', '3330'], 7: ['0113', '0203', '1110', '1200', '3013', '3303'] }, 4: { 15: ['0112', '0202', '0233', '1111', '1201', '1230', '3012', '3302', '3333'] } }, '0222': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110', '0200'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0023', '0302', '0333'], 14: ['0111', '0120', '0201', '0230'], 7: ['0113', '0203'] }, 4: { 15: ['0112', '0123', '0202', '0233'] } }, '1111': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '3010', '3300'], 9: ['0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0133', '1101', '1130', '3033'], 13: ['0333', '1011', '1301', '1330'], 14: ['0111', '3011', '3301', '3330'], 7: ['0113', '1110', '3013', '3303'] }, 4: { 15: ['1111', '3333'] } }, '0101': { 1: { 8: ['0001'], 1: ['0003'], 2: ['0100'], 4: ['0300'] }, 2: { 10: ['0101'], 3: ['0103'], 12: ['0301'], 5: ['0303'] }, 3: {}, 4: {} }, '0122': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0023', '0302', '0333'], 14: ['0111', '0120'], 7: ['0113'] }, 4: { 15: ['0112', '0123'] } }, '0102': { 1: { 8: ['0001'], 1: ['0003'], 2: ['0100'], 4: ['0300'] }, 2: { 9: ['0002'], 10: ['0101'], 3: ['0103'], 12: ['0301'], 5: ['0303'] }, 3: { 11: ['0102'], 13: ['0302'] }, 4: {} }, '0121': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0033'], 10: ['0101', '0130'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0133'], 13: ['0023', '0333'], 14: ['0111', '0120'], 7: ['0113'] }, 4: { 15: ['0123'] } }, '0212': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110', '0200'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0302', '0333'], 14: ['0111', '0201', '0230'], 7: ['0113', '0203'] }, 4: { 15: ['0112', '0202', '0233'] } }, '0202': { 1: { 8: ['0001'], 1: ['0003'], 2: ['0100'], 4: ['0300'] }, 2: { 3: ['0103'], 5: ['0303'], 6: ['0200'], 9: ['0002'], 10: ['0101'], 12: ['0301'] }, 3: { 11: ['0102'], 13: ['0302'], 14: ['0201'], 7: ['0203'] }, 4: { 15: ['0202'] } }, '1122': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0023', '0302', '0333', '1011', '1020', '1301', '1330'], 14: ['0111', '0120', '3011', '3020', '3301', '3330'], 7: ['0113', '1110', '3013', '3303'] }, 4: { 15: ['0112', '0123', '1111', '1120', '3012', '3023', '3302', '3333'] } }, '1222': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '0200', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0023', '0302', '0333', '1011', '1020', '1301', '1330'], 14: ['0111', '0120', '0201', '0230', '3011', '3020', '3301', '3330'], 7: ['0113', '0203', '1110', '1200', '3013', '3303'] }, 4: { 15: ['0112', '0123', '0202', '0233', '1111', '1120', '1201', '1230', '3012', '3023', '3302', '3333'] } }, '2222': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '2000', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '0200', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '2001', '2030', '3002', '3033'], 13: ['0012', '0023', '0302', '0333', '1011', '1020', '1301', '1330'], 14: ['0111', '0120', '0201', '0230', '3011', '3020', '3301', '3330'], 7: ['0113', '0203', '1110', '1200', '2010', '2300', '3013', '3303'] }, 4: { 15: ['0112', '0123', '0202', '0233', '1111', '1120', '1201', '1230', '2011', '2020', '2301', '2330', '3012', '3023', '3302', '3333'] } }, '1112': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0302', '0333', '1011', '1301', '1330'], 14: ['0111', '3011', '3301', '3330'], 7: ['0113', '1110', '3013', '3303'] }, 4: { 15: ['0112', '1111', '3012', '3302', '3333'] } }, '0012': { 1: { 8: ['0001', '0030'], 1: ['0003'], 4: ['0010'] }, 2: { 9: ['0002', '0033'], 12: ['0011'], 5: ['0013'] }, 3: { 13: ['0012'] }, 4: {} } };
 }
 
 Arrangement.prototype.getArrangement = function () {
@@ -2078,99 +2085,89 @@ Arrangement.prototype.getArrangement = function () {
     }
   }
   //now all quads can sort and compute costs
-  for (var _i = 0; _i < quads.length; _i++) {
-    var quad = quads[_i];
-    quad.sortAndComputeCosts();
-  }
+  // for (let i = 0; i < quads.length; i++)
+  // {
+  //   var quad = quads[i];
+  //   quad.sortAndComputeCosts();
+  // }
 };
 
 Arrangement.prototype.getAsgns = function () {
-  //returns a list of Assignments objects indicating all 3 or 4 assignments around the center node; sorted in order of preferability
-  //ordering are in ascending costs
-
   var trials = [];
   var assigns = this.listTrialNAssigns();
-  // for (let i = 0; i < assigns.length; i++)
-  // {
-  //   trials.push(assigns[i]);
-  // }
-  // var assigns = this.listTrialNAssigns(3);
-  // for (let i = 0; i < assigns.length; i++)
-  // {
-  //   trials.push(assigns[i]);
-  // }
-  // var assigns = this.listTrialNAssigns(2);
-  // for (let i = 0; i < assigns.length; i++)
-  // {
-  //   trials.push(assigns[i]);
-  // }
-  // var assigns = this.listTrialNAssigns(1);
-  // for (let i = 0; i < assigns.length; i++)
-  // {
-  //   trials.push(assigns[i]);
-  // }
   return assigns;
 };
 
 Arrangement.prototype.listTrialNAssigns = function (N) {
 
   var N = this.nbrs.length;
-
-  //now computing the Assignments
   var vac = this.vacancy();
-  //
+
   // //some semi axes may already have neighbors assigned to them
   // //let n be the number of semiaxes waiting to be filled
   var n = N - vac.reduce(function (a, b) {
     return a + b;
   }, 0);
-  //
-  //let f be the number of free neighbors i.e. in the quadrants
-  var f = 0;
-  for (var i = 0; i < this.quads.length; i++) {
-    var quad = this.quads[i];
-    f += quad.size();
-  }
 
   if (n === 0) {
     var a = this.basicAssignment();
     return a;
   } else if (n < 0) {
     return [];
+  } else {
+    //get the list of all possible quadratic functions
+    var trials = this.listAllQuadActions();
+    return trials;
   }
-  // else if (f < n) {
-  //   return [];
-  // }
-  else {
-      //get the list of all possible quadratic functions
-      var trials = this.listAllQuadActions(N);
-      return trials;
-    }
 };
 
-Arrangement.prototype.getAssignmentForQuadAction = function (qa) {
-  //qa: quad action [a,b,c,d] whose entries are integers 0,1,2,3 representing the quadrant actions, D,A,B,C
-  var a = this.basicAssignment();
-  for (var i = 0; i < qa.length; i++) {
-    var q = this.quads[i];
-    var r = qa[i];
-    var ap = q.assignment(r);
-    a = a.union(ap);
-  }
-  return a;
-};
-
-Arrangement.prototype.listAllQuadActions = function (n) {
-  this.getAssignment(n);
+Arrangement.prototype.listAllQuadActions = function () {
+  var cyclicIds = this.getCyclicOrder();
+  var output = this.getCyclicNodeAssignments();
+  //var cyclicAssgns = output[0];
+  //var cyclicAssgns = output[1];
+  this.getAssignment();
   var asgn = new Assignment(this.semis, 0);
   return asgn;
 };
 
-Arrangement.prototype.getAssignment = function (n) {
-  var div = 4;
-  for (;; div *= 2) {
-    if (n <= div) break;else continue;
+Arrangement.prototype.getCyclicNodeAssignments = function () {};
+
+Arrangement.prototype.getCyclicOrder = function () {
+  var cyclicOrder = [];
+  for (var i = 0; i < this.quads.length; i++) {
+    var quad = this.quads[i].nbrs;
+    var orderedNodes = [];
+    for (var j = 0; j < quad.length; j++) {
+      var arr = [quad[j].y, quad[j].x, quad[j].id];
+      orderedNodes.push(arr);
+    }
+    if (i == 0 | i == 3) {
+      orderedNodes.sort(function sortFunction(a, b) {
+        if (a[0] === b[0]) {
+          return a[1] > b[1] ? -1 : 1;
+        } else {
+          return a[0] < b[0] ? -1 : 1;
+        }
+      });
+    }
+    if (i == 1 | i == 2) {
+      orderedNodes.sort(function sortFunction(a, b) {
+        if (a[0] === b[0]) {
+          return a[1] < b[1] ? -1 : 1;
+        } else {
+          return a[0] > b[0] ? -1 : 1;
+        }
+      });
+    }
+    for (var _j = 0; _j < orderedNodes.length; _j++) {
+      cyclicOrder.push(orderedNodes[_j][2]);
+    }
   }
+  return cyclicOrder;
+};
+
+Arrangement.prototype.getAssignment = function () {
   for (var i = 0; i < this.nbrs.length; i++) {
     var nbr = this.nbrs[i];
     var o = nbr.octalCode();
@@ -2188,24 +2185,26 @@ Arrangement.prototype.getAssignment = function (n) {
       this.semis[0].push(nbr);
     }
   }
-  for (var _i2 = 0; _i2 < this.semis.length; _i2++) {
+  for (var _i = 0; _i < this.semis.length; _i++) {
     var cost = [];
-    var semi = this.semis[_i2];
+    var semi = this.semis[_i];
     for (var j = 0; j < semi.length; j++) {
       var neighbor = semi[j];
       var _o = neighbor.octalCode();
-      var defl = neighbor.deflectionFromSemi(_i2, _o);
+      var defl = neighbor.deflectionFromSemi(_i, _o);
       cost.push(defl);
     }
 
     var index = cost.indexOf(Math.min.apply(Math, cost));
-    this.semis[_i2] = semi[index];
+    this.semis[_i] = semi[index];
   }
 
   //finding duplicate assignments of same node
   var ids = [];
-  for (var _i3 = 0; _i3 < this.semis.length; _i3++) {
-    if (typeof this.semis[_i3] != 'undefined') ids.push(this.semis[_i3].id);
+  for (var _i2 = 0; _i2 < this.semis.length; _i2++) {
+    if (typeof this.semis[_i2] != 'undefined') ids.push(this.semis[_i2].id);else {
+      ids.push(null);
+    }
   }
 
   var counts = {};
@@ -2214,27 +2213,27 @@ Arrangement.prototype.getAssignment = function (n) {
   });
 
   var ignoredNodes = [];
-  for (var _i4 = 0; _i4 < n; _i4++) {
-    var nbrId = this.nbrs[_i4].id;
-    if (typeof counts[nbrId] !== 'undefined') {
+  for (var _i3 = 0; _i3 < this.nbrs.length; _i3++) {
+    var nbrId = this.nbrs[_i3].id;
+    if (typeof counts[nbrId] !== 'undefined' & counts[nbrId] !== null) {
       //find the indexes of the duplicate assignments and remove them
       if (counts[nbrId] > 1) {
         var dupIndexes = [];
-        for (var _j = 0; _j < ids.length; _j++) {
-          if (ids[_j] == nbrId) dupIndexes.push(_j);
+        for (var _j2 = 0; _j2 < ids.length; _j2++) {
+          if (ids[_j2] == nbrId) dupIndexes.push(_j2);
         }
 
         //calculate the costs for both assignments and remove the one with the larger cost
         var deflArray = [];
-        for (var _j2 = 0; _j2 < dupIndexes.length; _j2++) {
-          var _semi = dupIndexes[_j2];
+        for (var _j3 = 0; _j3 < dupIndexes.length; _j3++) {
+          var _semi = dupIndexes[_j3];
           var _o2 = this.semis[_semi].octalCode();
           deflArray.push(this.semis[_semi].deflectionFromSemi(_semi, _o2));
         }
 
         var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
-        for (var _j3 = 0; _j3 < dupIndexes.length; _j3++) {
-          if (_j3 != index) this.semis[dupIndexes[_j3]] = null;
+        for (var _j4 = 0; _j4 < dupIndexes.length; _j4++) {
+          if (_j4 != index) this.semis[dupIndexes[_j4]] = null;
         }
       }
     } else {
@@ -2242,25 +2241,25 @@ Arrangement.prototype.getAssignment = function (n) {
     }
   }
 
-  for (var _j4 = 0; _j4 < ignoredNodes.length; _j4++) {
+  for (var _j5 = 0; _j5 < ignoredNodes.length; _j5++) {
     var freeIndexes = [];
     //find the possible empty locations where nodes can be assigned
-    for (var _i5 = 0; _i5 < this.semis.length; _i5++) {
-      if (this.semis[_i5] == null) freeIndexes.push(_i5);
+    for (var _i4 = 0; _i4 < this.semis.length; _i4++) {
+      if (this.semis[_i4] == null) freeIndexes.push(_i4);
     }
 
     var nbr = null;
-    for (var _i6 = 0; _i6 < this.nbrs.length; _i6++) {
-      if (this.nbrs[_i6].id == ignoredNodes[_j4]) {
-        nbr = this.nbrs[_i6];
+    for (var _i5 = 0; _i5 < this.nbrs.length; _i5++) {
+      if (this.nbrs[_i5].id == ignoredNodes[_j5]) {
+        nbr = this.nbrs[_i5];
         break;
       }
     }
 
     //calculate the costs for all assignments and assigns to the one with lowest cost
     var deflArray = [];
-    for (var _i7 = 0; _i7 < freeIndexes.length; _i7++) {
-      var _semi2 = freeIndexes[_i7];
+    for (var _i6 = 0; _i6 < freeIndexes.length; _i6++) {
+      var _semi2 = freeIndexes[_i6];
       var _o3 = nbr.octalCode();
       deflArray.push(nbr.deflectionFromSemi(_semi2, _o3));
     }
@@ -2391,10 +2390,10 @@ Arrangement.prototype.oriRedDistAndPhi = function () {
   if (d[1] == d[0] && d[2] > d[3]) {
     var j = [1, 0, 3, 2];
     var k = [2, 1, 0, 3];
-    for (var _i8 = 0; _i8 < j.length; _i8++) {
-      d[_i8] = dCopy[j[_i8]];
-      f[_i8] = fCopy[j[_i8]];
-      s[_i8] = sCopy[k[_i8]];
+    for (var _i7 = 0; _i7 < j.length; _i7++) {
+      d[_i7] = dCopy[j[_i7]];
+      f[_i7] = fCopy[j[_i7]];
+      s[_i7] = sCopy[k[_i7]];
     }
   }
 
@@ -2776,7 +2775,7 @@ cholaLayout.prototype.nodeConfiguration = function (gm) {
         nbr.setLocation(loc.x, loc.y - 100);
       }
     }
-    // if (i==5)
+    //if (i==4)
     //   break;
   }
 };
@@ -2991,9 +2990,9 @@ var chola = function () {
       };
 
       //creating orthogonal layout for higher degree nodes
-      //for (let i = 0; i < 3; i++)
-      layout.nodeConfiguration(this.cholaGm);
-      this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+      for (var _i = 0; _i < 2; _i++) {
+        layout.nodeConfiguration(this.cholaGm);
+      }this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
   }]);
 
