@@ -73,7 +73,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 9);
+/******/ 	return __webpack_require__(__webpack_require__.s = 15);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -82,7 +82,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
-		module.exports = factory(__webpack_require__(11));
+		module.exports = factory(__webpack_require__(17));
 	else if(typeof define === 'function' && define.amd)
 		define(["layout-base"], factory);
 	else if(typeof exports === 'object')
@@ -1522,6 +1522,160 @@ module.exports = coseBase;
 "use strict";
 
 
+function Nbr(id, dx, dy) {
+  this.id = id;
+  this.x = dx;
+  this.y = dy;
+}
+
+Nbr.prototype.octalCode = function () {
+  //Semi axes get octal codes 0,2,4,6; East:0; North:2; West:4; South:6
+  //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
+  var o = -1;
+  var x = this.x;
+  var y = this.y;
+  if (x > 0) {
+    if (y < 0) o = 7;else {
+      if (y === 0) o = 0;else o = 1;
+    }
+  } else if (x === 0) {
+    if (y < 0) o = 6;else o = 2;
+  } else {
+    if (y < 0) o = 5;else {
+      if (y === 0) o = 4;else o = 3;
+    }
+  }
+  return o;
+};
+
+Nbr.prototype.deflection = function () {
+  var x = this.x;
+  var y = this.y;
+  var xSquare = x * x;
+  var ySquare = y * y;
+  var lSquare = xSquare + ySquare;
+  var o = this.octalCode();
+  var arr = [0, 1, 4, 5];
+  var defl;
+  if (arr.includes(o)) defl = ySquare / lSquare;else defl = xSquare / lSquare;
+  return defl;
+};
+
+Nbr.prototype.deflectionFromSemi = function (semi, o) {
+  var x = this.x;
+  var y = this.y;
+  var xSquare = x * x;
+  var ySquare = y * y;
+  var lSquare = xSquare + ySquare;
+  var defl = 0;
+
+  switch (semi) {
+    case 0:case 2:
+      defl = ySquare / lSquare;
+      break;
+    case 1:case 3:
+      defl = xSquare / lSquare;
+      break;
+    default:
+      break;
+
+  }
+
+  switch (semi) {
+    case 0:
+      switch (o) {
+        case 3:case 5:
+          defl = 2 - defl;
+          break;
+        case 4:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 1:
+      switch (o) {
+        case 5:case 7:
+          defl = 2 - defl;
+          break;
+        case 6:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 2:
+      switch (o) {
+        case 7:case 1:
+          defl = 2 - defl;
+          break;
+        case 0:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 3:
+      switch (o) {
+        case 1:case 3:
+          defl = 2 - defl;
+          break;
+        case 2:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    default:
+      break;
+  }
+  return defl;
+};
+
+module.exports = Nbr;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+//a struct to represent an assignment of neighbors to semiaxes, and the cost of this assignment
+function Assignment(semis, cost) {
+  //semis is a list [a, b, c, d] of lists of neighbors to be assigned to the semiaxes s0, s1, s2, s3 respectively
+  this.semis = semis;
+  this.cost = cost;
+}
+
+Assignment.prototype.union = function (other) {
+  //returns a new assignment by taking a union of this assignment with another
+  var semis = [[], [], [], []];
+  for (var i = 0; i < this.semis.length; i++) {
+    var s = this.semis[i];
+    for (var j = 0; j < s.length; j++) {
+      semis[i].push(s[j]);
+    }
+
+    var o = other.semis[i];
+    for (var _j = 0; _j < o.length; _j++) {
+      semis[i].push(o[_j]);
+    }
+  }
+  var cost = this.cost + other.cost;
+  var asgn = new Assignment(semis, cost);
+  return asgn;
+};
+
+module.exports = Assignment;
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 
 function cholaConstants() {}
@@ -1541,7 +1695,7 @@ cholaConstants.TILING_PADDING_HORIZONTAL = 10;
 module.exports = cholaConstants;
 
 /***/ }),
-/* 2 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1558,10 +1712,21 @@ for (var prop in LEdge) {
   cholaEdge[prop] = LEdge[prop];
 }
 
+/*Get the other end to which an edge is connected with*/
+cholaEdge.prototype.getOtherEnd = function (node) {
+  if (node === this.source && node === this.target) {
+    return null;
+  } else if (node === this.source) {
+    return this.target;
+  } else if (node === this.target) {
+    return this.source;
+  }
+};
+
 module.exports = cholaEdge;
 
 /***/ }),
-/* 3 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1581,7 +1746,7 @@ for (var prop in LGraph) {
 module.exports = cholaGraph;
 
 /***/ }),
-/* 4 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1601,7 +1766,7 @@ for (var prop in LGraphManager) {
 module.exports = cholaGraphManager;
 
 /***/ }),
-/* 5 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1711,7 +1876,79 @@ cholaNode.prototype.isCompound = function () {
 module.exports = cholaNode;
 
 /***/ }),
-/* 6 */
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var Nbr = __webpack_require__(1);
+var Assignment = __webpack_require__(2);
+
+function Quad(num) {
+  //num is the quadrant number: 0, 1, 2, 3
+  this.num = num;
+  this.nbrs = [];
+  this.costs = [0, 0, 0, 0];
+}
+
+Quad.prototype.addNbr = function (neighbor) {
+  this.nbrs.push(neighbor);
+};
+
+Quad.prototype.size = function () {
+  return this.nbrs.length;
+};
+
+Quad.prototype.sortAndComputeCosts = function () {
+  //compute and store costs associated with each of the four possible actions 0, A, B, C
+  var nbrs = this.nbrs;
+  var deflectionArray = [];
+  //sort the neighbors into clockwise order
+  if (nbrs.length === 0) {
+    this.costs = [0, 0, 0, 0];
+  } else {
+    for (var i = 0; i < nbrs.length; i++) {
+      var neighbor = nbrs[i];
+      deflectionArray.push(neighbor.deflection());
+    }
+    nbrs.sort(function (a, b) {
+      return deflectionArray.indexOf(a) - deflectionArray.indexOf(b);
+    });
+    var A = this.nbrs[0].deflection();
+    var C = 1 - this.nbrs[nbrs.length - 1].deflection();
+    var B = A + C;
+    this.costs = [0, A, B, C];
+  }
+};
+
+Quad.prototype.assignment = function (i) {
+  //i is an index 0,1,2,3 representing one of the 4 possible actions D,A,B,C
+  //this function returns an assignment object
+  i = parseInt(i);
+  var semis = [[], [], [], []];
+
+  //j will be semiaxes to which nbr 0 should be assigned if any
+  //k will be semiaxes to which nbr -1 should be assigned if any
+  var j = -1;
+  var k = -1;
+  var nbrsSize = this.nbrs.length;
+  if (i == 1 | i == 2) //action is A or B
+    j = this.num;
+  if (nbrsSize > 1 & (i == 2 | i == 3)) //action is B or C
+    k = (this.num + 1) % 4;
+
+  if (j >= 0) semis[j].push(this.nbrs[0]);
+  if (k >= 0) semis[k].push(this.nbrs[nbrsSize - 1]);
+  var cost = this.costs[i];
+  var a = new Assignment(semis, cost);
+  return a;
+};
+
+module.exports = Quad;
+
+/***/ }),
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1727,10 +1964,10 @@ module.exports = cholaNode;
  * A continuous layout is one that updates positions continuously, like a force-
  * directed / physics simulation layout.
  */
-module.exports = __webpack_require__(10);
+module.exports = __webpack_require__(16);
 
 /***/ }),
-/* 7 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1753,11 +1990,483 @@ module.exports = Object.assign != null ? Object.assign.bind(Object) : function (
 };
 
 /***/ }),
-/* 8 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+function Perm(code) {
+  //code: a vector [a,b,c,d]
+  this.lookup = code;
+}
+
+Perm.prototype.inv = function () {
+  //inverse the permutation
+  var code = [9, 9, 9, 9];
+  var L = this.lookup;
+  for (var i = 0; i < 4; i++) {
+    code[L[i]] = i;
+  }
+  var I = new Perm(code);
+  return I;
+};
+
+Perm.prototype.getValue = function () {
+  return this.lookup;
+};
+
+Perm.prototype.isFlip = function () {
+  var a = this.lookup[0];
+  var b = this.lookup[1];
+  if ((a - b) % 4 == 1) return true;else return false;
+};
+
+Perm.prototype.apply = function (a) {
+  if ((typeof a === "undefined" ? "undefined" : _typeof(a)) == _typeof(0)) {
+    return this.lookup[a];
+  } else if ((typeof a === "undefined" ? "undefined" : _typeof(a)) == _typeof([])) {
+    var b = [9, 9, 9, 9];
+    for (var i = 0; i < a.length; i++) {
+      var j = this.lookup[i];
+      var k = a[i];
+      b[j] = k;
+    }
+    return b;
+  }
+};
+
+module.exports = Perm;
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+var Nbr = __webpack_require__(1);
+var Quad = __webpack_require__(8);
+var Perm = __webpack_require__(11);
+var Assignment = __webpack_require__(2);
+
+function Arrangement(neighbors) {
+  this.nbrs = neighbors;
+  this.semis = [[], [], [], []];
+  this.quads = [];
+  this.qas = { '0022': { 1: { 8: ['0001', '0030'], 1: ['0003'], 4: ['0010'] }, 2: { 9: ['0002', '0033'], 12: ['0011', '0020'], 5: ['0013'] }, 3: { 13: ['0012', '0023'] }, 4: {} }, '0112': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0302', '0333'], 14: ['0111'], 7: ['0113'] }, 4: { 15: ['0112'] } }, '0111': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0033'], 10: ['0101', '0130'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0133'], 13: ['0333'], 14: ['0111'], 7: ['0113'] }, 4: {} }, '0002': { 1: { 8: ['0001'], 1: ['0003'] }, 2: { 9: ['0002'] }, 3: {}, 4: {} }, '0001': { 1: { 8: ['0001'], 1: ['0003'] }, 2: {}, 3: {}, 4: {} }, '0011': { 1: { 8: ['0001', '0030'], 1: ['0003'], 4: ['0010'] }, 2: { 9: ['0033'], 12: ['0011'], 5: ['0013'] }, 3: {}, 4: {} }, '1212': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '0200', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0302', '0333', '1011', '1301', '1330'], 14: ['0111', '0201', '0230', '3011', '3301', '3330'], 7: ['0113', '0203', '1110', '1200', '3013', '3303'] }, 4: { 15: ['0112', '0202', '0233', '1111', '1201', '1230', '3012', '3302', '3333'] } }, '0222': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110', '0200'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0023', '0302', '0333'], 14: ['0111', '0120', '0201', '0230'], 7: ['0113', '0203'] }, 4: { 15: ['0112', '0123', '0202', '0233'] } }, '1111': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '3010', '3300'], 9: ['0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0133', '1101', '1130', '3033'], 13: ['0333', '1011', '1301', '1330'], 14: ['0111', '3011', '3301', '3330'], 7: ['0113', '1110', '3013', '3303'] }, 4: { 15: ['1111', '3333'] } }, '0101': { 1: { 8: ['0001'], 1: ['0003'], 2: ['0100'], 4: ['0300'] }, 2: { 10: ['0101'], 3: ['0103'], 12: ['0301'], 5: ['0303'] }, 3: {}, 4: {} }, '0122': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0023', '0302', '0333'], 14: ['0111', '0120'], 7: ['0113'] }, 4: { 15: ['0112', '0123'] } }, '0102': { 1: { 8: ['0001'], 1: ['0003'], 2: ['0100'], 4: ['0300'] }, 2: { 9: ['0002'], 10: ['0101'], 3: ['0103'], 12: ['0301'], 5: ['0303'] }, 3: { 11: ['0102'], 13: ['0302'] }, 4: {} }, '0121': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110'], 9: ['0033'], 10: ['0101', '0130'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0133'], 13: ['0023', '0333'], 14: ['0111', '0120'], 7: ['0113'] }, 4: { 15: ['0123'] } }, '0212': { 1: { 8: ['0001', '0030'], 1: ['0003'], 2: ['0100'], 4: ['0010', '0300'] }, 2: { 3: ['0103'], 5: ['0013', '0303'], 6: ['0110', '0200'], 9: ['0002', '0033'], 10: ['0101', '0130'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133'], 13: ['0012', '0302', '0333'], 14: ['0111', '0201', '0230'], 7: ['0113', '0203'] }, 4: { 15: ['0112', '0202', '0233'] } }, '0202': { 1: { 8: ['0001'], 1: ['0003'], 2: ['0100'], 4: ['0300'] }, 2: { 3: ['0103'], 5: ['0303'], 6: ['0200'], 9: ['0002'], 10: ['0101'], 12: ['0301'] }, 3: { 11: ['0102'], 13: ['0302'], 14: ['0201'], 7: ['0203'] }, 4: { 15: ['0202'] } }, '1122': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0023', '0302', '0333', '1011', '1020', '1301', '1330'], 14: ['0111', '0120', '3011', '3020', '3301', '3330'], 7: ['0113', '1110', '3013', '3303'] }, 4: { 15: ['0112', '0123', '1111', '1120', '3012', '3023', '3302', '3333'] } }, '1222': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '0200', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0023', '0302', '0333', '1011', '1020', '1301', '1330'], 14: ['0111', '0120', '0201', '0230', '3011', '3020', '3301', '3330'], 7: ['0113', '0203', '1110', '1200', '3013', '3303'] }, 4: { 15: ['0112', '0123', '0202', '0233', '1111', '1120', '1201', '1230', '3012', '3023', '3302', '3333'] } }, '2222': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '2000', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '0200', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0020', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '2001', '2030', '3002', '3033'], 13: ['0012', '0023', '0302', '0333', '1011', '1020', '1301', '1330'], 14: ['0111', '0120', '0201', '0230', '3011', '3020', '3301', '3330'], 7: ['0113', '0203', '1110', '1200', '2010', '2300', '3013', '3303'] }, 4: { 15: ['0112', '0123', '0202', '0233', '1111', '1120', '1201', '1230', '2011', '2020', '2301', '2330', '3012', '3023', '3302', '3333'] } }, '1112': { 1: { 8: ['0001', '0030'], 1: ['0003', '1000'], 2: ['0100', '3000'], 4: ['0010', '0300'] }, 2: { 3: ['0103', '1100', '3003'], 5: ['0013', '0303', '1010', '1300'], 6: ['0110', '3010', '3300'], 9: ['0002', '0033', '1001', '1030'], 10: ['0101', '0130', '3001', '3030'], 12: ['0011', '0301', '0330'] }, 3: { 11: ['0102', '0133', '1101', '1130', '3002', '3033'], 13: ['0012', '0302', '0333', '1011', '1301', '1330'], 14: ['0111', '3011', '3301', '3330'], 7: ['0113', '1110', '3013', '3303'] }, 4: { 15: ['0112', '1111', '3012', '3302', '3333'] } }, '0012': { 1: { 8: ['0001', '0030'], 1: ['0003'], 4: ['0010'] }, 2: { 9: ['0002', '0033'], 12: ['0011'], 5: ['0013'] }, 3: { 13: ['0012'] }, 4: {} } };
+}
+
+Arrangement.prototype.getArrangement = function () {
+  this.quads = [new Quad(0), new Quad(1), new Quad(2), new Quad(3)];
+  var quads = this.quads;
+  var nbrs = this.nbrs;
+  var semis = this.semis;
+  for (var i = 0; i < nbrs.length; i++) {
+    var nbr = nbrs[i];
+    var o = nbr.octalCode();
+    if (o % 2 === 0) {
+      var s = o / 2;
+      semis[s].push(nbr);
+    } else {
+      var q = (o - 1) / 2;
+      quads[q].addNbr(nbr);
+    }
+  }
+  //now all quads can sort and compute costs
+  for (var _i = 0; _i < quads.length; _i++) {
+    var quad = quads[_i];
+    quad.sortAndComputeCosts();
+  }
+};
+
+Arrangement.prototype.getAsgns = function () {
+  //returns a list of Assignments objects indicating all 3 or 4 assignments around the center node; sorted in order of preferability
+  //ordering are in ascending costs
+
+  var trials = [];
+  var assigns = this.listTrialNAssigns();
+  // for (let i = 0; i < assigns.length; i++)
+  // {
+  //   trials.push(assigns[i]);
+  // }
+  // var assigns = this.listTrialNAssigns(3);
+  // for (let i = 0; i < assigns.length; i++)
+  // {
+  //   trials.push(assigns[i]);
+  // }
+  // var assigns = this.listTrialNAssigns(2);
+  // for (let i = 0; i < assigns.length; i++)
+  // {
+  //   trials.push(assigns[i]);
+  // }
+  // var assigns = this.listTrialNAssigns(1);
+  // for (let i = 0; i < assigns.length; i++)
+  // {
+  //   trials.push(assigns[i]);
+  // }
+  return assigns;
+};
+
+Arrangement.prototype.listTrialNAssigns = function (N) {
+
+  var N = this.nbrs.length;
+
+  //now computing the Assignments
+  var vac = this.vacancy();
+  //
+  // //some semi axes may already have neighbors assigned to them
+  // //let n be the number of semiaxes waiting to be filled
+  var n = N - vac.reduce(function (a, b) {
+    return a + b;
+  }, 0);
+  //
+  //let f be the number of free neighbors i.e. in the quadrants
+  var f = 0;
+  for (var i = 0; i < this.quads.length; i++) {
+    var quad = this.quads[i];
+    f += quad.size();
+  }
+
+  if (n === 0) {
+    var a = this.basicAssignment();
+    return a;
+  } else if (n < 0) {
+    return [];
+  }
+  // else if (f < n) {
+  //   return [];
+  // }
+  else {
+      //get the list of all possible quadratic functions
+      var trials = this.listAllQuadActions(N);
+      return trials;
+    }
+};
+
+Arrangement.prototype.getAssignmentForQuadAction = function (qa) {
+  //qa: quad action [a,b,c,d] whose entries are integers 0,1,2,3 representing the quadrant actions, D,A,B,C
+  var a = this.basicAssignment();
+  for (var i = 0; i < qa.length; i++) {
+    var q = this.quads[i];
+    var r = qa[i];
+    var ap = q.assignment(r);
+    a = a.union(ap);
+  }
+  return a;
+};
+
+Arrangement.prototype.listAllQuadActions = function (n) {
+  this.getAssignment(n);
+  var asgn = new Assignment(this.semis, 0);
+  return asgn;
+};
+
+Arrangement.prototype.getAssignment = function (n) {
+  var div = 4;
+  for (;; div *= 2) {
+    if (n <= div) break;else continue;
+  }
+  for (var i = 0; i < this.nbrs.length; i++) {
+    var nbr = this.nbrs[i];
+    var o = nbr.octalCode();
+    if (o == 1) {
+      this.semis[0].push(nbr);
+      this.semis[1].push(nbr);
+    } else if (o == 3) {
+      this.semis[1].push(nbr);
+      this.semis[2].push(nbr);
+    } else if (o == 5) {
+      this.semis[2].push(nbr);
+      this.semis[3].push(nbr);
+    } else if (o == 7) {
+      this.semis[3].push(nbr);
+      this.semis[0].push(nbr);
+    }
+  }
+  for (var _i2 = 0; _i2 < this.semis.length; _i2++) {
+    var cost = [];
+    var semi = this.semis[_i2];
+    for (var j = 0; j < semi.length; j++) {
+      var neighbor = semi[j];
+      var _o = neighbor.octalCode();
+      var defl = neighbor.deflectionFromSemi(_i2, _o);
+      cost.push(defl);
+    }
+
+    var index = cost.indexOf(Math.min.apply(Math, cost));
+    this.semis[_i2] = semi[index];
+  }
+
+  //finding duplicate assignments of same node
+  var ids = [];
+  for (var _i3 = 0; _i3 < this.semis.length; _i3++) {
+    if (typeof this.semis[_i3] != 'undefined') ids.push(this.semis[_i3].id);
+  }
+
+  var counts = {};
+  ids.forEach(function (el) {
+    return counts[el] = 1 + (counts[el] || 0);
+  });
+
+  var ignoredNodes = [];
+  for (var _i4 = 0; _i4 < n; _i4++) {
+    var nbrId = this.nbrs[_i4].id;
+    if (typeof counts[nbrId] !== 'undefined') {
+      //find the indexes of the duplicate assignments and remove them
+      if (counts[nbrId] > 1) {
+        var dupIndexes = [];
+        for (var _j = 0; _j < ids.length; _j++) {
+          if (ids[_j] == nbrId) dupIndexes.push(_j);
+        }
+
+        //calculate the costs for both assignments and remove the one with the larger cost
+        var deflArray = [];
+        for (var _j2 = 0; _j2 < dupIndexes.length; _j2++) {
+          var _semi = dupIndexes[_j2];
+          var _o2 = this.semis[_semi].octalCode();
+          deflArray.push(this.semis[_semi].deflectionFromSemi(_semi, _o2));
+        }
+
+        var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
+        for (var _j3 = 0; _j3 < dupIndexes.length; _j3++) {
+          if (_j3 != index) this.semis[dupIndexes[_j3]] = null;
+        }
+      }
+    } else {
+      ignoredNodes.push(nbrId);
+    }
+  }
+
+  for (var _j4 = 0; _j4 < ignoredNodes.length; _j4++) {
+    var freeIndexes = [];
+    //find the possible empty locations where nodes can be assigned
+    for (var _i5 = 0; _i5 < this.semis.length; _i5++) {
+      if (this.semis[_i5] == null) freeIndexes.push(_i5);
+    }
+
+    var nbr = null;
+    for (var _i6 = 0; _i6 < this.nbrs.length; _i6++) {
+      if (this.nbrs[_i6].id == ignoredNodes[_j4]) {
+        nbr = this.nbrs[_i6];
+        break;
+      }
+    }
+
+    //calculate the costs for all assignments and assigns to the one with lowest cost
+    var deflArray = [];
+    for (var _i7 = 0; _i7 < freeIndexes.length; _i7++) {
+      var _semi2 = freeIndexes[_i7];
+      var _o3 = nbr.octalCode();
+      deflArray.push(nbr.deflectionFromSemi(_semi2, _o3));
+    }
+
+    var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
+
+    this.semis[freeIndexes[index]] = nbr;
+  }
+};
+
+Arrangement.prototype.showDupPos = function (arr, mindups) {
+  mindups = mindups || 2;
+  var result = [];
+  var positions = {};
+  // collect all positions
+  arr.forEach(function (value, pos) {
+    positions[value] = positions[value] || [];
+    positions[value].push(pos);
+  });
+  //check how much of same value in string
+  Object.keys(positions).forEach(function (value) {
+    var posArray = positions[value];
+    if (posArray.length > mindups) {
+      result = result.concat(posArray);
+    }
+  });
+  return result.sort();
+};
+
+// Arrangement.prototype.getPermArray = function(n) {
+//   //places around the node to which neighbors can be assigned
+//   var div = 4;
+//   for (;;div*=2)
+//   {
+//     if (n<=div)
+//       break;
+//     else
+//       continue;
+//   }
+//   var arr = [];
+//   for (let i = 0, rn = n; i < div; i++,rn--)
+//   {
+//     if (rn > 0)
+//       arr.push(i);
+//     else
+//       arr.push('x');
+//   }
+//   return this.perm(arr);
+// };
+//
+// Arrangement.prototype.perm = function(xs) {
+//   let ret = [];
+//
+//   for (let i = 0; i < xs.length; i = i + 1) {
+//     let rest = this.perm(xs.slice(0, i).concat(xs.slice(i + 1)));
+//
+//     if(!rest.length) {
+//       ret.push([xs[i]])
+//     } else {
+//       for(let j = 0; j < rest.length; j = j + 1) {
+//         ret.push([xs[i]].concat(rest[j]))
+//       }
+//     }
+//   }
+//   return ret;
+// };
+
+Arrangement.prototype.swapDir = function (qa) {
+  //qa represents a quad action for which we swap its direction i.e. change 1's to 3's and 3's to 1's
+  var qap = [];
+  for (var i = 0; i < qa.length; i++) {
+    var a = qa[i];
+    if (a % 2 == 1) a = 4 - a;
+    qap.push(a);
+  }
+  return qap;
+};
+
+Arrangement.prototype.dist = function () {
+  //computes and returns the distribution factor
+  var arr = [];
+  for (var i = 0; i < this.quads.length; i++) {
+    var quad = this.quads[i];
+    arr.push(quad.size());
+  }
+  return arr;
+};
+
+Arrangement.prototype.rDist = function () {
+  //computes and returns the reduced distribution
+  var d = this.dist();
+  for (var i = 0; i < 4; i++) {
+    if (d[i] > 2) d[i] = 2;
+  }
+  return d;
+};
+
+Arrangement.prototype.oriRedDistAndPhi = function () {
+  //get the reduced distribution
+  var d = this.rDist();
+
+  var f = [0, 1, 2, 3];
+  var s = [0, 1, 2, 3];
+  var m = Math.min.apply(Math, _toConsumableArray(d));
+  var index0 = d.indexOf(m);
+  d = d.slice(index0).concat(d.slice(0, index0));
+  f = f.slice(index0).concat(f.slice(0, index0));
+  s = s.slice(index0).concat(s.slice(0, index0));
+
+  //let objCopy = Object.assign({}, obj);
+  var dCopy = Object.assign({}, d);
+  var fCopy = Object.assign({}, f);
+  var sCopy = Object.assign({}, s);
+  //flipping over main diagonal
+  if (d[1] > d[3]) {
+    var j = [0, 3, 2, 1];
+    var k = [1, 0, 3, 2];
+    for (var i = 0; i < j.length; i++) {
+      d[i] = dCopy[j[i]];
+      f[i] = fCopy[j[i]];
+      s[i] = sCopy[k[i]];
+    }
+  }
+  dCopy = Object.assign({}, d);
+  fCopy = Object.assign({}, f);
+  sCopy = Object.assign({}, s);
+  //flipping over vertical axis
+  if (d[1] == d[0] && d[2] > d[3]) {
+    var j = [1, 0, 3, 2];
+    var k = [2, 1, 0, 3];
+    for (var _i8 = 0; _i8 < j.length; _i8++) {
+      d[_i8] = dCopy[j[_i8]];
+      f[_i8] = fCopy[j[_i8]];
+      s[_i8] = sCopy[k[_i8]];
+    }
+  }
+
+  var phi = new Perm(f);
+  phi = phi.inv();
+  var sigma = new Perm(s);
+  sigma = sigma.inv();
+
+  var returnArr = [d, phi, sigma];
+  return returnArr;
+};
+
+Arrangement.prototype.vacancy = function (N) {
+  var vec = [];
+  for (var i = 0; i < this.semis.length; i++) {
+    var semi = this.semis[i];
+    if (semi.length === 0) vec.push(0);else {
+      vec.push(1);
+    }
+  }
+  return vec;
+};
+
+Arrangement.prototype.basicAssignment = function () {
+  var arr = new Assignment(this.semis, 0);
+  return arr;
+};
+
+module.exports = Arrangement;
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var Nbr = __webpack_require__(1);
+var Arrangement = __webpack_require__(12);
+var quad = __webpack_require__(8);
+
+function assign() {}
+
+assign.prototype.getNeighborAssignments = function (node) {
+  var neighbors = [];
+  for (var i = 0; i < node.edges.length; i++) {
+    var edge = node.edges[i];
+    var other = edge.getOtherEnd(node);
+    var otherLoc = other.getLocation();
+    var nodeLoc = node.getLocation();
+    var dx = otherLoc.x - nodeLoc.x;
+    var dy = otherLoc.y - nodeLoc.y;
+    var neighbor = new Nbr(other.id, dx, dy);
+    neighbors.push(neighbor);
+  }
+  var arr = new Arrangement(neighbors);
+  arr.getArrangement();
+  var asgns = arr.getAsgns();
+  return asgns;
+  // return asgns
+};
+
+module.exports = assign;
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 // -----------------------------------------------------------------------------
 // Section: Initializations
@@ -1768,15 +2477,16 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(1);
-var cholaGraphManager = __webpack_require__(4);
-var cholaNode = __webpack_require__(5);
-var cholaEdge = __webpack_require__(2);
-var cholaGraph = __webpack_require__(3);
+var cholaConstants = __webpack_require__(3);
+var cholaGraphManager = __webpack_require__(6);
+var cholaNode = __webpack_require__(7);
+var cholaEdge = __webpack_require__(4);
+var cholaGraph = __webpack_require__(5);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
+var assign = __webpack_require__(13);
 
 // Constructor
 function cholaLayout() {
@@ -1996,8 +2706,6 @@ cholaLayout.prototype.deleteLeafNodes = function (cy, idList) {
     var cyNode = cyNodes[i];
     if (idList.includes(cyNode._private.data.id)) {
       cy.remove(cyNodes[i]);
-      console.log("Removing ");
-      console.log(cyNode._private.data.id);
     }
   }
 };
@@ -2036,73 +2744,91 @@ cholaLayout.prototype.coseOnCore = function (options, idToLNode, cholaNodesMap, 
   coseLayout.runLayout();
 };
 
-// // transfer cytoscape nodes to cose nodes
-// processChildrenList(parent, children, layout) {
-//   var size = children.length;
-//   for (var i = 0; i < size; i++) {
-//     var theChild = children[i];
-//     var children_of_children = theChild.children();
-//     var theNode;
-//
-//     var dimensions = theChild.layoutDimensions({
-//       nodeDimensionsIncludeLabels: this.options.nodeDimensionsIncludeLabels
-//     });
-//
-//     if (theChild.outerWidth() != null && theChild.outerHeight() != null) {
-//       theNode = parent.add(new CoSENode(layout.graphManager, new PointD(theChild.position('x') - dimensions.w / 2, theChild.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h))));
-//     } else {
-//       theNode = parent.add(new CoSENode(this.graphManager));
-//     }
-//     // Attach id to the layout node
-//     theNode.id = theChild.data("id");
-//     // Attach the paddings of cy node to layout node
-//     theNode.paddingLeft = parseInt(theChild.css('padding'));
-//     theNode.paddingTop = parseInt(theChild.css('padding'));
-//     theNode.paddingRight = parseInt(theChild.css('padding'));
-//     theNode.paddingBottom = parseInt(theChild.css('padding'));
-//
-//     //Attach the label properties to compound if labels will be included in node dimensions
-//     if (this.options.nodeDimensionsIncludeLabels) {
-//       if (theChild.isParent()) {
-//         var labelWidth = theChild.boundingBox({ includeLabels: true, includeNodes: false }).w;
-//         var labelHeight = theChild.boundingBox({ includeLabels: true, includeNodes: false }).h;
-//         var labelPos = theChild.css("text-halign");
-//         theNode.labelWidth = labelWidth;
-//         theNode.labelHeight = labelHeight;
-//         theNode.labelPos = labelPos;
-//       }
-//     }
-//
-//     // Map the layout node
-//     this.idToLNode[theChild.data("id")] = theNode;
-//
-//     if (isNaN(theNode.rect.x)) {
-//       theNode.rect.x = 0;
-//     }
-//
-//     if (isNaN(theNode.rect.y)) {
-//       theNode.rect.y = 0;
-//     }
-//
-//     if (children_of_children != null && children_of_children.length > 0) {
-//       var theNewGraph;
-//       theNewGraph = layout.getGraphManager().add(layout.newGraph(), theNode);
-//       this.processChildrenList(theNewGraph, children_of_children, layout);
-//     }
-//   }
-// };
+cholaLayout.prototype.nodeConfiguration = function (gm) {
+  //sorting nodes of degree 3 or higher in descending order
+  var highDegreeNodes = this.getHighDegreeNodes(gm);
 
+  for (var i = 0; i < highDegreeNodes.length; i++) {
+
+    var node = highDegreeNodes[i][0];
+    console.log(node.id);
+    var assign1 = new assign();
+    var asgns = assign1.getNeighborAssignments(node);
+    var degree = this.getNodeDegree(node);
+    var ids = [];
+    for (var j = 0; j < asgns.semis.length; j++) {
+      if (typeof asgns.semis[j] != 'undefined' & asgns.semis[j] !== null) {
+        ids.push(asgns.semis[j].id);
+      } else ids.push('x');
+    }
+    for (var _j = 0; _j < degree; _j++) {
+      var edge = node.edges[_j];
+      var nbr = edge.getOtherEnd(node);
+      var loc = node.getLocation();
+      var newLoc = ids.indexOf(nbr.id);
+      if (newLoc == 0) {
+        nbr.setLocation(loc.x + 100, loc.y);
+      } else if (newLoc == 1) {
+        nbr.setLocation(loc.x, loc.y + 100);
+      } else if (newLoc == 2) {
+        nbr.setLocation(loc.x - 100, loc.y);
+      } else if (newLoc == 3) {
+        nbr.setLocation(loc.x, loc.y - 100);
+      }
+    }
+    // if (i==5)
+    //   break;
+  }
+};
+
+cholaLayout.prototype.getHighDegreeNodes = function (gm) {
+  var allNodes = gm.getAllNodes();
+
+  var arrayToBeSorted = [];
+  for (var i = 0; i < allNodes.length; i++) {
+    var node = allNodes[i];
+    var degree = this.getNodeDegree(node);
+    if (degree > 2) {
+      var valueToPush = [];
+      valueToPush[0] = node;
+      valueToPush[1] = degree;
+      arrayToBeSorted.push(valueToPush);
+    }
+  }
+  arrayToBeSorted.sort(compareSecondColumn);
+  arrayToBeSorted.reverse();
+
+  function compareSecondColumn(a, b) {
+    if (a[1] === b[1]) {
+      return 0;
+    } else {
+      return a[1] < b[1] ? -1 : 1;
+    }
+  }
+  return arrayToBeSorted;
+};
+
+cholaLayout.prototype.findNeighbors = function (node) {
+  var neighborsList = [];
+  for (var i = 0; i < node.edges.length; i++) {
+    var edge = node.edges[i];
+    var source = edge.source;
+    var target = edge.target;
+    if (source.id == node.id && target.id == node.id) continue;else if (source.id == node.id) neighborsList.push(target.id);else if (target.id == node.id) neighborsList.push(source.id);
+  }
+  return [].concat(_toConsumableArray(new Set(neighborsList)));
+};
 
 module.exports = cholaLayout;
 
 /***/ }),
-/* 9 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var impl = __webpack_require__(6);
+var impl = __webpack_require__(9);
 
 // registers the extension on a cytoscape lib ref
 var register = function register(cytoscape) {
@@ -2121,7 +2847,7 @@ if (typeof cytoscape !== 'undefined') {
 module.exports = register;
 
 /***/ }),
-/* 10 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2144,18 +2870,18 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(1);
-var cholaGraphManager = __webpack_require__(4);
-var cholaNode = __webpack_require__(5);
-var cholaLayout = __webpack_require__(8);
-var cholaEdge = __webpack_require__(2);
-var cholaGraph = __webpack_require__(3);
+var cholaConstants = __webpack_require__(3);
+var cholaGraphManager = __webpack_require__(6);
+var cholaNode = __webpack_require__(7);
+var cholaLayout = __webpack_require__(14);
+var cholaEdge = __webpack_require__(4);
+var cholaGraph = __webpack_require__(5);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
 
-var assign = __webpack_require__(7);
+var assign = __webpack_require__(10);
 
 var defaults = Object.freeze((_Object$freeze = {
   quality: 'default',
@@ -2239,11 +2965,10 @@ var chola = function () {
       //removes the leaf nodes
       layout.removeLeafNodes(this.cholaGm, compoundNodes, this.idList);
       layout.deleteLeafNodes(this.cy, this.idList);
-      //transfers cHolaNodes to CoseNodes
+      //applies cose on the core
       layout.coseOnCore(options, coseIdToLNode, cholaNodesMap, this.cholaNodeToCoseNode);
 
       // Reflect changes back to chola nodes
-      // First update all cholaNodes nodes.
       var cholaNodes = this.cholaGm.getAllNodes();
       for (var i = 0; i < cholaNodes.length; i++) {
         var _cholaNode = cholaNodes[i];
@@ -2252,6 +2977,7 @@ var chola = function () {
         _cholaNode.setLocation(loc.x, loc.y);
       }
 
+      //visualizes the layout in cytoscape map
       var getPositions = function getPositions(ele, i) {
         if (typeof ele === "number") {
           ele = i;
@@ -2264,6 +2990,9 @@ var chola = function () {
         };
       };
 
+      //creating orthogonal layout for higher degree nodes
+      //for (let i = 0; i < 3; i++)
+      layout.nodeConfiguration(this.cholaGm);
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
   }]);
@@ -2274,7 +3003,7 @@ var chola = function () {
 module.exports = chola;
 
 /***/ }),
-/* 11 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 (function webpackUniversalModuleDefinition(root, factory) {
