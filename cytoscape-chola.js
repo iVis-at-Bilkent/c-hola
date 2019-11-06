@@ -1522,10 +1522,58 @@ module.exports = coseBase;
 "use strict";
 
 
-function Nbr(id, dx, dy) {
+var LEdge = __webpack_require__(0).layoutBase.LEdge;
+var IGeometry = __webpack_require__(0).layoutBase.IGeometry;
+
+function cholaEdge(source, target, vEdge) {
+  LEdge.call(this, source, target, vEdge);
+}
+
+cholaEdge.prototype = Object.create(LEdge.prototype);
+for (var prop in LEdge) {
+  cholaEdge[prop] = LEdge[prop];
+}
+
+/*Get the other end to which an edge is connected with*/
+cholaEdge.prototype.getOtherEnd = function (node) {
+  if (node === this.source && node === this.target) {
+    return null;
+  } else if (node === this.source) {
+    return this.target;
+  } else if (node === this.target) {
+    return this.source;
+  }
+};
+
+cholaEdge.prototype.intersectionsCost = function (gm) {
+  var allEdges = gm.getAllEdges();
+  var p1 = this.source.getLocation().x;
+  var p2 = this.target.getLocation().y;
+  var cost = 0;
+  for (var i = 0; i < allEdges.length; i++) {
+    var edge = allEdges[i];
+    var p3 = edge.source.getLocation().x;
+    var p4 = edge.target.getLocation().y;
+    cost += IGeometry.doIntersect(p1, p2, p3, p4) ? 1 : 0;
+  }
+  return cost;
+};
+
+module.exports = cholaEdge;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function Nbr(id, dx, dy, moved, degree) {
   this.id = id;
   this.x = dx;
   this.y = dy;
+  this.moved = moved;
+  this.degree = degree;
 }
 
 Nbr.prototype.octalCode = function () {
@@ -1635,7 +1683,7 @@ Nbr.prototype.deflectionFromSemi = function (semi, o) {
 module.exports = Nbr;
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1670,7 +1718,7 @@ Assignment.prototype.union = function (other) {
 module.exports = Assignment;
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1693,37 +1741,6 @@ cholaConstants.TILING_PADDING_VERTICAL = 10;
 cholaConstants.TILING_PADDING_HORIZONTAL = 10;
 
 module.exports = cholaConstants;
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var LEdge = __webpack_require__(0).layoutBase.LEdge;
-
-function cholaEdge(source, target, vEdge) {
-  LEdge.call(this, source, target, vEdge);
-}
-
-cholaEdge.prototype = Object.create(LEdge.prototype);
-for (var prop in LEdge) {
-  cholaEdge[prop] = LEdge[prop];
-}
-
-/*Get the other end to which an edge is connected with*/
-cholaEdge.prototype.getOtherEnd = function (node) {
-  if (node === this.source && node === this.target) {
-    return null;
-  } else if (node === this.source) {
-    return this.target;
-  } else if (node === this.target) {
-    return this.source;
-  }
-};
-
-module.exports = cholaEdge;
 
 /***/ }),
 /* 5 */
@@ -1774,6 +1791,8 @@ module.exports = cholaGraphManager;
 
 var LNode = __webpack_require__(0).layoutBase.LNode;
 var IMath = __webpack_require__(0).layoutBase.IMath;
+
+var cholaEdge = __webpack_require__(1);
 
 function cholaNode(gm, loc, size, vNode) {
   LNode.call(this, gm, loc, size, vNode);
@@ -1873,6 +1892,27 @@ cholaNode.prototype.isCompound = function () {
   }
 };
 
+cholaNode.prototype.getDegree = function () {
+  var edges = this.getEdges();
+  var degree = 0;
+
+  // For the edges connected
+  for (var i = 0; i < edges.length; i++) {
+    var edge = edges[i];
+    if (edge.getSource().id !== edge.getTarget().id) {
+      degree = degree + 1;
+    }
+  }
+  return degree;
+};
+
+cholaNode.prototype.findDistance = function (node) {
+  var thisLoc = this.getLocation();
+  var nodeLoc = node.getLocation();
+  var distance = Math.sqrt(Math.pow((thisLoc.x - nodeLoc.x).toFixed(10), 2) + Math.pow((thisLoc.y - nodeLoc.y).toFixed(10), 2));
+  return distance;
+};
+
 module.exports = cholaNode;
 
 /***/ }),
@@ -1882,8 +1922,8 @@ module.exports = cholaNode;
 "use strict";
 
 
-var Nbr = __webpack_require__(1);
-var Assignment = __webpack_require__(2);
+var Nbr = __webpack_require__(2);
+var Assignment = __webpack_require__(3);
 
 function Quad(num) {
   //num is the quadrant number: 0, 1, 2, 3
@@ -2047,12 +2087,10 @@ module.exports = Perm;
 "use strict";
 
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
-var Nbr = __webpack_require__(1);
+var Nbr = __webpack_require__(2);
 var Quad = __webpack_require__(8);
 var Perm = __webpack_require__(11);
-var Assignment = __webpack_require__(2);
+var Assignment = __webpack_require__(3);
 
 function Arrangement(neighbors) {
   this.nbrs = neighbors;
@@ -2084,12 +2122,6 @@ Arrangement.prototype.getArrangement = function () {
       quads[q].addNbr(nbr);
     }
   }
-  //now all quads can sort and compute costs
-  // for (let i = 0; i < quads.length; i++)
-  // {
-  //   var quad = quads[i];
-  //   quad.sortAndComputeCosts();
-  // }
 };
 
 Arrangement.prototype.getAsgns = function () {
@@ -2123,23 +2155,22 @@ Arrangement.prototype.listTrialNAssigns = function (N) {
 
 Arrangement.prototype.listAllQuadActions = function () {
   var cyclicIds = this.getCyclicOrder();
-  var output = this.getCyclicNodeAssignments();
-  //var cyclicAssgns = output[0];
-  //var cyclicAssgns = output[1];
-  this.getAssignment();
+  this.getAssignment(cyclicIds);
   var asgn = new Assignment(this.semis, 0);
   return asgn;
 };
 
-Arrangement.prototype.getCyclicNodeAssignments = function () {};
-
 Arrangement.prototype.getCyclicOrder = function () {
   var cyclicOrder = [];
   for (var i = 0; i < this.quads.length; i++) {
+    var semi = this.semis[i];
     var quad = this.quads[i].nbrs;
     var orderedNodes = [];
-    for (var j = 0; j < quad.length; j++) {
-      var arr = [quad[j].y, quad[j].x, quad[j].id];
+    for (var j = 0; j < semi.length; j++) {
+      cyclicOrder.push(semi[j].id);
+    }
+    for (var _j = 0; _j < quad.length; _j++) {
+      var arr = [quad[_j].y, quad[_j].x, quad[_j].id];
       orderedNodes.push(arr);
     }
     if (i == 0 | i == 3) {
@@ -2160,14 +2191,15 @@ Arrangement.prototype.getCyclicOrder = function () {
         }
       });
     }
-    for (var _j = 0; _j < orderedNodes.length; _j++) {
-      cyclicOrder.push(orderedNodes[_j][2]);
+    for (var _j2 = 0; _j2 < orderedNodes.length; _j2++) {
+      cyclicOrder.push(orderedNodes[_j2][2]);
     }
   }
   return cyclicOrder;
 };
 
-Arrangement.prototype.getAssignment = function () {
+Arrangement.prototype.getAssignment = function (cyclicIds) {
+
   for (var i = 0; i < this.nbrs.length; i++) {
     var nbr = this.nbrs[i];
     var o = nbr.octalCode();
@@ -2185,18 +2217,26 @@ Arrangement.prototype.getAssignment = function () {
       this.semis[0].push(nbr);
     }
   }
+  var lastItem = null;
+  var lastIndex = -1;
   for (var _i = 0; _i < this.semis.length; _i++) {
     var cost = [];
     var semi = this.semis[_i];
     for (var j = 0; j < semi.length; j++) {
       var neighbor = semi[j];
       var _o = neighbor.octalCode();
-      var defl = neighbor.deflectionFromSemi(_i, _o);
+      var defl = neighbor.deflectionFromSemi(_i, _o) + 1 / neighbor.degree;
+
+      if (j > 0 && lastItem !== null && typeof lastItem != 'undefined') {
+        if (lastItem.id != cyclicIds.indexOf(neighbor.id) - 1) defl += Math.abs(cyclicIds.indexOf(neighbor.id) - cyclicIds.indexOf(lastItem.id));
+      }
       cost.push(defl);
     }
 
     var index = cost.indexOf(Math.min.apply(Math, cost));
     this.semis[_i] = semi[index];
+    lastItem = this.semis[_i];
+    lastIndex = _i;
   }
 
   //finding duplicate assignments of same node
@@ -2219,21 +2259,21 @@ Arrangement.prototype.getAssignment = function () {
       //find the indexes of the duplicate assignments and remove them
       if (counts[nbrId] > 1) {
         var dupIndexes = [];
-        for (var _j2 = 0; _j2 < ids.length; _j2++) {
-          if (ids[_j2] == nbrId) dupIndexes.push(_j2);
+        for (var _j3 = 0; _j3 < ids.length; _j3++) {
+          if (ids[_j3] == nbrId) dupIndexes.push(_j3);
         }
 
         //calculate the costs for both assignments and remove the one with the larger cost
         var deflArray = [];
-        for (var _j3 = 0; _j3 < dupIndexes.length; _j3++) {
-          var _semi = dupIndexes[_j3];
+        for (var _j4 = 0; _j4 < dupIndexes.length; _j4++) {
+          var _semi = dupIndexes[_j4];
           var _o2 = this.semis[_semi].octalCode();
           deflArray.push(this.semis[_semi].deflectionFromSemi(_semi, _o2));
         }
 
         var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
-        for (var _j4 = 0; _j4 < dupIndexes.length; _j4++) {
-          if (_j4 != index) this.semis[dupIndexes[_j4]] = null;
+        for (var _j5 = 0; _j5 < dupIndexes.length; _j5++) {
+          if (_j5 != index) this.semis[dupIndexes[_j5]] = null;
         }
       }
     } else {
@@ -2241,7 +2281,7 @@ Arrangement.prototype.getAssignment = function () {
     }
   }
 
-  for (var _j5 = 0; _j5 < ignoredNodes.length; _j5++) {
+  for (var _j6 = 0; _j6 < ignoredNodes.length; _j6++) {
     var freeIndexes = [];
     //find the possible empty locations where nodes can be assigned
     for (var _i4 = 0; _i4 < this.semis.length; _i4++) {
@@ -2250,7 +2290,7 @@ Arrangement.prototype.getAssignment = function () {
 
     var nbr = null;
     for (var _i5 = 0; _i5 < this.nbrs.length; _i5++) {
-      if (this.nbrs[_i5].id == ignoredNodes[_j5]) {
+      if (this.nbrs[_i5].id == ignoredNodes[_j6]) {
         nbr = this.nbrs[_i5];
         break;
       }
@@ -2268,142 +2308,6 @@ Arrangement.prototype.getAssignment = function () {
 
     this.semis[freeIndexes[index]] = nbr;
   }
-};
-
-Arrangement.prototype.showDupPos = function (arr, mindups) {
-  mindups = mindups || 2;
-  var result = [];
-  var positions = {};
-  // collect all positions
-  arr.forEach(function (value, pos) {
-    positions[value] = positions[value] || [];
-    positions[value].push(pos);
-  });
-  //check how much of same value in string
-  Object.keys(positions).forEach(function (value) {
-    var posArray = positions[value];
-    if (posArray.length > mindups) {
-      result = result.concat(posArray);
-    }
-  });
-  return result.sort();
-};
-
-// Arrangement.prototype.getPermArray = function(n) {
-//   //places around the node to which neighbors can be assigned
-//   var div = 4;
-//   for (;;div*=2)
-//   {
-//     if (n<=div)
-//       break;
-//     else
-//       continue;
-//   }
-//   var arr = [];
-//   for (let i = 0, rn = n; i < div; i++,rn--)
-//   {
-//     if (rn > 0)
-//       arr.push(i);
-//     else
-//       arr.push('x');
-//   }
-//   return this.perm(arr);
-// };
-//
-// Arrangement.prototype.perm = function(xs) {
-//   let ret = [];
-//
-//   for (let i = 0; i < xs.length; i = i + 1) {
-//     let rest = this.perm(xs.slice(0, i).concat(xs.slice(i + 1)));
-//
-//     if(!rest.length) {
-//       ret.push([xs[i]])
-//     } else {
-//       for(let j = 0; j < rest.length; j = j + 1) {
-//         ret.push([xs[i]].concat(rest[j]))
-//       }
-//     }
-//   }
-//   return ret;
-// };
-
-Arrangement.prototype.swapDir = function (qa) {
-  //qa represents a quad action for which we swap its direction i.e. change 1's to 3's and 3's to 1's
-  var qap = [];
-  for (var i = 0; i < qa.length; i++) {
-    var a = qa[i];
-    if (a % 2 == 1) a = 4 - a;
-    qap.push(a);
-  }
-  return qap;
-};
-
-Arrangement.prototype.dist = function () {
-  //computes and returns the distribution factor
-  var arr = [];
-  for (var i = 0; i < this.quads.length; i++) {
-    var quad = this.quads[i];
-    arr.push(quad.size());
-  }
-  return arr;
-};
-
-Arrangement.prototype.rDist = function () {
-  //computes and returns the reduced distribution
-  var d = this.dist();
-  for (var i = 0; i < 4; i++) {
-    if (d[i] > 2) d[i] = 2;
-  }
-  return d;
-};
-
-Arrangement.prototype.oriRedDistAndPhi = function () {
-  //get the reduced distribution
-  var d = this.rDist();
-
-  var f = [0, 1, 2, 3];
-  var s = [0, 1, 2, 3];
-  var m = Math.min.apply(Math, _toConsumableArray(d));
-  var index0 = d.indexOf(m);
-  d = d.slice(index0).concat(d.slice(0, index0));
-  f = f.slice(index0).concat(f.slice(0, index0));
-  s = s.slice(index0).concat(s.slice(0, index0));
-
-  //let objCopy = Object.assign({}, obj);
-  var dCopy = Object.assign({}, d);
-  var fCopy = Object.assign({}, f);
-  var sCopy = Object.assign({}, s);
-  //flipping over main diagonal
-  if (d[1] > d[3]) {
-    var j = [0, 3, 2, 1];
-    var k = [1, 0, 3, 2];
-    for (var i = 0; i < j.length; i++) {
-      d[i] = dCopy[j[i]];
-      f[i] = fCopy[j[i]];
-      s[i] = sCopy[k[i]];
-    }
-  }
-  dCopy = Object.assign({}, d);
-  fCopy = Object.assign({}, f);
-  sCopy = Object.assign({}, s);
-  //flipping over vertical axis
-  if (d[1] == d[0] && d[2] > d[3]) {
-    var j = [1, 0, 3, 2];
-    var k = [2, 1, 0, 3];
-    for (var _i7 = 0; _i7 < j.length; _i7++) {
-      d[_i7] = dCopy[j[_i7]];
-      f[_i7] = fCopy[j[_i7]];
-      s[_i7] = sCopy[k[_i7]];
-    }
-  }
-
-  var phi = new Perm(f);
-  phi = phi.inv();
-  var sigma = new Perm(s);
-  sigma = sigma.inv();
-
-  var returnArr = [d, phi, sigma];
-  return returnArr;
 };
 
 Arrangement.prototype.vacancy = function (N) {
@@ -2431,7 +2335,7 @@ module.exports = Arrangement;
 "use strict";
 
 
-var Nbr = __webpack_require__(1);
+var Nbr = __webpack_require__(2);
 var Arrangement = __webpack_require__(12);
 var quad = __webpack_require__(8);
 
@@ -2446,7 +2350,9 @@ assign.prototype.getNeighborAssignments = function (node) {
     var nodeLoc = node.getLocation();
     var dx = otherLoc.x - nodeLoc.x;
     var dy = otherLoc.y - nodeLoc.y;
-    var neighbor = new Nbr(other.id, dx, dy);
+    var moved = other.moved;
+    var degree = node.getDegree();
+    var neighbor = new Nbr(other.id, dx, dy, moved, degree);
     neighbors.push(neighbor);
   }
   var arr = new Arrangement(neighbors);
@@ -2476,10 +2382,10 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(3);
+var cholaConstants = __webpack_require__(4);
 var cholaGraphManager = __webpack_require__(6);
 var cholaNode = __webpack_require__(7);
-var cholaEdge = __webpack_require__(4);
+var cholaEdge = __webpack_require__(1);
 var cholaGraph = __webpack_require__(5);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
@@ -2751,6 +2657,7 @@ cholaLayout.prototype.nodeConfiguration = function (gm) {
 
     var node = highDegreeNodes[i][0];
     console.log(node.id);
+
     var assign1 = new assign();
     var asgns = assign1.getNeighborAssignments(node);
     var degree = this.getNodeDegree(node);
@@ -2775,8 +2682,152 @@ cholaLayout.prototype.nodeConfiguration = function (gm) {
         nbr.setLocation(loc.x, loc.y - 100);
       }
     }
-    //if (i==4)
-    //   break;
+  }
+  var count = 0;
+  for (var _i = highDegreeNodes.length; _i > 0; _i--) {
+
+    var _node = highDegreeNodes[_i - 1][0];
+    console.log(_node.id);
+    var assign1 = new assign();
+    var asgns = assign1.getNeighborAssignments(_node);
+    var degree = this.getNodeDegree(_node);
+    var ids = [];
+    for (var _j2 = 0; _j2 < asgns.semis.length; _j2++) {
+      if (typeof asgns.semis[_j2] != 'undefined' & asgns.semis[_j2] !== null) {
+        ids.push(asgns.semis[_j2].id);
+      } else ids.push('x');
+    }
+    for (var _j3 = 0; _j3 < degree; _j3++) {
+      var edge = _node.edges[_j3];
+      var nbr = edge.getOtherEnd(_node);
+      var _loc = _node.getLocation();
+      var newEdgeCost = 0;
+      var oldEdgeCost = 0;
+      var oldLocation = nbr.getLocation();
+      var newLocation;
+
+      for (var k = 0; k < nbr.getDegree(); k++) {
+        var edge = nbr.edges[k];
+        var other = edge.getOtherEnd(nbr);
+        if ((nbr.getLocation().x == other.getLocation().x | nbr.getLocation().y == other.getLocation().y) & nbr.findDistance(other) <= 100) oldEdgeCost += 1;else oldEdgeCost += 2;
+        oldEdgeCost += edge.intersectionsCost(gm);
+      }
+
+      var newLoc = ids.indexOf(nbr.id);
+      if (newLoc == 0) {
+        nbr.setLocation(_loc.x + 100, _loc.y);
+      } else if (newLoc == 1) {
+        nbr.setLocation(_loc.x, _loc.y + 100);
+      } else if (newLoc == 2) {
+        nbr.setLocation(_loc.x - 100, _loc.y);
+      } else if (newLoc == 3) {
+        nbr.setLocation(_loc.x, _loc.y - 100);
+      }
+      if (nbr.id == 'n11') {
+        var a = 1;
+      }
+      newLocation = nbr.getLocation();
+      for (var _k = 0; _k < nbr.getDegree(); _k++) {
+        var edge = nbr.edges[_k];
+        var other = edge.getOtherEnd(nbr);
+        if ((nbr.getLocation().x == other.getLocation().x | nbr.getLocation().y == other.getLocation().y) & nbr.findDistance(other) <= 100) newEdgeCost += 1;else newEdgeCost += 2;
+        newEdgeCost += edge.intersectionsCost(gm);
+      }
+      if (oldEdgeCost < newEdgeCost) {
+        nbr.setLocation(oldLocation.x, oldLocation.y);
+        count++;
+      }
+      console.log(nbr.id);
+      console.log(oldLocation);
+      console.log(newLocation);
+    }
+  } //
+};
+
+cholaLayout.prototype.applyRepulsion = function (gm) {
+  var allNodes = gm.getAllNodes();
+
+  for (var j = 0; j < allNodes.length; j++) {
+    var node = allNodes[j];
+    var loc = node.getLocation();
+    console.log("checking for ");
+    console.log(node.id);
+    for (var i = 0; i < allNodes.length; i++) {
+      var otherNode = allNodes[i];
+      if (node.id == otherNode.id) continue;
+
+      var otherLoc = otherNode.getLocation();
+      if (loc.x == otherLoc.x) {
+        if (node.findDistance(otherNode) < 100) {
+          if (otherLoc.y > 0) {
+            otherNode.setLocation(otherLoc.x, loc.y + 100);
+          } else {
+            otherNode.setLocation(otherLoc.x, loc.y - 100);
+          }
+          console.log("changed stuff for");
+          console.log(otherNode.id);
+        }
+      } else if (loc.y == otherLoc.y) {
+        if (node.findDistance(otherNode) < 100) {
+          if (otherLoc.x > 0) {
+            otherNode.setLocation(loc.x + 100, otherLoc.y);
+          } else {
+            otherNode.setLocation(loc.x - 100, otherLoc.y);
+          }
+          console.log("changed stuff for");
+          console.log(otherNode.id);
+        }
+      } else {
+        if (Math.abs(otherLoc.x - loc.x) < 100 & Math.abs(otherLoc.y - loc.y) < 100) {
+          var min = Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y - otherLoc.y) ^ 2);
+          otherNode.setLocation(loc.x + 100, loc.y);
+          if (Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2) < min) {
+            min = Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2);
+            otherNode.setLocation(loc.x + 100, loc.y + 100);
+          }
+          if (Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2) < min) {
+            min = Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2);
+            otherNode.setLocation(loc.x, loc.y + 100);
+          }
+          if (Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2) < min) {
+            min = Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2);
+            otherNode.setLocation(loc.x - 100, loc.y + 100);
+          }
+          if (Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - otherLoc.y) ^ 2) < min) {
+            min = Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - otherLoc.y) ^ 2);
+            otherNode.setLocation(loc.x - 100, loc.y);
+          }
+          if (Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2) < min) {
+            min = Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2);
+            otherNode.setLocation(loc.x - 100, loc.y - 100);
+          }
+          if (Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2) < min) {
+            min = Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2);
+            otherNode.setLocation(loc.x, loc.y - 100);
+          }
+          if (Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2) < min) {
+            min = Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2);
+            otherNode.setLocation(loc.x + 100, loc.y - 100);
+          }
+          console.log("changed stuff for");
+          console.log(otherNode.id);
+        }
+      }
+    }
+  }
+};
+
+cholaLayout.prototype.findOverlap = function (gm, node) {
+  var allNodes = gm.getAllNodes();
+  var rectA = node.getRect();
+
+  for (var i = 0; i < allNodes.length; i++) {
+    var otherNode = allNodes[i];
+    var rectB = otherNode.getRect();
+    if (rectA.intersects(rectB)) // two nodes overlap
+      {
+        return true;
+      }
   }
 };
 
@@ -2869,11 +2920,11 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(3);
+var cholaConstants = __webpack_require__(4);
 var cholaGraphManager = __webpack_require__(6);
 var cholaNode = __webpack_require__(7);
 var cholaLayout = __webpack_require__(14);
-var cholaEdge = __webpack_require__(4);
+var cholaEdge = __webpack_require__(1);
 var cholaGraph = __webpack_require__(5);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
@@ -2990,9 +3041,9 @@ var chola = function () {
       };
 
       //creating orthogonal layout for higher degree nodes
-      for (var _i = 0; _i < 2; _i++) {
-        layout.nodeConfiguration(this.cholaGm);
-      }this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+      //for (let i = 0; i < 2; i++)
+      layout.nodeConfiguration(this.cholaGm);
+      this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
   }]);
 
