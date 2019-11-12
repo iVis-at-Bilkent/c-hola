@@ -2116,10 +2116,16 @@ Arrangement.prototype.getArrangement = function () {
     var o = nbr.octalCode();
     if (o % 2 === 0) {
       var s = o / 2;
-      semis[s].push(nbr);
+      semis[s * (this.div / 4)].push(nbr);
     } else {
-      var q = (o - 1) / 2;
-      quads[q].addNbr(nbr);
+      if (this.div == 4) {
+        var q = (o - 1) / 2;
+        quads[q].addNbr(nbr);
+      }
+      //add options for other semis
+      // else {
+      //
+      // }
     }
   }
 };
@@ -2163,7 +2169,7 @@ Arrangement.prototype.listAllQuadActions = function () {
 Arrangement.prototype.getCyclicOrder = function () {
   var cyclicOrder = [];
   for (var i = 0; i < this.quads.length; i++) {
-    var semi = this.semis[i];
+    var semi = this.semis[i * (this.div / 4)];
     var quad = this.quads[i].nbrs;
     var orderedNodes = [];
     for (var j = 0; j < semi.length; j++) {
@@ -2203,7 +2209,7 @@ Arrangement.prototype.getAssignment = function (cyclicIds) {
   for (var i = 0; i < this.nbrs.length; i++) {
     var nbr = this.nbrs[i];
     var o = nbr.octalCode();
-    if (o == 1) {
+    if (this.div) if (o == 1) {
       this.semis[0].push(nbr);
       this.semis[1].push(nbr);
     } else if (o == 3) {
@@ -2513,7 +2519,7 @@ cholaLayout.prototype.processChildrenList = function (options, parent, children,
     //Attach the label properties to compound if labels will be included in node dimensions
     if (options.nodeDimensionsIncludeLabels) {
       if (theChild.isParent()) {
-        var createClasslabelWidth = theChild.boundingBox({ includeLabels: true, includeNodes: false }).w;
+        var labelWidth = theChild.boundingBox({ includeLabels: true, includeNodes: false }).w;
         var labelHeight = theChild.boundingBox({ includeLabels: true, includeNodes: false }).h;
         var labelPos = theChild.css("text-halign");
         theNode.labelWidth = labelWidth;
@@ -2737,9 +2743,6 @@ cholaLayout.prototype.nodeConfiguration = function (gm) {
         nbr.setLocation(oldLocation.x, oldLocation.y);
         count++;
       }
-      console.log(nbr.id);
-      console.log(oldLocation);
-      console.log(newLocation);
     }
   } //
 };
@@ -2809,8 +2812,6 @@ cholaLayout.prototype.applyRepulsion = function (gm) {
             min = Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2);
             otherNode.setLocation(loc.x + 100, loc.y - 100);
           }
-          console.log("changed stuff for");
-          console.log(otherNode.id);
         }
       }
     }
