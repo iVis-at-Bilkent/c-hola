@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
 
     <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
-    <script src="https://github.com/iVis-at-Bilkent/cytoscape.js-edge-editing/blob/master/cytoscape-edge-editing.js"></script>
+    <!--script src="https://github.com/iVis-at-Bilkent/cytoscape.js-edge-editing/blob/master/cytoscape-edge-editing.js"></script-->
     <!-- for testing with local version of cytoscape.js -->
     <!--<script src="../cytoscape.js/build/cytoscape.js"></script>-->
 
@@ -43,6 +43,15 @@
         var cy = window.cy = cytoscape({
           container: document.getElementById('cy'),
 
+          ready: function(){
+            this.nodes().forEach(function(node){
+              let width = [30, 50, 70, 90, 110];
+              let size = width[Math.floor(Math.random()*3)];
+              node.css("width", size);
+              node.css("height", size);
+            });
+          },
+
           layout: {
             name: 'random',
             animate: false
@@ -68,7 +77,8 @@
               selector: 'edge',
               style: {
                 'width': 3,
-                'line-color': '#ad1a66'
+                'line-color': '#ad1a66',
+                //'curve-style': 'taxi'
               }
             }
           ],

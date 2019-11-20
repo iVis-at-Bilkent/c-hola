@@ -1907,8 +1907,8 @@ cholaNode.prototype.getDegree = function () {
 };
 
 cholaNode.prototype.findDistance = function (node) {
-  var thisLoc = this.getLocation();
-  var nodeLoc = node.getLocation();
+  var thisLoc = this.getCenter();
+  var nodeLoc = node.getCenter();
   var distance = Math.sqrt(Math.pow((thisLoc.x - nodeLoc.x).toFixed(10), 2) + Math.pow((thisLoc.y - nodeLoc.y).toFixed(10), 2));
   return distance;
 };
@@ -2655,12 +2655,22 @@ cholaLayout.prototype.coseOnCore = function (options, idToLNode, cholaNodesMap, 
   coseLayout.runLayout();
 };
 
-cholaLayout.prototype.nodeConfiguration = function (gm) {
+cholaLayout.prototype.getMaxNodeWidth = function (gm) {
+  var allNodes = gm.getAllNodes();
+  var max = 0;
+  for (var i = 0; i < allNodes.length; i++) {
+    var node = allNodes[i];
+    var width = node.getWidth();
+    if (!node.isCompound() & max < width) max = width;
+  }
+  return max;
+};
+
+cholaLayout.prototype.nodeConfiguration = function (gm, val) {
   //sorting nodes of degree 3 or higher in descending order
   var highDegreeNodes = this.getHighDegreeNodes(gm);
-
+  var edgeLength = this.getMaxNodeWidth(gm) / 2 + 100;
   for (var i = 0; i < highDegreeNodes.length; i++) {
-
     var node = highDegreeNodes[i][0];
     console.log(node.id);
 
@@ -2673,162 +2683,87 @@ cholaLayout.prototype.nodeConfiguration = function (gm) {
         ids.push(asgns.semis[j].id);
       } else ids.push('x');
     }
+    console.log(node.id);
+    console.log(node.getCenter());
     for (var _j = 0; _j < degree; _j++) {
       var edge = node.edges[_j];
       var nbr = edge.getOtherEnd(node);
-      var loc = node.getLocation();
+      var loc = node.getCenter();
       var newLoc = ids.indexOf(nbr.id);
+      var widthFactor = nbr.getWidth() + node.getWidth();
+      console.log(nbr.id);
+      console.log(nbr.getCenter());
       if (newLoc == 0) {
-        nbr.setLocation(loc.x + 100, loc.y);
+        nbr.setCenter(loc.x + edgeLength, loc.y);
       } else if (newLoc == 1) {
-        nbr.setLocation(loc.x, loc.y + 100);
+        nbr.setCenter(loc.x, loc.y + edgeLength);
       } else if (newLoc == 2) {
-        nbr.setLocation(loc.x - 100, loc.y);
+        nbr.setCenter(loc.x - edgeLength, loc.y);
       } else if (newLoc == 3) {
-        nbr.setLocation(loc.x, loc.y - 100);
+        nbr.setCenter(loc.x, loc.y - edgeLength);
       }
+      console.log(nbr.getCenter());
     }
+    // if (i==0)
+    //   break;
   }
-  var count = 0;
-  for (var _i = highDegreeNodes.length; _i > 0; _i--) {
-
-    var _node = highDegreeNodes[_i - 1][0];
-    console.log(_node.id);
-    var assign1 = new assign();
-    var asgns = assign1.getNeighborAssignments(_node);
-    var degree = this.getNodeDegree(_node);
-    var ids = [];
-    for (var _j2 = 0; _j2 < asgns.semis.length; _j2++) {
-      if (typeof asgns.semis[_j2] != 'undefined' & asgns.semis[_j2] !== null) {
-        ids.push(asgns.semis[_j2].id);
-      } else ids.push('x');
-    }
-    for (var _j3 = 0; _j3 < degree; _j3++) {
-      var edge = _node.edges[_j3];
-      var nbr = edge.getOtherEnd(_node);
-      var _loc = _node.getLocation();
-      var newEdgeCost = 0;
-      var oldEdgeCost = 0;
-      var oldLocation = nbr.getLocation();
-      var newLocation;
-
-      for (var k = 0; k < nbr.getDegree(); k++) {
-        var edge = nbr.edges[k];
-        var other = edge.getOtherEnd(nbr);
-        if ((nbr.getLocation().x == other.getLocation().x | nbr.getLocation().y == other.getLocation().y) & nbr.findDistance(other) <= 100) oldEdgeCost += 1;else oldEdgeCost += 2;
-        oldEdgeCost += edge.intersectionsCost(gm);
+  if (val == 1) {
+    var count = 0;
+    for (var _i = highDegreeNodes.length; _i > 0; _i--) {
+      var _node = highDegreeNodes[_i - 1][0];
+      console.log(_node.id);
+      console.log(_node.getCenter());
+      var assign1 = new assign();
+      var asgns = assign1.getNeighborAssignments(_node);
+      var degree = this.getNodeDegree(_node);
+      var ids = [];
+      for (var _j2 = 0; _j2 < asgns.semis.length; _j2++) {
+        if (typeof asgns.semis[_j2] != 'undefined' & asgns.semis[_j2] !== null) {
+          ids.push(asgns.semis[_j2].id);
+        } else ids.push('x');
       }
+      for (var _j3 = 0; _j3 < degree; _j3++) {
+        var edge = _node.edges[_j3];
+        var nbr = edge.getOtherEnd(_node);
+        console.log(nbr.id);
+        console.log(nbr.getCenter());
+        var _loc = _node.getCenter();
+        var newEdgeCost = 0;
+        var oldEdgeCost = 0;
+        var oldLocation = nbr.getCenter();
+        var newLocation;
 
-      var newLoc = ids.indexOf(nbr.id);
-      if (newLoc == 0) {
-        nbr.setLocation(_loc.x + 100, _loc.y);
-      } else if (newLoc == 1) {
-        nbr.setLocation(_loc.x, _loc.y + 100);
-      } else if (newLoc == 2) {
-        nbr.setLocation(_loc.x - 100, _loc.y);
-      } else if (newLoc == 3) {
-        nbr.setLocation(_loc.x, _loc.y - 100);
-      }
-      if (nbr.id == 'n11') {
-        var a = 1;
-      }
-      newLocation = nbr.getLocation();
-      for (var _k = 0; _k < nbr.getDegree(); _k++) {
-        var edge = nbr.edges[_k];
-        var other = edge.getOtherEnd(nbr);
-        if ((nbr.getLocation().x == other.getLocation().x | nbr.getLocation().y == other.getLocation().y) & nbr.findDistance(other) <= 100) newEdgeCost += 1;else newEdgeCost += 2;
-        newEdgeCost += edge.intersectionsCost(gm);
-      }
-      if (oldEdgeCost < newEdgeCost) {
-        nbr.setLocation(oldLocation.x, oldLocation.y);
-        count++;
-      }
-    }
-  } //
-};
-
-cholaLayout.prototype.applyRepulsion = function (gm) {
-  var allNodes = gm.getAllNodes();
-
-  for (var j = 0; j < allNodes.length; j++) {
-    var node = allNodes[j];
-    var loc = node.getLocation();
-    console.log("checking for ");
-    console.log(node.id);
-    for (var i = 0; i < allNodes.length; i++) {
-      var otherNode = allNodes[i];
-      if (node.id == otherNode.id) continue;
-
-      var otherLoc = otherNode.getLocation();
-      if (loc.x == otherLoc.x) {
-        if (node.findDistance(otherNode) < 100) {
-          if (otherLoc.y > 0) {
-            otherNode.setLocation(otherLoc.x, loc.y + 100);
-          } else {
-            otherNode.setLocation(otherLoc.x, loc.y - 100);
-          }
-          console.log("changed stuff for");
-          console.log(otherNode.id);
+        for (var k = 0; k < nbr.getDegree(); k++) {
+          var edge = nbr.edges[k];
+          var other = edge.getOtherEnd(nbr);
+          if ((nbr.getCenter().x == other.getCenter().x | nbr.getCenter().y == other.getCenter().y) & nbr.findDistance(other) <= 100) oldEdgeCost += 1;else oldEdgeCost += 2;
+          oldEdgeCost += edge.intersectionsCost(gm);
         }
-      } else if (loc.y == otherLoc.y) {
-        if (node.findDistance(otherNode) < 100) {
-          if (otherLoc.x > 0) {
-            otherNode.setLocation(loc.x + 100, otherLoc.y);
-          } else {
-            otherNode.setLocation(loc.x - 100, otherLoc.y);
-          }
-          console.log("changed stuff for");
-          console.log(otherNode.id);
+
+        var newLoc = ids.indexOf(nbr.id);
+        if (newLoc == 0) {
+          nbr.setCenter(_loc.x + edgeLength, _loc.y);
+        } else if (newLoc == 1) {
+          nbr.setCenter(_loc.x, _loc.y + edgeLength);
+        } else if (newLoc == 2) {
+          nbr.setCenter(_loc.x - edgeLength, _loc.y);
+        } else if (newLoc == 3) {
+          nbr.setCenter(_loc.x, _loc.y - edgeLength);
         }
-      } else {
-        if (Math.abs(otherLoc.x - loc.x) < 100 & Math.abs(otherLoc.y - loc.y) < 100) {
-          var min = Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y - otherLoc.y) ^ 2);
-          otherNode.setLocation(loc.x + 100, loc.y);
-          if (Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2) < min) {
-            min = Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2);
-            otherNode.setLocation(loc.x + 100, loc.y + 100);
-          }
-          if (Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2) < min) {
-            min = Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2);
-            otherNode.setLocation(loc.x, loc.y + 100);
-          }
-          if (Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2) < min) {
-            min = Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y + 100 - otherLoc.y) ^ 2);
-            otherNode.setLocation(loc.x - 100, loc.y + 100);
-          }
-          if (Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - otherLoc.y) ^ 2) < min) {
-            min = Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - otherLoc.y) ^ 2);
-            otherNode.setLocation(loc.x - 100, loc.y);
-          }
-          if (Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2) < min) {
-            min = Math.sqrt(loc.x - 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2);
-            otherNode.setLocation(loc.x - 100, loc.y - 100);
-          }
-          if (Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2) < min) {
-            min = Math.sqrt(loc.x - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2);
-            otherNode.setLocation(loc.x, loc.y - 100);
-          }
-          if (Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2) < min) {
-            min = Math.sqrt(loc.x + 100 - otherLoc.x ^ 2 + (loc.y - 100 - otherLoc.y) ^ 2);
-            otherNode.setLocation(loc.x + 100, loc.y - 100);
-          }
+        newLocation = nbr.getCenter();
+        for (var _k = 0; _k < nbr.getDegree(); _k++) {
+          var edge = nbr.edges[_k];
+          var other = edge.getOtherEnd(nbr);
+          if ((nbr.getCenter().x == other.getCenter().x | nbr.getCenter().y == other.getCenter().y) & nbr.findDistance(other) <= 100) newEdgeCost += 1;else newEdgeCost += 2;
+          newEdgeCost += edge.intersectionsCost(gm);
         }
+        if (oldEdgeCost < newEdgeCost) {
+          nbr.getCenter(oldLocation.x, oldLocation.y);
+          count++;
+        }
+        console.log(nbr.getCenter());
       }
     }
-  }
-};
-
-cholaLayout.prototype.findOverlap = function (gm, node) {
-  var allNodes = gm.getAllNodes();
-  var rectA = node.getRect();
-
-  for (var i = 0; i < allNodes.length; i++) {
-    var otherNode = allNodes[i];
-    var rectB = otherNode.getRect();
-    if (rectA.intersects(rectB)) // two nodes overlap
-      {
-        return true;
-      }
   }
 };
 
@@ -3024,8 +2959,8 @@ var chola = function () {
       for (var i = 0; i < cholaNodes.length; i++) {
         var _cholaNode = cholaNodes[i];
         var coseNode = this.cholaNodeToCoseNode.get(_cholaNode);
-        var loc = coseNode.getLocation();
-        _cholaNode.setLocation(loc.x, loc.y);
+        var loc = coseNode.getCenter();
+        _cholaNode.setCenter(loc.x, loc.y);
       }
 
       //visualizes the layout in cytoscape map
@@ -3043,7 +2978,8 @@ var chola = function () {
 
       //creating orthogonal layout for higher degree nodes
       //for (let i = 0; i < 2; i++)
-      layout.nodeConfiguration(this.cholaGm);
+      //layout.nodeConfiguration(this.cholaGm, 1);
+      layout.nodeConfiguration(this.cholaGm, 1);
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
   }]);
