@@ -1568,12 +1568,13 @@ module.exports = cholaEdge;
 "use strict";
 
 
-function Nbr(id, dx, dy, moved, degree) {
+function Nbr(id, dx, dy, moved, degree, cycles) {
   this.id = id;
   this.x = dx;
   this.y = dy;
   this.moved = moved;
   this.degree = degree;
+  this.cycles = cycles;
 }
 
 Nbr.prototype.octalCode = function () {
@@ -2093,26 +2094,27 @@ var Perm = __webpack_require__(11);
 var Assignment = __webpack_require__(3);
 
 function Arrangement(neighbors) {
-  this.nbrs = neighbors;
   this.div = 4;
   for (;; this.div *= 2) {
     if (neighbors.length <= this.div) break;else continue;
   }
 
   this.semis = [];
-  for (var i = 0; i < this.div; i++) {
-    this.semis.push([]);
-  }
   this.quads = [];
+  this.nbrs = neighbors;
 }
 
 Arrangement.prototype.getArrangement = function () {
   this.quads = [new Quad(0), new Quad(1), new Quad(2), new Quad(3)];
+  for (var i = 0; i < this.div; i++) {
+    this.semis.push([]);
+  }
+
   var quads = this.quads;
   var nbrs = this.nbrs;
   var semis = this.semis;
-  for (var i = 0; i < nbrs.length; i++) {
-    var nbr = nbrs[i];
+  for (var _i = 0; _i < nbrs.length; _i++) {
+    var nbr = nbrs[_i];
     var o = nbr.octalCode();
     if (o % 2 === 0) {
       var s = o / 2;
@@ -2122,48 +2124,30 @@ Arrangement.prototype.getArrangement = function () {
         var q = (o - 1) / 2;
         quads[q].addNbr(nbr);
       }
-      //add options for other semis
-      // else {
-      //
-      // }
     }
   }
 };
 
-Arrangement.prototype.getAsgns = function () {
+Arrangement.prototype.getAsgns = function (cyclicIds, cycle) {
   var trials = [];
-  var assigns = this.listTrialNAssigns();
-  return assigns;
-};
-
-Arrangement.prototype.listTrialNAssigns = function (N) {
-
+  var assigns;
   var N = this.nbrs.length;
   var vac = this.vacancy();
 
-  // //some semi axes may already have neighbors assigned to them
-  // //let n be the number of semiaxes waiting to be filled
   var n = N - vac.reduce(function (a, b) {
     return a + b;
   }, 0);
 
   if (n === 0) {
     var a = this.basicAssignment();
-    return a;
+    assigns = a;
   } else if (n < 0) {
-    return [];
+    assigns = [];
   } else {
-    //get the list of all possible quadratic functions
-    var trials = this.listAllQuadActions();
-    return trials;
+    this.getAssignment(cyclicIds, cycle);
+    assigns = new Assignment(this.semis, 0);
   }
-};
-
-Arrangement.prototype.listAllQuadActions = function () {
-  var cyclicIds = this.getCyclicOrder();
-  this.getAssignment(cyclicIds);
-  var asgn = new Assignment(this.semis, 0);
-  return asgn;
+  return assigns;
 };
 
 Arrangement.prototype.getCyclicOrder = function () {
@@ -2172,8 +2156,14 @@ Arrangement.prototype.getCyclicOrder = function () {
     var semi = this.semis[i * (this.div / 4)];
     var quad = this.quads[i].nbrs;
     var orderedNodes = [];
-    for (var j = 0; j < semi.length; j++) {
-      cyclicOrder.push(semi[j].id);
+    if (semi != null) {
+      if (Array.isArray(semi)) {
+        for (var j = 0; j < semi.length; j++) {
+          cyclicOrder.push(semi[j].id);
+        }
+      } else {
+        cyclicOrder.push(semi.id);
+      }
     }
     for (var _j = 0; _j < quad.length; _j++) {
       var arr = [quad[_j].y, quad[_j].x, quad[_j].id];
@@ -2204,51 +2194,176 @@ Arrangement.prototype.getCyclicOrder = function () {
   return cyclicOrder;
 };
 
-Arrangement.prototype.getAssignment = function (cyclicIds) {
+Arrangement.prototype.getAssignment = function (cyclicIds, cycle) {
 
   for (var i = 0; i < this.nbrs.length; i++) {
     var nbr = this.nbrs[i];
-    var o = nbr.octalCode();
-    if (this.div) if (o == 1) {
+    if (nbr.degree <= this.nbrs.length) {
       this.semis[0].push(nbr);
       this.semis[1].push(nbr);
-    } else if (o == 3) {
-      this.semis[1].push(nbr);
-      this.semis[2].push(nbr);
-    } else if (o == 5) {
       this.semis[2].push(nbr);
       this.semis[3].push(nbr);
-    } else if (o == 7) {
-      this.semis[3].push(nbr);
-      this.semis[0].push(nbr);
     }
   }
   var lastItem = null;
-  var lastIndex = -1;
-  for (var _i = 0; _i < this.semis.length; _i++) {
+  var lastCyclicIndex = -1;
+  var direction = 1;
+  var count = 0;
+  for (var _i2 = 0; _i2 < this.semis.length; _i2++) {
     var cost = [];
-    var semi = this.semis[_i];
+    var semi = this.semis[_i2];
     for (var j = 0; j < semi.length; j++) {
       var neighbor = semi[j];
-      var _o = neighbor.octalCode();
-      var defl = neighbor.deflectionFromSemi(_i, _o) + 1 / neighbor.degree;
+      var o = neighbor.octalCode();
+      var defl = neighbor.deflectionFromSemi(_i2, o);
+      defl += this.div / neighbor.degree;
 
-      if (j > 0 && lastItem !== null && typeof lastItem != 'undefined') {
-        if (lastItem.id != cyclicIds.indexOf(neighbor.id) - 1) defl += Math.abs(cyclicIds.indexOf(neighbor.id) - cyclicIds.indexOf(lastItem.id));
+      if (lastItem !== null && typeof lastItem != 'undefined') {
+        var index = cyclicIds.indexOf(neighbor.id);
+        var lastIndex = cyclicIds.indexOf(lastItem.id);
+        var prevIndex = index - 1;
+        var nextIndex = index + 1;
+        if (prevIndex < 0) prevIndex += cyclicIds.length;
+        if (nextIndex >= cyclicIds.length) nextIndex %= cyclicIds.length;
+        if (count < 2) {
+          if (_i2 == 1) {
+            if (!(lastIndex == prevIndex || lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
+          } else {
+            if (!(lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
+          }
+        } else {
+          if (direction == 1 && !(lastIndex == nextIndex)) {
+            defl += Math.abs(index - lastIndex);
+          } else if (direction == -1 && !(lastIndex == prevIndex)) {
+            defl += Math.abs(index - lastIndex);
+          }
+        }
       }
       cost.push(defl);
     }
 
     var index = cost.indexOf(Math.min.apply(Math, cost));
-    this.semis[_i] = semi[index];
-    lastItem = this.semis[_i];
-    lastIndex = _i;
+    this.semis[_i2] = semi[index];
+    if (typeof this.semis[_i2] != 'undefined') lastItem = this.semis[_i2];else {
+      count++;
+    }
+    if (count == 2) {
+      var index = cyclicIds.indexOf(lastItem.id);
+      var lastIndex = lastCyclicIndex;
+
+      var prevIndex = index - 1;
+      var nextIndex = index + 1;
+      if (prevIndex < 0) prevIndex += cyclicIds.length;
+      if (nextIndex >= cyclicIds.length) nextIndex %= cyclicIds.length;
+      if (index - 1 == lastIndex) direction = -1;else if ((index + 1) % 4 == lastIndex) direction = 1;
+    }
+    if (typeof this.semis[_i2] != 'undefined') lastCyclicIndex = cyclicIds.indexOf(lastItem.id);
   }
 
+  var ignoredNodes = this.findAndRemoveDuplicates(cycle);
+  this.addIgnoredNodes(ignoredNodes);
+  this.updateSemisAndQuads(cyclicIds);
+  this.enforceCyclicOrder(cyclicIds, cycle);
+};
+
+Arrangement.prototype.updateSemisAndQuads = function (cyclicIds) {
+  for (var i = 0; i < cyclicIds.length; i++) {
+    var id = cyclicIds[i];
+    for (var j = 0; j < this.semis.length; j++) {
+      if (typeof this.semis[j] == 'undefined' || this.semis[j] == null) return;
+      if (this.semis[j].id == id) {
+        for (var k = 0; k < this.quads.length; k++) {
+          var quad = this.quads[k];
+          for (var l = 0; l < quad.nbrs.length; l++) {
+            if (quad.nbrs[l].id == id) quad.nbrs.splice(l, 1);
+          }
+        }
+      }
+    }
+  }
+};
+
+Arrangement.prototype.enforceCyclicOrder = function (cyclicIds, cycles) {
+  //getting current cyclicOrder from Semis
+  var cyclicOrder = this.getCyclicOrder();
+  if (JSON.stringify(cyclicOrder) == JSON.stringify(cyclicIds)) return;
+
+  var arr = [];
+
+  for (var i = 0; i < cyclicIds.length; i++) {
+    var node = cyclicIds[i];
+    var a = [node];
+    var actualIndex = cyclicOrder.indexOf(node);
+    var j = 0;
+    var k = i;
+    while (j < cyclicIds.length - 1) {
+      actualIndex += 1;
+      k += 1;
+      if (actualIndex >= cyclicIds.length) {
+        actualIndex %= cyclicIds.length;
+      }
+      if (k >= cyclicIds.length) {
+        k %= cyclicIds.length;
+      }
+      if (cyclicIds[k] == cyclicOrder[actualIndex]) a.push(cyclicIds[k]);else {
+        break;
+      }
+      j++;
+    }
+    arr.push(a);
+  }
+
+  var maxLength = 0;
+  var maxIndex = 0;
+  for (var _i3 = 0; _i3 < arr.length; _i3++) {
+    if (arr[_i3].length > maxLength) {
+      maxLength = arr[_i3].length;
+      maxIndex = _i3;
+    }
+  }
+  if (maxLength == cyclicIds.length) return;else {
+    var order = arr[maxIndex];
+    var startIndex = cyclicIds.indexOf(order[0]);
+    startIndex += 1;
+    var semiIndex = 0;
+    for (var _i4 = 0; _i4 < this.semis.length; _i4++) {
+      if (this.semis[_i4] != null && this.semis[_i4].id == order[0]) {
+        semiIndex = _i4;
+        break;
+      }
+    }
+    for (var _i5 = 0; _i5 < this.semis.length - 1; _i5++) {
+      var semi = this.semis[semiIndex + 1];
+      if (startIndex >= cyclicIds.length) {
+        startIndex %= cyclicIds.length;
+      }
+      if (semiIndex >= cyclicIds.length) {
+        semiIndex %= cyclicIds.length;
+      }
+      if (typeof semi == 'undefined' || semi == null) {
+        startIndex += 1;
+        continue;
+      }
+
+      if (semi.id != order[_i5 + 1]) {
+        for (var _j3 = 0; _j3 < this.nbrs.length; _j3++) {
+          if (this.nbrs[_j3].id == cyclicIds[startIndex]) {
+            this.semis[semiIndex + 1] = this.nbrs[_j3];
+            break;
+          }
+        }
+      }
+      startIndex += 1;
+      semiIndex += 1;
+    }
+  }
+};
+
+Arrangement.prototype.findAndRemoveDuplicates = function (cycle) {
   //finding duplicate assignments of same node
   var ids = [];
-  for (var _i2 = 0; _i2 < this.semis.length; _i2++) {
-    if (typeof this.semis[_i2] != 'undefined') ids.push(this.semis[_i2].id);else {
+  for (var i = 0; i < this.semis.length; i++) {
+    if (typeof this.semis[i] != 'undefined') ids.push(this.semis[i].id);else {
       ids.push(null);
     }
   }
@@ -2259,22 +2374,34 @@ Arrangement.prototype.getAssignment = function (cyclicIds) {
   });
 
   var ignoredNodes = [];
-  for (var _i3 = 0; _i3 < this.nbrs.length; _i3++) {
-    var nbrId = this.nbrs[_i3].id;
+  for (var _i6 = 0; _i6 < this.nbrs.length; _i6++) {
+    var nbrId = this.nbrs[_i6].id;
     if (typeof counts[nbrId] !== 'undefined' & counts[nbrId] !== null) {
-      //find the indexes of the duplicate assignments and remove them
+      //find the indexes of the duplicate assignments
       if (counts[nbrId] > 1) {
         var dupIndexes = [];
-        for (var _j3 = 0; _j3 < ids.length; _j3++) {
-          if (ids[_j3] == nbrId) dupIndexes.push(_j3);
+        for (var j = 0; j < ids.length; j++) {
+          if (ids[j] == nbrId) dupIndexes.push(j);
         }
 
         //calculate the costs for both assignments and remove the one with the larger cost
         var deflArray = [];
+
         for (var _j4 = 0; _j4 < dupIndexes.length; _j4++) {
-          var _semi = dupIndexes[_j4];
-          var _o2 = this.semis[_semi].octalCode();
-          deflArray.push(this.semis[_semi].deflectionFromSemi(_semi, _o2));
+          var defl = 0;
+          var semi = dupIndexes[_j4];
+          var o = this.semis[semi].octalCode();
+          if (cycle.length > 0) {
+            var prevIndex = semi - 1;
+            var nextIndex = semi + 1;
+            if (prevIndex < 0) prevIndex += this.div;
+            if (nextIndex >= this.div) nextIndex %= this.div;
+            for (var k = 0; k < cycle.length; k++) {
+              if (!(this.semis[prevIndex] == cycle[k] || this.semis[nextIndex] == cycle[k])) defl += 1;else break;
+            }
+          }
+          defl += this.semis[semi].deflectionFromSemi(semi, o);
+          deflArray.push(defl);
         }
 
         var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
@@ -2283,35 +2410,36 @@ Arrangement.prototype.getAssignment = function (cyclicIds) {
         }
       }
     } else {
-      ignoredNodes.push(nbrId);
+      if (this.nbrs[_i6].degree <= this.nbrs.length) ignoredNodes.push(nbrId);
     }
   }
+  return ignoredNodes;
+};
 
-  for (var _j6 = 0; _j6 < ignoredNodes.length; _j6++) {
+Arrangement.prototype.addIgnoredNodes = function (ignoredNodes) {
+  for (var j = 0; j < ignoredNodes.length; j++) {
     var freeIndexes = [];
     //find the possible empty locations where nodes can be assigned
-    for (var _i4 = 0; _i4 < this.semis.length; _i4++) {
-      if (this.semis[_i4] == null) freeIndexes.push(_i4);
+    for (var i = 0; i < this.semis.length; i++) {
+      if (this.semis[i] == null) freeIndexes.push(i);
     }
 
     var nbr = null;
-    for (var _i5 = 0; _i5 < this.nbrs.length; _i5++) {
-      if (this.nbrs[_i5].id == ignoredNodes[_j6]) {
-        nbr = this.nbrs[_i5];
+    for (var _i7 = 0; _i7 < this.nbrs.length; _i7++) {
+      if (this.nbrs[_i7].id == ignoredNodes[j]) {
+        nbr = this.nbrs[_i7];
         break;
       }
     }
 
     //calculate the costs for all assignments and assigns to the one with lowest cost
     var deflArray = [];
-    for (var _i6 = 0; _i6 < freeIndexes.length; _i6++) {
-      var _semi2 = freeIndexes[_i6];
-      var _o3 = nbr.octalCode();
-      deflArray.push(nbr.deflectionFromSemi(_semi2, _o3));
+    for (var _i8 = 0; _i8 < freeIndexes.length; _i8++) {
+      var semi = freeIndexes[_i8];
+      var o = nbr.octalCode();
+      deflArray.push(nbr.deflectionFromSemi(semi, o));
     }
-
     var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
-
     this.semis[freeIndexes[index]] = nbr;
   }
 };
@@ -2345,27 +2473,91 @@ var Nbr = __webpack_require__(2);
 var Arrangement = __webpack_require__(12);
 var quad = __webpack_require__(8);
 
-function assign() {}
+function assign() {
+  //this.arr;
+}
 
-assign.prototype.getNeighborAssignments = function (node) {
+assign.prototype.getCyclicOrder = function (node) {
   var neighbors = [];
   for (var i = 0; i < node.edges.length; i++) {
     var edge = node.edges[i];
     var other = edge.getOtherEnd(node);
-    var otherLoc = other.getLocation();
-    var nodeLoc = node.getLocation();
+    var otherLoc = other.getCenter();
+    var nodeLoc = node.getCenter();
     var dx = otherLoc.x - nodeLoc.x;
     var dy = otherLoc.y - nodeLoc.y;
     var moved = other.moved;
-    var degree = node.getDegree();
+    var degree = other.getDegree();
     var neighbor = new Nbr(other.id, dx, dy, moved, degree);
     neighbors.push(neighbor);
   }
   var arr = new Arrangement(neighbors);
   arr.getArrangement();
-  var asgns = arr.getAsgns();
+  return arr.getCyclicOrder();
+};
+
+assign.prototype.getNeighborAssignments = function (node, cyclicIds) {
+  var neighbors = [];
+  var cycles = [];
+  for (var i = 0; i < node.edges.length; i++) {
+    var edge = node.edges[i];
+    var other = edge.getOtherEnd(node);
+    if (other.getDegree() > 1) {
+      console.log(other.id);
+      console.log("");
+      cycles.push(this.dfs(other, node));
+    }
+    console.log("");
+    var otherLoc = other.getCenter();
+    var nodeLoc = node.getCenter();
+    var dx = otherLoc.x - nodeLoc.x;
+    var dy = otherLoc.y - nodeLoc.y;
+    var moved = other.moved;
+    var degree = other.getDegree();
+    var neighbor = new Nbr(other.id, dx, dy, moved, degree, cycles);
+    neighbors.push(neighbor);
+  }
+  var arr = new Arrangement(neighbors);
+  arr.getArrangement();
+  var asgns = arr.getAsgns(cyclicIds, cycles);
   return asgns;
-  // return asgns
+};
+
+assign.prototype.dfs = function (node, parent) {
+  var parentIndex = 0;
+  var otherNbrs = [];
+  for (var i = 0; i < parent.edges.length; i++) {
+    var otherNode = parent.edges[i].getOtherEnd(parent);
+    if (otherNode != node) otherNbrs.push(otherNode);else {
+      parentIndex = i;
+    }
+  }
+
+  var s = [];
+  var links = [];
+  var explored = [];
+  s.push(node);
+
+  explored.push(node);
+  var prev = parent;
+  var prevArr = [];
+  while (s.length != 0) {
+    var t = s.pop();
+    prevArr.push(t);
+    // Log every element that comes out of the Stack
+    console.log(t.id);
+    for (var _i = 0; _i < t.edges.length; _i++) {
+      var otherNode = t.edges[_i].getOtherEnd(t);
+      if (otherNode == prev) continue;else if (otherNode == parent) {
+        links.push(prevArr[prevArr.length - 1]);
+      } else if (!explored.includes(otherNode)) {
+        explored.push(otherNode);
+        s.push(otherNode);
+      }
+    }
+    prev = t;
+  }
+  return links;
 };
 
 module.exports = assign;
@@ -2574,7 +2766,7 @@ cholaLayout.prototype.removeLeafNodes = function (gm, compoundNodes, idList) {
     count = 0;
     for (var i = 0; i < allNodes.length; i++) {
       var node = allNodes[i];
-      if (this.getNodeDegree(node) === 1 && !compoundNodes.includes(node)) {
+      if (node.getDegree() === 1 && !compoundNodes.includes(node)) {
         //we do not remove leaf nodes if they are the only remaining children of a parent compound node
         if (node.getParent().id !== undefined && compoundNodes.includes(node.getParent()) && node.getParent().child.nodes.length === 1) {
           continue;
@@ -2593,22 +2785,6 @@ cholaLayout.prototype.removeLeafNodes = function (gm, compoundNodes, idList) {
     gm.getAllEdges();
     allNodes = gm.getAllNodes();
   } while (count !== 0);
-};
-
-// Get degree of a node depending of its edges and independent of its children
-cholaLayout.prototype.getNodeDegree = function (node) {
-  var id = node.id;
-  var edges = node.getEdges();
-  var degree = 0;
-
-  // For the edges connected
-  for (var i = 0; i < edges.length; i++) {
-    var edge = edges[i];
-    if (edge.getSource().id !== edge.getTarget().id) {
-      degree = degree + 1;
-    }
-  }
-  return degree;
 };
 
 cholaLayout.prototype.deleteLeafNodes = function (cy, idList) {
@@ -2668,31 +2844,42 @@ cholaLayout.prototype.getMaxNodeWidth = function (gm) {
 
 cholaLayout.prototype.nodeConfiguration = function (gm, val) {
   //sorting nodes of degree 3 or higher in descending order
-  var highDegreeNodes = this.getHighDegreeNodes(gm);
+  var output = this.getHighDegreeNodes(gm);
+  var highDegreeNodes = output[0];
+  var chainNodes = output[1];
+
+  //ideal edge length based on the highest width node
   var edgeLength = this.getMaxNodeWidth(gm) / 2 + 100;
+  var cyclicIds = [];
+  var asgns = [];
   for (var i = 0; i < highDegreeNodes.length; i++) {
     var node = highDegreeNodes[i][0];
-    console.log(node.id);
+    var asgn = new assign();
+    cyclicIds.push(asgn.getCyclicOrder(node));
+    console.log(cyclicIds[i]);
+    //asgn.getCyclicOrder(node);
+    //asgns.push(asgn);
+  }
 
-    var assign1 = new assign();
-    var asgns = assign1.getNeighborAssignments(node);
-    var degree = this.getNodeDegree(node);
+  for (var _i = 0; _i < highDegreeNodes.length; _i++) {
+    var _node = highDegreeNodes[_i][0];
+    var asgn = new assign();
+    var asgns = asgn.getNeighborAssignments(_node, cyclicIds[_i]);
+    var degree = _node.getDegree();
     var ids = [];
     for (var j = 0; j < asgns.semis.length; j++) {
       if (typeof asgns.semis[j] != 'undefined' & asgns.semis[j] !== null) {
         ids.push(asgns.semis[j].id);
       } else ids.push('x');
     }
-    console.log(node.id);
-    console.log(node.getCenter());
+    //console.log(node.id);
+    //console.log(node.getCenter());
     for (var _j = 0; _j < degree; _j++) {
-      var edge = node.edges[_j];
-      var nbr = edge.getOtherEnd(node);
-      var loc = node.getCenter();
+      var edge = _node.edges[_j];
+      var nbr = edge.getOtherEnd(_node);
+      var loc = _node.getCenter();
       var newLoc = ids.indexOf(nbr.id);
-      var widthFactor = nbr.getWidth() + node.getWidth();
-      console.log(nbr.id);
-      console.log(nbr.getCenter());
+      var widthFactor = nbr.getWidth() + _node.getWidth();
       if (newLoc == 0) {
         nbr.setCenter(loc.x + edgeLength, loc.y);
       } else if (newLoc == 1) {
@@ -2702,87 +2889,99 @@ cholaLayout.prototype.nodeConfiguration = function (gm, val) {
       } else if (newLoc == 3) {
         nbr.setCenter(loc.x, loc.y - edgeLength);
       }
-      console.log(nbr.getCenter());
     }
-    // if (i==0)
+    // if (i==2)
     //   break;
   }
-  if (val == 1) {
-    var count = 0;
-    for (var _i = highDegreeNodes.length; _i > 0; _i--) {
-      var _node = highDegreeNodes[_i - 1][0];
-      console.log(_node.id);
-      console.log(_node.getCenter());
-      var assign1 = new assign();
-      var asgns = assign1.getNeighborAssignments(_node);
-      var degree = this.getNodeDegree(_node);
-      var ids = [];
-      for (var _j2 = 0; _j2 < asgns.semis.length; _j2++) {
-        if (typeof asgns.semis[_j2] != 'undefined' & asgns.semis[_j2] !== null) {
-          ids.push(asgns.semis[_j2].id);
-        } else ids.push('x');
-      }
-      for (var _j3 = 0; _j3 < degree; _j3++) {
-        var edge = _node.edges[_j3];
-        var nbr = edge.getOtherEnd(_node);
-        console.log(nbr.id);
-        console.log(nbr.getCenter());
-        var _loc = _node.getCenter();
-        var newEdgeCost = 0;
-        var oldEdgeCost = 0;
-        var oldLocation = nbr.getCenter();
-        var newLocation;
 
-        for (var k = 0; k < nbr.getDegree(); k++) {
-          var edge = nbr.edges[k];
-          var other = edge.getOtherEnd(nbr);
-          if ((nbr.getCenter().x == other.getCenter().x | nbr.getCenter().y == other.getCenter().y) & nbr.findDistance(other) <= 100) oldEdgeCost += 1;else oldEdgeCost += 2;
-          oldEdgeCost += edge.intersectionsCost(gm);
-        }
+  //working on link nodes
+  //var output = this.getChainsAndCycles(gm);
+};
 
-        var newLoc = ids.indexOf(nbr.id);
-        if (newLoc == 0) {
-          nbr.setCenter(_loc.x + edgeLength, _loc.y);
-        } else if (newLoc == 1) {
-          nbr.setCenter(_loc.x, _loc.y + edgeLength);
-        } else if (newLoc == 2) {
-          nbr.setCenter(_loc.x - edgeLength, _loc.y);
-        } else if (newLoc == 3) {
-          nbr.setCenter(_loc.x, _loc.y - edgeLength);
-        }
-        newLocation = nbr.getCenter();
-        for (var _k = 0; _k < nbr.getDegree(); _k++) {
-          var edge = nbr.edges[_k];
-          var other = edge.getOtherEnd(nbr);
-          if ((nbr.getCenter().x == other.getCenter().x | nbr.getCenter().y == other.getCenter().y) & nbr.findDistance(other) <= 100) newEdgeCost += 1;else newEdgeCost += 2;
-          newEdgeCost += edge.intersectionsCost(gm);
-        }
-        if (oldEdgeCost < newEdgeCost) {
-          nbr.getCenter(oldLocation.x, oldLocation.y);
-          count++;
-        }
-        console.log(nbr.getCenter());
-      }
-    }
+cholaLayout.prototype.getChainsAndCycles = function (gm) {
+  //Identify all sequences of consecutive "links" (degree-2 nodes) in this graph.
+
+  var chains = [];
+  var cycles = [];
+
+  // Build /list/ of all links in the graph.
+  var allNodes = gm.getAllNodes();
+  var allLinks = [];
+
+  for (var i = 0; i < allNodes.length; i++) {
+    var node = allNodes[i];
+    if (node.getDegree() >= 2) allLinks.push(node);
   }
+  while (allLinks.length > 0) {
+    var linkNode = allLinks.pop();
+    var links = [linkNode];
+    // Get the two edges of link, and prepare to explore in both directions.
+    var edges = linkNode.edges;
+    var direction = -1;
+    var polygon = false;
+    for (var _i2 = 0; _i2 < edges.length; _i2++) {
+      var edge = edges[_i2];
+      if (polygon) break;
+
+      // Explore from linknode in one direction.
+      direction = -1 * direction;
+      var lastNode = linkNode;
+      var done = false;
+      while (!done) {
+        // Consider the next node in the current direction.
+        var nextNode = edge.getOtherEnd(lastNode);
+        if (nextNode == linkNode) {
+          // In this case the entire connected component to which the node
+          // belongs is a mere polygon.
+          polygon = true;
+          cycles.push(links);
+          links = [];
+          done = true;
+        } else if (nextNode.getDegree() >= 2) {
+          // This must be a link which we have not encountered before.
+          allLinks.splice(allLinks.indexOf(nextNode), 1);
+          if (direction == 1) links.push(nextNode);else if (direction == -1) links.unshift(nextNode);
+          var nextNodeEdges = nextNode.edges;
+          for (var j = 0; j < nextNodeEdges.length; j++) {
+            if (nextNodeEdges[j] != edge) {
+              edge = nextNodeEdges[j];
+              break;
+            }
+          }
+          lastNode = nextNode;
+        } else {
+          // We've reached the "anchor node" at one end of the chain.
+          done = true;
+        }
+      }
+      // Now have explored from link L0 in both directions, or else found that
+      // it belonged to a polygon.
+    }
+    //for (let i = 0; i < links.length; i++)
+    chains.push(links);
+  }
+  return [chains, cycles];
 };
 
 cholaLayout.prototype.getHighDegreeNodes = function (gm) {
   var allNodes = gm.getAllNodes();
 
-  var arrayToBeSorted = [];
+  var highDegreeNodes = [];
+  var chainNodes = [];
   for (var i = 0; i < allNodes.length; i++) {
     var node = allNodes[i];
-    var degree = this.getNodeDegree(node);
+    var degree = node.getDegree();
     if (degree > 2) {
       var valueToPush = [];
       valueToPush[0] = node;
       valueToPush[1] = degree;
-      arrayToBeSorted.push(valueToPush);
+      highDegreeNodes.push(valueToPush);
+    } else if (degree == 2) {
+      chainNodes.push(node);
     }
   }
-  arrayToBeSorted.sort(compareSecondColumn);
-  arrayToBeSorted.reverse();
+  highDegreeNodes.sort(compareSecondColumn);
+  highDegreeNodes.reverse();
 
   function compareSecondColumn(a, b) {
     if (a[1] === b[1]) {
@@ -2791,7 +2990,7 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
       return a[1] < b[1] ? -1 : 1;
     }
   }
-  return arrayToBeSorted;
+  return [highDegreeNodes, chainNodes];
 };
 
 cholaLayout.prototype.findNeighbors = function (node) {
@@ -2978,8 +3177,8 @@ var chola = function () {
 
       //creating orthogonal layout for higher degree nodes
       //for (let i = 0; i < 2; i++)
-      //layout.nodeConfiguration(this.cholaGm, 1);
-      layout.nodeConfiguration(this.cholaGm, 1);
+      layout.nodeConfiguration(this.cholaGm, 0);
+      //layout.nodeConfiguration(this.cholaGm, 0);
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
   }]);

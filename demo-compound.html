@@ -44,9 +44,11 @@
           container: document.getElementById('cy'),
 
           ready: function(){
+            let i = 0;
             this.nodes().forEach(function(node){
               let width = [30, 50, 70, 90, 110];
-              let size = width[Math.floor(Math.random()*3)];
+              let size = width[i%5];
+              i++;
               node.css("width", size);
               node.css("height", size);
             });
