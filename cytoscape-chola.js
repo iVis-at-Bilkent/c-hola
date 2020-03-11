@@ -73,7 +73,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 18);
+/******/ 	return __webpack_require__(__webpack_require__.s = 20);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -82,7 +82,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
-		module.exports = factory(__webpack_require__(20));
+		module.exports = factory(__webpack_require__(22));
 	else if(typeof define === 'function' && define.amd)
 		define(["layout-base"], factory);
 	else if(typeof exports === 'object')
@@ -1568,13 +1568,11 @@ module.exports = cholaEdge;
 "use strict";
 
 
-function Nbr(id, dx, dy, moved, degree, cycles) {
+function Nbr(id, dx, dy, degree) {
   this.id = id;
   this.x = dx;
   this.y = dy;
-  this.moved = moved;
   this.degree = degree;
-  this.cycles = cycles;
 }
 
 Nbr.prototype.octalCode = function () {
@@ -1726,20 +1724,181 @@ module.exports = Assignment;
 
 
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
+var compass = __webpack_require__(8);
 
 function cholaConstants() {}
 
 //cholaConstants inherits static props in FDLayoutConstants
 for (var prop in LayoutConstants) {
-  cholaConstants[prop] = LayoutConstants[prop];
+    cholaConstants[prop] = LayoutConstants[prop];
 }
 
-cholaConstants.DEFAULT_USE_MULTI_LEVEL_SCALING = false;
+cholaConstants.DEFAULT_USE_MULTI_LEVEL_SCALING = false;;
 cholaConstants.DEFAULT_RADIAL_SEPARATION = LayoutConstants.DEFAULT_MIN_LENGTH;
 cholaConstants.DEFAULT_COMPONENT_SEPERATION = 60;
 cholaConstants.TILE = true;
 cholaConstants.TILING_PADDING_VERTICAL = 10;
 cholaConstants.TILING_PADDING_HORIZONTAL = 10;
+
+cholaConstants.DEFAULT_TREE_DIREC = compass.SOUTH;
+/*
+Ideal edge length will be a multiple of the average node dimension.
+Set the multiplier here.
+
+Should be at least two, or else the shape buffer multiplier should not be used.
+*/
+cholaConstants.IEL_MULTIPLIER = 2;
+cholaConstants.ROTATE_FOR_WIDE_ASPECT_RATIO = true;
+cholaConstants.CLASSIC_ACA_FOR_CHAINS = true;
+
+//Set the kinds of placements that are favoured for trees.
+
+cholaConstants.TREE_PLACEMENT_FAVOUR_CARDINAL = true;
+cholaConstants.TREE_PLACEMENT_FAVOUR_EXTERNAL = true;
+cholaConstants.TREE_PLACEMENT_FAVOUR_ISOLATION = true;
+
+//We pad the nodes to keep gaps between them.
+
+cholaConstants.NODE_PADDING_IEL_SCALAR = 0.25;
+
+//For neighbour stress we scale the ideal edge length.
+
+cholaConstants.NBR_STRESS_IEL_SCALAR = 1 / 20;
+
+//Options and parameters for the "near alignments" pass:
+
+cholaConstants.DO_NEAR_ALIGNMENTS = true;
+cholaConstants.ALIGN_AND_SHAKE_REPS = 2;
+cholaConstants.KINK_WIDTH_SCALAR = 0.5;
+cholaConstants.ALIGNMENT_SCOPE_SCALAR = 2;
+
+//Options for symmetric tree layout:
+
+cholaConstants.RIGID_RANK_SEP = true;
+cholaConstants.TRY_MIRROR_TRIPLES = false;
+
+//Logging levels for various stages of the process:
+
+// cholaConstants.LOG_LEVEL_GENERAL = LogLevel.TIMING;
+// cholaConstants.LOG_LEVEL_TREE_PLACEMENT = LogLevel.TIMING;
+
+
+//Do you want node IDs to be labels on the nodes in the final layout?
+
+cholaConstants.NODE_IDS_AS_LABELS = false;
+
+//Do a final stress reduction with neighbour stress?
+
+cholaConstants.DO_FINAL_NEIGHBOUR_STRESS_SHAKE = true;
+
+/*
+If three nodes u, v, w in a graph form a triangle -- i.e. a subgraph isomorphic
+to K3 -- then during node configuration we may wish to prevent the "flattening"
+of this triangle, i.e. the configuration of any one of the three nodes in such
+a way that the other two are assigned to opposite compass directions, e.g. assigning
+u and w to be north and south, resp., of v. To prevent this, set this option to
+true.
+
+One reason to leave this option set to false; is e.g. that K4 gets a better (planar)
+layout.
+*/
+cholaConstants.NODE_CONFIG_NO_FLAT_TRIANGLES = false;
+
+/*
+To get a dictionary of routing options to be passed to a RoutingRig object,
+call the getRoutingOpts function.
+
+In many cases it makes sense to think of router parameters as scalar multiples
+of the ideal edge length of the graph. In such cases, you may set the scalars
+in the following dictionary, and you must pass the ideal edge length as iel
+to the getRoutingOpts function.
+
+If you want to switch some of these off, while
+continuing to use others, simply set their value to None. Where scalars are
+not used we fall back on the defaults dictionary below.
+*/
+cholaConstants.ROUTING_OPT_IEL_SCALARS = [['crossingPenalty', 2],
+// DEPRECATED: Nodes are padded throughout, so no need for this:
+['shapeBufferDistance', 0], ['segmentPenalty', 0.5]];
+cholaConstants.ROUTING_OPT_DEFAULTS = [['crossingPenalty', 0],
+// DEPRECATED: Nodes are padded throughout, so no need for this:
+['shapeBufferDistance', 0],
+//
+['segmentPenalty', 50]];
+/*
+In, for example, a NORTH-growing tree, an edge between ranks i and i + 1
+will always be allowed to connect only to the south (S) port of a node in
+rank i + 1.
+
+This setting controls the directions allowed for connection to nodes in
+rank i, as follows:
+
+0:  only N is allowed
+1:  N, E, W are allowed for the root node if it has exactly one child and
+    it is an ordinal placement, otherwise only N
+2:  N, E, W are allowed for all nodes on rank i
+
+The "CORE" version controls trees attached to a core graph.
+The "PURE" version controls graphs which are themselves trees.
+*/
+cholaConstants.PERMISSIVE_CORE_TREE_ROUTING = 1;
+cholaConstants.PERMISSIVE_PURE_TREE_ROUTING = 2;
+
+/*
+How to react if we get a positive water level route with no bends?
+This is indicative of some systematic error, but we may nevertheless
+want to skip over it, and simply mark the path as unusable.
+OR we can even throw all caution to the wind and try to use the path
+anyway.
+
+The settings are as follows:
+
+0:  Do not tolerate. Raise an exception and quit immediately.
+1:  Raise an UnusableWaterPath exception, and print a warning.
+    This type of exception is caught by a higher level control loop.
+2:  Do not raise any exception, but do print a warning.
+3:  Do not raise any exception, do not print any warning.
+*/
+cholaConstants.ON_POSITIVE_WATER_LEVEL_ROUTE_WITHOUT_BENDS = 1;
+
+/*
+Default operation is to evaluate all tree placement options exactly
+by actually carrying out each potential projection sequence, evaluating
+the stress change, and backtracking.
+If speed is favoured over quality, we can instead merely estimate the
+cost of each tree placement. Set this to true if that is desired.
+*/
+cholaConstants.ESTIMATE_TREE_PLACEMENT_COSTS = false;
+/*
+Legacy option. Heuristic for estimating face expansion costs was discovered
+to be faulty, and was updated 25 Jul 2018. Set this option to true if you
+want the old behaviour.
+*/
+cholaConstants.USE_OLD_COST_ESTIMATE_HEURISTIC = false;
+/*
+We can also speed up tree placement by using an estimate of the stress
+costs, in order to choose the primary expansion dimension.
+*/
+cholaConstants.HEURISTIC_CHOICE_FOR_PRIMARY_EXPANSION_DIMENSION = false;
+/*
+When making heuristic choice of primary expansion dimension, do you want
+to work in the costlier dimension first? (The hope is that the bigger change
+that this represents will already be enough to make room for the tree, and
+you will not have to work in the other dimension at all.)
+*/
+cholaConstants.HCPED_COSTLIER_DIMENSION_FIRST = true;
+
+/*
+Ignore all but level zero? Doing so may miss some alternative ways to
+expand a face, but will be faster.
+*/
+cholaConstants.WATER_LEVEL_ZERO_ONLY = false;
+
+/*
+Should we use scaling when using stress majorization for neighbour stress layout?
+Recent tests have shown it is faster if we do _not_ use it.
+*/
+cholaConstants.USE_SCALING_IN_MAJORIZATION = false;
 
 module.exports = cholaConstants;
 
@@ -1773,13 +1932,35 @@ module.exports = cholaGraph;
 var LGraphManager = __webpack_require__(0).layoutBase.LGraphManager;
 
 function cholaGraphManager(layout) {
-  LGraphManager.call(this, layout);
+	LGraphManager.call(this, layout);
 }
 
 cholaGraphManager.prototype = Object.create(LGraphManager.prototype);
 for (var prop in LGraphManager) {
-  cholaGraphManager[prop] = LGraphManager[prop];
+	cholaGraphManager[prop] = LGraphManager[prop];
 }
+
+cholaGraphManager.prototype.getMaxDegree = function () {
+	var allNodes = this.getAllNodes();
+	var maxDegree = -1;
+
+	for (var i = 0; i < allNodes.length; i++) {
+		var node = allNodes[i];
+		var degree = node.getDegree();
+		if (degree > maxDegree) maxDegree = degree;
+	}
+
+	return maxDegree;
+};
+
+cholaGraphManager.prototype.getNode = function (node) {
+	var allNodes = this.getAllNodes();
+	for (var i = 0; i < allNodes.length; i++) {
+		var n = allNodes[i];
+		if (n == node) return true;
+	}
+	return false;
+};
 
 module.exports = cholaGraphManager;
 
@@ -1797,6 +1978,8 @@ var cholaEdge = __webpack_require__(1);
 
 function cholaNode(gm, loc, size, vNode) {
   LNode.call(this, gm, loc, size, vNode);
+  this.processed = false;
+  this.treeSerialNo = -1;
 }
 
 cholaNode.prototype = Object.create(LNode.prototype);
@@ -1914,10 +2097,273 @@ cholaNode.prototype.findDistance = function (node) {
   return distance;
 };
 
+cholaNode.prototype.addPadding = function (xPad, yPad) {
+  this.setWidth(this.getWidth() + xPad);
+  this.setHeight(this.getHeight() + yPad);
+};
+
+cholaNode.prototype.getDirec = function (v, edgeLength) {
+  /*
+  :param v: a Node object
+  :return: the configured Compass direction from current node to v if any, else None
+  */
+  var thisLoc = this.getCenter();
+  var vLoc = v.getCenter();
+  var x1 = thisLoc.x;
+  var y1 = thisLoc.y;
+  var x2 = vLoc.x;
+  var y2 = vLoc.y;
+
+  var d = null;
+
+  //checking if the nodes are already configured
+  if (x1 == x2 || y1 == y2) {
+    //checking if node v is aligned to north or south of node
+    if (x1 == x2) {
+      if (y2 == y1 + edgeLength) d = 1; //south
+      else if (y2 == y1 - edgeLength) d = 3; //north  
+    }
+    //checking if node v is aligned to east or west of node
+    else if (y1 == y2) {
+        if (x2 == x1 + edgeLength) d = 0; //east
+        else if (x2 == x1 - edgeLength) d = 2; //west
+      }
+  }
+  return d;
+};
 module.exports = cholaNode;
 
 /***/ }),
 /* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function compass() {
+    this.EAST = 0;
+    this.SOUTH = 1;
+    this.WEST = 2;
+    this.NORTH = 3;
+    this.SE = 4;
+    this.SW = 5;
+    this.NW = 6;
+    this.NE = 7;
+
+    this.cwCards = [0, 1, 2, 3];
+    this.acwCards = [0, 3, 2, 1];
+
+    this.cwOrds = [4, 5, 6, 7];
+    this.acwOrds = [4, 7, 6, 5];
+
+    this.cwRose = [0, 4, 1, 5, 2, 6, 3, 7];
+    this.acwRose = [0, 7, 3, 6, 2, 5, 1, 4];
+
+    this.horizontal = [0, 2];
+    this.vertical = [1, 3];
+
+    this.increasing = [0, 1];
+    this.decreasing = [2, 3];
+
+    this.abbrev = [[this.EAST, "E"], [this.SOUTH, "S"], [this.WEST, "W"], [this.NORTH, "N"], [this.SE, "SE"], [this.SW, "SW"], [this.NW, "NW"], [this.NE, "NE"]];
+
+    // Directions w.r.t which we must /increase/ the const
+    // coord in order to move to the right:
+    this.rightSidePlus = [this.NORTH, this.EAST];
+    // Directions w.r.t which we must /decrease/ the const
+    // coord in order to move to the right:
+    this.rightSideMinus = [this.SOUTH, this.WEST];
+
+    this.variableDimension = [[this.EAST, 0], [this.SOUTH, 1], [this.WEST, 0], [this.NORTH, 1]];
+
+    this.constantDimension = [[this.EAST, 1], [this.SOUTH, 0], [this.WEST, 1], [this.NORTH, 0]];
+
+    this.components = [[this.SE, [this.SOUTH, this.EAST]], [this.SW, [this.SOUTH, this.WEST]], [this.NW, [this.NORTH, this.WEST]], [this.NE, [this.NORTH, this.EAST]], [this.EAST, [this.EAST]], [this.SOUTH, [this.SOUTH]], [this.WEST, [this.WEST]], [this.NORTH, [this.NORTH]]];
+
+    this.signs = [[this.EAST, [1, 0]], [this.SE, [1, 1]], [this.SOUTH, [0, 1]], [this.SW, [-1, 1]], [this.WEST, [-1, 0]], [this.NW, [-1, -1]], [this.NORTH, [0, -1]], [this.NE, [1, -1]]];
+
+    this.libavoidVisibility = [[this.EAST, 8], [this.SOUTH, 2], [this.WEST, 4], [this.NORTH, 1]];
+};
+// @classmethod
+// def cwClosedInterval(cls, d0, d1):
+//     """
+//     :param d0: a direction
+//     :param d1: another direction
+//     :return: list of all compass directions from d0 to d1 inclusive, going clockwise
+//     """
+//     rr = cls.cwRose + cls.cwRose
+//     i0 = rr.index(d0)
+//     i1 = i0 + rr[i0:].index(d1)
+//     return rr[i0:i1+1]
+
+// @classmethod
+// def acwClosedInterval(cls, d0, d1):
+//     """
+//     :param d0: a direction
+//     :param d1: another direction
+//     :return: list of all compass directions from d0 to d1 inclusive, going anticlockwise
+//     """
+//     return list(reversed(cls.cwClosedInterval(d1, d0)))
+
+// @classmethod
+// def cwRoseDistance(cls, d0, d1):
+//     """
+//     :param d0: a direction
+//     :param d1: another direction
+//     :return: the number of steps on the compass rose going clockwise from d0 to d1
+//     """
+//     return len(cls.cwClosedInterval(d0, d1)) - 1
+
+// @classmethod
+// def shortestRoseDistance(cls, d0, d1):
+//     """
+//     :param d0: a direction
+//     :param d1: another direction
+//     :return: the minimum number of steps on the compass rose from d0 to d1, going in either direction
+//     """
+//     return min(cls.cwRoseDistance(d0, d1), cls.acwRoseDistance(d0, d1))
+
+// @classmethod
+// def acwRoseDistance(cls, d0, d1):
+//     """
+//     :param d0: a direction
+//     :param d1: another direction
+//     :return: the number of steps on the compass rose going anticlockwise from d0 to d1
+//     """
+//     return len(cls.acwClosedInterval(d0, d1)) - 1
+
+// @classmethod
+// def sameDimension(cls, d0, d1):
+//     """
+//     :param d0: a cardinal Compass direction
+//     :param d1: a cardinal Compass direction
+//     :return: boolean saying if these directions are in the same dimension
+//     """
+//     return (d0 % 2) == (d1 % 2)
+
+// @classmethod
+// def perpendicular(cls, d0, d1):
+//     """
+//     :param d0: a cardinal Compass direction
+//     :param d1: a cardinal Compass direction
+//     :return: boolean saying if these directions are perpendicular to one another
+//     """
+//     return not cls.sameDimension(d0, d1)
+
+
+compass.prototype.cardinalDirection = function (p1, p2) {
+    /*
+    :param p1: either a Node object, or the coords (x1, y1) of a point
+    :param p2: either a Node object, or the coords (x2, y2) of a point
+    :return: the predominant cardinal direction from p1 to p2
+    */
+    var p1Loc = p1.getCenter();
+    var p2Loc = p2.getCenter();
+    var dx = p2Loc.x - p1Loc.x;
+    var dy = p2Loc.y - p1Loc.y;
+
+    if (Math.abs(dy) <= Math.abs(dx)) {
+        if (p1Loc.x < p2Loc.x) return this.EAST;else return this.WEST;
+    } else {
+        if (p1Loc.y < p2Loc.y) return this.SOUTH;else return this.NORTH;
+    }
+};
+
+compass.prototype.possibleCardinalDirections = function (node1, node2) {
+    /*
+    :param node1: a Node
+    :param node2: a Node
+    :return: a list of the possible cardinal directions from node1 to node2,
+             if they were to be aligned non-aggressively
+    */
+    var node1Loc = node1.getCenter();
+    var node2Loc = node2.getCenter();
+    var x1 = node1Loc.x;
+    var x2 = node2Loc.x;
+    var y1 = node1Loc.y;
+    var y2 = node2Loc.y;
+    var dx = x2 - x1;
+    var dy = y2 - y1;
+
+    var dirs = [];
+    if (dx > 0) dirs.push(this.EAST);
+    if (dx < 0) dirs.push(this.WEST);
+    if (dy > 0) dirs.push(this.SOUTH);
+    if (dy < 0) dirs.push(this.NORTH);
+    return dirs;
+};
+
+// @classmethod
+// def getRotationFunction(cls, fromDir, toDir):
+//     # For now we only handle cardinal directions.
+//     if fromDir not in cls.cwCards or toDir not in cls.cwCards:
+//         raise Exception("only cardinal directions are currently handled")
+//     a, b = fromDir, toDir
+//     d = (b - a) % 4
+//     return [
+//         lambda v: (v[0], v[1]),
+//         lambda v: (-v[1], v[0]),
+//         lambda v: (-v[0], -v[1]),
+//         lambda v: (v[1], -v[0])
+//     ][d]
+
+// @classmethod
+// def flip(cls, direc):
+//     i0 = cls.cwRose.index(direc)
+//     return cls.cwRose[(i0+4)%8]
+
+// @classmethod
+// def cw90(cls, direc):
+//     i0 = cls.cwRose.index(direc)
+//     return cls.cwRose[(i0+2)%8]
+
+// @classmethod
+// def acw90(cls, direc):
+//     i0 = cls.cwRose.index(direc)
+//     return cls.cwRose[(i0-2)%8]
+
+// @classmethod
+// def rotateCW(cls, n, direc):
+//     i0 = cls.cwRose.index(direc)
+//     return cls.cwRose[(i0+n)%8]
+
+// @classmethod
+// def vectorSigns(cls, direc):
+//     """
+//     :param direc: a Compass direction
+//     :return: (xs, ys) where xs in {-1, 0, 1} represents the sign of
+//     the x-coordinate of a vector lying in the "octant" represented
+//     by direc, and likewise for ys. Here an "octant" is a semiaxis for
+//     a cardinal direction and an open quadrant for an ordinal direction.
+//     """
+//     return cls.signs[direc]
+
+// @classmethod
+// def vector(cls, direc, mag=1):
+//     """
+//     :param direc: a Compass direction, cardinal or ordinal
+//     :param mag: a float
+//     :return: a vector in the form [x, y] having the given magnitude and
+//              pointing in the given direction
+//     """
+//     hsqrt2 = 0.7071067811865476
+//     v = {
+//         cls.EAST: [1, 0],
+//         cls.SOUTH: [0, 1],
+//         cls.WEST: [-1, 0],
+//         cls.NORTH: [0, -1],
+//         cls.SE: [hsqrt2, hsqrt2],
+//         cls.SW: [-hsqrt2, hsqrt2],
+//         cls.NW: [-hsqrt2, -hsqrt2],
+//         cls.NE: [hsqrt2, -hsqrt2]
+//     }[direc]
+//     return [mag*c for c in v]
+
+
+module.exports = compass;
+
+/***/ }),
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1989,7 +2435,7 @@ Quad.prototype.assignment = function (i) {
 module.exports = Quad;
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2005,10 +2451,10 @@ module.exports = Quad;
  * A continuous layout is one that updates positions continuously, like a force-
  * directed / physics simulation layout.
  */
-module.exports = __webpack_require__(19);
+module.exports = __webpack_require__(21);
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2031,7 +2477,7 @@ module.exports = Object.assign != null ? Object.assign.bind(Object) : function (
 };
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2082,7 +2528,7 @@ Perm.prototype.apply = function (a) {
 module.exports = Perm;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2091,15 +2537,19 @@ module.exports = Perm;
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var Nbr = __webpack_require__(2);
-var Quad = __webpack_require__(8);
-var Perm = __webpack_require__(11);
+var Quad = __webpack_require__(9);
+var Perm = __webpack_require__(12);
 var Assignment = __webpack_require__(3);
 
 function Arrangement(neighbors, degree, id, highIds) {
   this.div = 4;
-  for (;; this.div *= 2) {
-    if (neighbors.length <= this.div) break;else continue;
-  }
+  // for (;;this.div*=2)
+  // {
+  //   if (neighbors.length <= this.div)
+  //     break;
+  //   else
+  //     continue;
+  // }
 
   this.semis = [];
   this.quads = [];
@@ -2133,7 +2583,7 @@ Arrangement.prototype.getArrangement = function () {
   }
 };
 
-Arrangement.prototype.getAsgns = function (cyclicIds, cycle) {
+Arrangement.prototype.getAsgns = function (cyclicIds, am) {
   var trials = [];
   var assigns;
   var N = this.nbrs.length;
@@ -2149,7 +2599,7 @@ Arrangement.prototype.getAsgns = function (cyclicIds, cycle) {
   } else if (n < 0) {
     assigns = [];
   } else {
-    this.getAssignment(cyclicIds, cycle);
+    this.getAssignment(cyclicIds, am, n);
     assigns = new Assignment(this.semis, 0);
   }
   return assigns;
@@ -2164,17 +2614,20 @@ Arrangement.prototype.getCyclicOrder = function () {
     if (semi != null) {
       if (Array.isArray(semi)) {
         for (var j = 0; j < semi.length; j++) {
-          cyclicOrder.push(semi[j].id);
+          //cyclicOrder.push(semi[j].id);
+          cyclicOrder.push(semi[j]);
         }
       } else {
-        cyclicOrder.push(semi.id);
+        //cyclicOrder.push(semi.id);
+        cyclicOrder.push(semi);
       }
     }
     for (var _j = 0; _j < quad.length; _j++) {
-      var arr = [quad[_j].y, quad[_j].x, quad[_j].id];
+      //var arr = [quad[j].y, quad[j].x, quad[j].id];
+      var arr = [quad[_j].y, quad[_j].x, quad[_j]];
       orderedNodes.push(arr);
     }
-    if (i == 0 | i == 3) {
+    if (i == 0) {
       orderedNodes.sort(function sortFunction(a, b) {
         if (a[0] === b[0]) {
           return a[1] > b[1] ? -1 : 1;
@@ -2182,13 +2635,28 @@ Arrangement.prototype.getCyclicOrder = function () {
           return a[0] < b[0] ? -1 : 1;
         }
       });
-    }
-    if (i == 1 | i == 2) {
+    } else if (i == 1) {
       orderedNodes.sort(function sortFunction(a, b) {
         if (a[0] === b[0]) {
-          return a[1] < b[1] ? -1 : 1;
+          return a[0] < b[0] ? -1 : 1;
         } else {
-          return a[0] > b[0] ? -1 : 1;
+          return a[1] > b[1] ? -1 : 1;
+        }
+      });
+    } else if (i == 2) {
+      orderedNodes.sort(function sortFunction(a, b) {
+        if (a[0] === b[0]) {
+          return a[0] < b[0] ? -1 : 1;
+        } else {
+          return a[1] > b[1] ? -1 : 1;
+        }
+      });
+    } else if (i == 3) {
+      orderedNodes.sort(function sortFunction(a, b) {
+        if (a[0] === b[0]) {
+          return a[1] > b[1] ? -1 : 1;
+        } else {
+          return a[0] < b[0] ? -1 : 1;
         }
       });
     }
@@ -2199,11 +2667,10 @@ Arrangement.prototype.getCyclicOrder = function () {
   return cyclicOrder;
 };
 
-Arrangement.prototype.findCost = function (nbr, semi, lastItem, cyclicIds, direction, count, cycle) {
+Arrangement.prototype.findCost = function (nbr, semi, lastItem, cyclicIds) {
   var neighbor = nbr;
   var o = neighbor.octalCode();
   var defl = neighbor.deflectionFromSemi(semi, o);
-  //defl += (defl*neighbor.degree/2);
 
   if (lastItem !== null && typeof lastItem != 'undefined') {
     var index = cyclicIds.indexOf(neighbor.id);
@@ -2212,73 +2679,460 @@ Arrangement.prototype.findCost = function (nbr, semi, lastItem, cyclicIds, direc
     var nextIndex = index + 1;
     if (prevIndex < 0) prevIndex += cyclicIds.length;
     if (nextIndex >= cyclicIds.length) nextIndex %= cyclicIds.length;
-    if (count < 2) {
-      if (semi == 1) {
-        if (!(lastIndex == prevIndex || lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
-      } else {
-        if (!(lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
-      }
+    if (semi == 1) {
+      if (!(lastIndex == prevIndex || lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
     } else {
-      if (direction == 1 && !(lastIndex == nextIndex)) {
-        defl += Math.abs(index - lastIndex);
-      } else if (direction == -1 && !(lastIndex == prevIndex)) {
-        defl += Math.abs(index - lastIndex);
-      }
+      if (!(lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
     }
   }
   return [lastItem, defl];
 };
 
-Arrangement.prototype.getAssignment = function (cyclicIds, cycle) {
+Arrangement.prototype.factorial = function (num) {
+  var out = 1;
+  for (var i = 2; i <= num; i++) {
+    out = out * i;
+  }return out;
+};
 
-  for (var i = 0; i < this.nbrs.length; i++) {
-    var nbr = this.nbrs[i];
-    if (this.highIds.indexOf(nbr.id) > -1 && this.highIds.indexOf(nbr.id) < this.highIds.indexOf(this.id)) continue;else {
-      this.semis[0].push(nbr);
-      this.semis[1].push(nbr);
-      this.semis[2].push(nbr);
-      this.semis[3].push(nbr);
+Arrangement.prototype.combination = function (array, k) {
+  var combinations = [];
+  var temp = [];
+  if (k == 0) return;else if (k > 3) k = 3;
+  function run(level, start, c) {
+
+    for (var i = start; i < array.length - k + level + 1; i++) {
+      temp[level] = array[i];
+
+      if (level < k - 1) {
+        run(level + 1, i + 1, c);
+      } else {
+        var temp2 = JSON.parse(JSON.stringify(temp));
+        c.push(temp2);
+      }
     }
   }
-  var lastItem = null;
-  var lastCyclicIndex = -1;
-  var direction = 1;
-  var count = 0;
 
-  for (var _i2 = 0; _i2 < this.semis.length; _i2++) {
-    var cost = [];
-    var semi = this.semis[_i2];
-    for (var j = 0; j < semi.length; j++) {
-      var cycleIndex = cyclicIds.indexOf(semi[j].id);
-      var out = this.findCost(semi[j], _i2, lastItem, cyclicIds, direction, count, cycle[cycleIndex]);
-      lastItem = out[0];
-      var defl = out[1];
-      if (this.highIds.indexOf(semi[j]) > -1 && this.highIds.indexOf(semi[j].id) < this.highIds.indexOf(this.id)) defl = 0;
-      cost.push(defl);
-    }
+  run(0, 0, combinations);
 
-    var index = cost.indexOf(Math.min.apply(Math, cost));
-    this.semis[_i2] = semi[index];
-    if (typeof this.semis[_i2] != 'undefined') lastItem = this.semis[_i2];else {
-      count++;
-    }
-    if (count == 2) {
-      var index = cyclicIds.indexOf(lastItem.id);
-      var lastIndex = lastCyclicIndex;
+  console.log(combinations);
+  console.log("printed combinations");
+  return combinations;
+};
 
-      var prevIndex = index - 1;
-      var nextIndex = index + 1;
-      if (prevIndex < 0) prevIndex += cyclicIds.length;
-      if (nextIndex >= cyclicIds.length) nextIndex %= cyclicIds.length;
-      if (index - 1 == lastIndex) direction = -1;else if ((index + 1) % 4 == lastIndex) direction = 1;
+Arrangement.prototype.compareConfiguration = function (finalNode, cyclicNodes, comb, cost, costArr, quadNodes) {
+  //finding index of finalNode in cyclicNodes
+  var cyclicIndex = void 0;
+  for (var l = 0; l < cyclicNodes.length; l++) {
+    if (cyclicNodes[l].id == finalNode.id) {
+      cyclicIndex = l;
+      break;
     }
-    if (typeof this.semis[_i2] != 'undefined') lastCyclicIndex = cyclicIds.indexOf(lastItem.id);
+  }
+  var quadComb = [];
+  for (var i = 0; i < this.quads.length; i++) {
+    comb.splice(2 * i + 1, 0, null); // at index position 1, remove 0 elements, then add "baz" to that position
+    costArr.splice(2 * i + 1, 0, null);
+  }
+  for (var _i2 = 0; _i2 < quadNodes.length; _i2++) {
+    //will have to add code for dealing with two processed nodes in the same quad
+    //currently the code works only for 1 processed node in a quad
+    var node = quadNodes[_i2];
+    var o = node.octalCode();
+    comb[o] = node;
   }
 
-  var ignoredNodes = this.findAndRemoveDuplicates(cyclicIds, cycle);
-  this.addIgnoredNodes(ignoredNodes, direction, cyclicIds);
-  this.updateSemisAndQuads(cyclicIds);
-  this.enforceCyclicOrder(cyclicIds, cycle);
+  var combIndex = comb.indexOf(finalNode);
+  var arr = [];
+  for (var _i3 = 0; _i3 < this.quads.length * 2; _i3++) {
+    arr.push(null);
+  }
+
+  for (var _l = 0; _l < cyclicNodes.length; _l++) {
+    while (1) {
+      if (!comb[combIndex]) {
+        combIndex = combIndex + 1;
+        if (combIndex > comb.length - 1) combIndex = combIndex % comb.length;
+      } else break;
+    }
+    if (cyclicIndex > cyclicNodes.length - 1) cyclicIndex = cyclicIndex % cyclicNodes.length;
+
+    if (combIndex > comb.length - 1) combIndex = combIndex % comb.length;
+
+    if (comb[combIndex].id == cyclicNodes[cyclicIndex].id) {
+      if (costArr[combIndex] != null) arr[combIndex] = costArr[combIndex];else arr[combIndex] = 0;
+      cyclicIndex = cyclicIndex + 1;
+      combIndex = combIndex + 1;
+    } else {
+      if (costArr[combIndex] != null) arr[combIndex] = costArr[combIndex] + 100;else arr[combIndex] = 0;
+      cost = cost + 100;
+      combIndex = combIndex + 1;
+    }
+  }
+  return [arr, cost];
+};
+
+Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
+  var a = 0;
+
+  //determine processed and non processed nodes
+  var processedNodes = [];
+  var unProcessedNodes = [];
+
+  for (var i = 0; i < cyclicNodes.length; i++) {
+    if (cyclicNodes[i].processed == true) processedNodes.push(cyclicNodes[i]);else unProcessedNodes.push(cyclicNodes[i]);
+  }
+
+  var availableSemis = [];
+  var unAvailableSemis = [];
+  var array = [];
+  ///determine available semis
+  for (var _i4 = 0; _i4 < this.semis.length; _i4++) {
+    if (this.semis[_i4].length == 0 || this.semis[_i4].length > 0 && this.semis[_i4][0].processed == false) {
+      availableSemis.push(_i4);
+      array.push(_i4);
+      if (this.semis[_i4].length > 0) this.semis[_i4].splice(0, 1);
+    } else unAvailableSemis.push(_i4);
+  }
+
+  //determine processed nodes which do not lie on a semi
+  var quadNodes = [];
+  if (processedNodes.length != unAvailableSemis.length) {
+    for (var _i5 = 0; _i5 < processedNodes.length; _i5++) {
+      var node = void 0;
+      for (var j = 0; j < this.nbrs.length; j++) {
+        if (processedNodes[_i5].id == this.nbrs[j].id) {
+          node = this.nbrs[j];
+          break;
+        }
+      }
+
+      var count = 0;
+      for (var _j3 = 0; _j3 < unAvailableSemis.length; _j3++) {
+        var semi = this.semis[unAvailableSemis[_j3]];
+        if (semi[0].id == node.id) count = count + 1;
+      }
+      if (count == 0) {
+        quadNodes.push(node);
+      }
+    }
+  }
+
+  //for each semi, determine unProcessed nodes with least deflection
+  var costArray = [];
+  for (var _i6 = 0; _i6 < availableSemis.length; _i6++) {
+    for (var _j4 = 0; _j4 < unProcessedNodes.length; _j4++) {
+      var _node = unProcessedNodes[_j4];
+      var o = _node.octalCode();
+      var semiIndex = availableSemis[_i6];
+      var _cost = _node.deflectionFromSemi(semiIndex, o);
+      costArray.push(_cost);
+    }
+  }
+
+  //chose the node closest to a semi and fix it
+  var index = costArray.indexOf(Math.min.apply(Math, costArray));
+  var startNode = unProcessedNodes[index % unProcessedNodes.length];
+  var startCost = costArray[index];
+
+  var overallCostArray = [];
+  var combinationsArray = [];
+  var individualCostArray = [];
+
+  if (unProcessedNodes.length == 1) {
+    var finalNode = startNode;
+    //check if combination follows the cyclic order
+    if (unAvailableSemis.length > 0) finalNode = this.semis[unAvailableSemis[0]][0];
+    for (var _i7 = 0; _i7 < availableSemis.length; _i7++) {
+      var _node2 = unProcessedNodes[0];
+      var _o = _node2.octalCode();
+      var _semiIndex = availableSemis[_i7];
+      var _comb = [];
+      var costArr = [];
+      _comb[availableSemis[_i7]] = _node2;
+      var _cost2 = _node2.deflectionFromSemi(_semiIndex, _o);
+      costArr[availableSemis[_i7]] = _cost2;
+      for (var l = 0; l < unAvailableSemis.length; l++) {
+        var _semiIndex2 = unAvailableSemis[l];
+        _comb[_semiIndex2] = this.semis[_semiIndex2][0];
+        costArr[_semiIndex2] = 0;
+      }
+      var out = this.compareConfiguration(finalNode, cyclicNodes, _comb, _cost2, costArr, quadNodes);
+      combinationsArray.push(_comb);
+      overallCostArray.push(out[1]);
+      individualCostArray.push(out[0]);
+    }
+  } else {
+
+    for (var _j5 = 0; _j5 < availableSemis.length; _j5++) {
+      var tempArray = JSON.parse(JSON.stringify(array));
+      var _semiIndex3 = availableSemis[_j5];
+      var _index = array.indexOf(availableSemis[_j5]);
+
+      var firstPart = tempArray.slice(_index);
+      var secondPart = tempArray.slice(0, _index);
+      firstPart.splice(0, 1);
+      tempArray = firstPart.concat(secondPart);
+
+      var combinations = this.combination(tempArray, unProcessedNodes.length - 1);
+
+      for (var k = 0; k < combinations.length; k++) {
+        var _cost3 = 0;
+        var _costArr = [];
+        var _o2 = startNode.octalCode();
+        _cost3 += startNode.deflectionFromSemi(_semiIndex3, _o2);
+
+        var _comb2 = []; //comb[semi index] = [node][cost]
+        a = unProcessedNodes.indexOf(startNode) + 1;
+        var c = combinations[k];
+        for (var _l2 = 0; _l2 < c.length; _l2++) {
+          if (a > unProcessedNodes.length - 1) a = a % unProcessedNodes.length;
+
+          var nextNode = unProcessedNodes[a];
+          var nextSemiIndex = c[_l2];
+          var _o3 = nextNode.octalCode();
+          var defl = nextNode.deflectionFromSemi(nextSemiIndex, _o3);
+          _cost3 += defl;
+          _comb2[nextSemiIndex] = nextNode;
+          _costArr[nextSemiIndex] = defl;
+          a = a + 1;
+        }
+        _comb2[_semiIndex3] = startNode;
+        _costArr[_j5] = startCost;
+        for (var _l3 = 0; _l3 < unAvailableSemis.length; _l3++) {
+          var _index2 = unAvailableSemis[_l3];
+          _comb2[_index2] = this.semis[_index2][0];
+          _costArr[_index2] = 0;
+        }
+        var _finalNode = startNode;
+        //check if combination follows the cyclic order
+        if (unAvailableSemis.length > 0) _finalNode = this.semis[unAvailableSemis[0]][0];
+
+        var out = this.compareConfiguration(_finalNode, cyclicNodes, _comb2, _cost3, _costArr, quadNodes);
+        combinationsArray.push(_comb2);
+        overallCostArray.push(out[1]);
+        individualCostArray.push(out[0]);
+      }
+
+      // if (j == 1)
+      //   break;
+    }
+  }
+  var index = overallCostArray.indexOf(Math.min.apply(Math, overallCostArray));
+  var comb = combinationsArray[index];
+  var cost = individualCostArray[index];
+  for (var _i8 = 0; _i8 < comb.length; _i8 = _i8 + 2) {
+    if (comb[_i8] == null) continue;
+    if (cost[_i8] > 100) continue;else {
+      this.semis[_i8 / 2] = comb[_i8];
+    }
+  }
+
+  // //if (processedNodes.length == 0)
+  //   startNode = cyclicNodes[0];
+  // // else
+  // // {
+  // //   for (let i = 0; i < cyclicNodes.length; i++)
+  // //   {
+  // //     if (this.highIds.indexOf(cyclicNodes[i].id) < 0)
+  // //     {
+  // //       startNode = cyclicNodes[i];
+  // //       break;
+  // //     }
+  // //   }
+  // // }
+  // for (let i = 0; i < this.highIds.length; i++)
+  // {
+  //   if (this.highIds == this.ids)
+  //     break;
+  //   for (let j = 0; j < cyclicNodes.length; j++)
+  //   {
+  //     if (this.highIds[i] == cyclicNodes[j].id)
+  //     {
+  //       startNode = cyclicNodes[j];
+  //       check = true;
+  //       break;
+  //     }
+  //   }
+  //   if (check == true)
+  //     break;
+  // }
+
+  // //let node = this.nbrs[0];
+  // let costArray = [];
+  // let combinationsArray = [];
+  // let array = [];
+  // // for (let j = 0; j < this.div; j++)
+  // //   array.push(j);
+
+  //   for (let j = 0; j < this.semis.length; j++)
+  //   {
+  //     let indexHighId = this.highIds.indexOf(startNode.id);
+  //     if ((indexHighId > -1) && (indexHighId < this.highIds.indexOf(this.id)))
+
+  //       //a = j + 1;
+  //       let cost = 0;
+  //       let semi = this.semis[j];
+  //       array = [0, 1, 2, 3]
+  //       let index = array.indexOf(j);
+
+  //       let firstPart = array.slice(index)
+  //       let secondPart = array.slice(0, index)
+  //       firstPart.splice(0, 1);
+  //       array = firstPart.concat(secondPart); 
+
+  //       let o = startNode.octalCode();
+  //       cost += startNode.deflectionFromSemi(j, o);
+
+  //       let combinations = this.combination(array, this.nbrs.length - 1);
+
+  //       for (let k = 0; k < combinations.length; k++)
+  //       {
+  //         a = cyclicNodes.indexOf(startNode) + 1;
+  //         let c = combinations[k];
+  //         for (let l = 0; l < c.length; l++)
+  //         {
+  //           if (a > cyclicNodes.length - 1)
+  //               a = a % cyclicNodes.length;
+
+  //           let nextNode = cyclicNodes[a]; 
+  //           let nextSemiIndex = c[l];
+  //           let o = nextNode.octalCode();
+  //           cost += nextNode.deflectionFromSemi(nextSemiIndex, o);
+  //           a = a + 1;
+  //         }
+  //         combinationsArray.push([j].concat(c));
+  //         costArray.push(cost); 
+  //       }
+
+
+  //       // if (j == 1)
+  //       //   break;
+  //   }
+  //   var index = costArray.indexOf(Math.min(...costArray));
+  //   var comb = combinationsArray[index];
+  //   a = cyclicNodes.indexOf(startNode);
+  //   for (let i = 0; i < cyclicNodes.length; i++)
+  //   {
+  //     let semiIndex = comb[i];
+  //     this.semis[semiIndex] = cyclicNodes[a];
+  //     a = a + 1;
+  //     if (a > cyclicNodes.length - 1)
+  //         a = a % cyclicNodes.length;
+  //   }
+
+  // for (let i = 0; i < this.nbrs.length; i++)
+  // {
+  //   var nbr = this.nbrs[i];
+  //   if (this.highIds.indexOf(nbr.id) > -1 && (this.highIds.indexOf(nbr.id) < this.highIds.indexOf(this.id)))
+  //     continue;
+  //   else
+  //   {
+  //     this.semis[0].push(nbr);
+  //     this.semis[1].push(nbr);
+  //     this.semis[2].push(nbr);
+  //     this.semis[3].push(nbr);
+  //   }
+  // }
+  // var lastItem = null;
+
+  // for (let i = 0; i <this.semis.length;i++)
+  // {
+  //   var cost = [];
+  //   var semi = this.semis[i];
+  //   for (let j = 0; j < semi.length; j++)
+  //   {
+  //     let cycleIndex = cyclicIds.indexOf(semi[j].id);
+  //     var out = this.findCost(semi[j], i, lastItem, cyclicIds);
+  //     lastItem = out[0];
+  //     let defl = out[1];
+  //     if (this.highIds.indexOf(semi[j].id) > -1 && (this.highIds.indexOf(semi[j].id) < this.highIds.indexOf(this.id)))
+  //       defl = 0;
+  //     cost.push(defl);
+  //   }
+
+  //   var index = cost.indexOf(Math.min(...cost));
+  //   this.semis[i] = semi[index];
+  //   if (typeof(this.semis[i]) != 'undefined')
+  //     lastItem = this.semis[i];
+  // }
+
+  // var ignoredNodes = this.findAndRemoveDuplicates(cyclicIds);
+  // this.addIgnoredNodes(ignoredNodes, cyclicIds);
+  // this.updateSemisAndQuads(cyclicIds);
+  // this.enforceCyclicOrder(cyclicIds, cycle);
+  // var output = this.makesFlatTriangle(am);
+  // if (output[0])
+  //   this.removeFlatTriangle(output[1]);
+};
+
+Arrangement.prototype.makesFlatTriangle = function (matrix) {
+  var allNodes = matrix[1];
+  var am = matrix[0];
+
+  for (var i = 0; i < 2; i++) {
+    var s0 = this.semis[i];
+    var s1 = this.semis[i + 2];
+    if (s0 != null && s1 != null && typeof s0 != "undefined" && (typeof s1 === 'undefined' ? 'undefined' : _typeof(s1)) != undefined) {
+      var s0Index = allNodes.indexOf(s0.id);
+      var s1Index = allNodes.indexOf(s1.id);
+      if (am[s0Index][s1Index] == true) return [true, [s0, s1]];
+    }
+  }
+  return [false, null];
+};
+
+Arrangement.prototype.removeFlatTriangle = function (nodes) {
+  var s0 = nodes[0];
+  var s1 = nodes[1];
+  var s0Index = this.semis.indexOf(s0);
+  var s1Index = this.semis.indexOf(s1);
+
+  var s0OctalCode = s0.octalCode();
+  var s1OctalCode = s1.octalCode();
+
+  var s0Cost = s0.deflectionFromSemi(this.semis[s0Index], s0OctalCode);
+  var s1Cost = s1.deflectionFromSemi(this.semis[s1Index], s1OctalCode);
+
+  if (s0Cost < s1Cost) {
+    var prevIndex = s0Index - 1;
+    if (prevIndex < 0) prevIndex += this.div;
+    var nextIndex = s0Index + 1;
+    if (nextIndex == this.div) nextIndex %= this.div;
+
+    var cost1 = s1.deflectionFromSemi(this.semis[prevIndex], s1OctalCode) + (this.semis[prevIndex] != null ? 2 : 0);
+    var cost2 = s1.deflectionFromSemi(this.semis[nextIndex], s1OctalCode) + (this.semis[nextIndex] != null ? 2 : 0);
+
+    if (cost1 < cost2) {
+      var temp = this.semis[prevIndex];
+      this.semis[prevIndex] = this.semis[s1Index];
+      this.semis[s1Index] = temp;
+    }
+    if (cost1 >= cost2) {
+      var _temp = this.semis[nextIndex];
+      this.semis[nextIndex] = this.semis[s1Index];
+      this.semis[s1Index] = _temp;
+    }
+  } else {
+    var _prevIndex = s1Index - 1;
+    if (_prevIndex < 0) _prevIndex += this.div;
+    var _nextIndex = s1Index + 1;
+    if (_nextIndex == this.div) _nextIndex %= this.div;
+
+    var _cost4 = s0.deflectionFromSemi(this.semis[_prevIndex], s0OctalCode) + (this.semis[_prevIndex] != null ? 2 : 0);
+    var _cost5 = s0.deflectionFromSemi(this.semis[_nextIndex], s0OctalCode) + (this.semis[_nextIndex] != null ? 2 : 0);
+
+    if (_cost4 < _cost5) {
+      var _temp2 = this.semis[_prevIndex];
+      this.semis[_prevIndex] = this.semis[s1Index];
+      this.semis[s1Index] = _temp2;
+    }
+    if (_cost4 >= _cost5) {
+      var _temp3 = this.semis[_nextIndex];
+      this.semis[_nextIndex] = this.semis[s1Index];
+      this.semis[s1Index] = _temp3;
+    }
+  }
 };
 
 Arrangement.prototype.updateSemisAndQuads = function (cyclicIds) {
@@ -2332,28 +3186,28 @@ Arrangement.prototype.enforceCyclicOrder = function (cyclicIds, cycles) {
   var maxIndex1 = 0;
   var maxIndex2 = 0;
   var maxIndex = 0;
-  for (var _i3 = 0; _i3 < arr.length; _i3++) {
-    if (arr[_i3].length > maxLength) {
-      maxLength = arr[_i3].length;
-      maxIndex1 = _i3;
+  for (var _i9 = 0; _i9 < arr.length; _i9++) {
+    if (arr[_i9].length > maxLength) {
+      maxLength = arr[_i9].length;
+      maxIndex1 = _i9;
     }
   }
   if (maxLength == cyclicIds.length) return;else {
     var maxDegree = 0;
     var hdnbr = void 0;
-    for (var _i4 = 0; _i4 < cyclicIds.length; _i4++) {
-      for (var _j3 = 0; _j3 < this.nbrs.length; _j3++) {
-        if (cyclicIds[_i4] == this.nbrs[_j3].id) {
-          if (this.nbrs[_j3].degree > maxDegree) {
-            hdnbr = cyclicIds[_i4];
-            maxDegree = this.nbrs[_j3].degree;
+    for (var _i10 = 0; _i10 < cyclicIds.length; _i10++) {
+      for (var _j6 = 0; _j6 < this.nbrs.length; _j6++) {
+        if (cyclicIds[_i10] == this.nbrs[_j6].id) {
+          if (this.nbrs[_j6].degree > maxDegree) {
+            hdnbr = cyclicIds[_i10];
+            maxDegree = this.nbrs[_j6].degree;
           }
         }
       }
     }
-    for (var _i5 = 0; _i5 < arr.length; _i5++) {
-      if (arr[_i5][0] == hdnbr) {
-        maxIndex2 = _i5;
+    for (var _i11 = 0; _i11 < arr.length; _i11++) {
+      if (arr[_i11][0] == hdnbr) {
+        maxIndex2 = _i11;
         break;
       }
     }
@@ -2367,15 +3221,15 @@ Arrangement.prototype.enforceCyclicOrder = function (cyclicIds, cycles) {
     var startIndex = cyclicIds.indexOf(order[0]);
     startIndex += 1;
     var semiIndex = 0;
-    for (var _i6 = 0; _i6 < this.semis.length; _i6++) {
-      if (this.semis[_i6] != null && this.semis[_i6].id == order[0]) {
-        semiIndex = _i6;
+    for (var _i12 = 0; _i12 < this.semis.length; _i12++) {
+      if (this.semis[_i12] != null && this.semis[_i12].id == order[0]) {
+        semiIndex = _i12;
         break;
       }
     }
     semiIndex += 1;
     var insertCount = 0;
-    for (var _i7 = 0; _i7 < this.semis.length - 1; _i7++) {
+    for (var _i13 = 0; _i13 < this.semis.length - 1; _i13++) {
       if (startIndex >= cyclicIds.length) {
         startIndex %= cyclicIds.length;
       }
@@ -2383,16 +3237,11 @@ Arrangement.prototype.enforceCyclicOrder = function (cyclicIds, cycles) {
         semiIndex %= cyclicIds.length;
       }
       var semi = this.semis[semiIndex];
-      // if (typeof(semi) == 'undefined' || semi == null)
-      // {
-      //   startIndex += 1;
-      //   continue;
-      // }
 
-      if (_typeof(order[_i7 + 1] == 'undefined') || typeof semi == 'undefined' || semi == null || semi.id != order[_i7 + 1]) {
-        for (var _j4 = 0; _j4 < this.nbrs.length; _j4++) {
-          if (this.nbrs[_j4].id == cyclicIds[startIndex]) {
-            this.semis[semiIndex] = this.nbrs[_j4];
+      if (_typeof(order[_i13 + 1] == 'undefined') || typeof semi == 'undefined' || semi == null || semi.id != order[_i13 + 1]) {
+        for (var _j7 = 0; _j7 < this.nbrs.length; _j7++) {
+          if (this.nbrs[_j7].id == cyclicIds[startIndex]) {
+            this.semis[semiIndex] = this.nbrs[_j7];
             insertCount++;
             break;
           }
@@ -2405,7 +3254,7 @@ Arrangement.prototype.enforceCyclicOrder = function (cyclicIds, cycles) {
   }
 };
 
-Arrangement.prototype.findAndRemoveDuplicates = function (cyclicIds, cycle) {
+Arrangement.prototype.findAndRemoveDuplicates = function (cyclicIds) {
   //finding duplicate assignments of same node
   var ids = [];
   for (var i = 0; i < this.semis.length; i++) {
@@ -2420,8 +3269,8 @@ Arrangement.prototype.findAndRemoveDuplicates = function (cyclicIds, cycle) {
   });
 
   var ignoredNodes = [];
-  for (var _i8 = 0; _i8 < this.nbrs.length; _i8++) {
-    var nbrId = this.nbrs[_i8].id;
+  for (var _i14 = 0; _i14 < this.nbrs.length; _i14++) {
+    var nbrId = this.nbrs[_i14].id;
     if (typeof counts[nbrId] !== 'undefined' & counts[nbrId] !== null) {
       //find the indexes of the duplicate assignments
       if (counts[nbrId] > 1) {
@@ -2433,79 +3282,27 @@ Arrangement.prototype.findAndRemoveDuplicates = function (cyclicIds, cycle) {
         //calculate the costs for both assignments and remove the one with the larger cost
         var deflArray = [];
         var cycleIndex = cyclicIds.indexOf(nbrId);
-        for (var _j5 = 0; _j5 < dupIndexes.length; _j5++) {
+        for (var _j8 = 0; _j8 < dupIndexes.length; _j8++) {
           var defl = 0;
-          var semi = dupIndexes[_j5];
+          var semi = dupIndexes[_j8];
           var o = this.semis[semi].octalCode();
-
-          // if (cycle[cycleIndex].length > 0)
-          // {
-          //   let prevIndex = semi - 1;
-          //   let nextIndex = semi + 1;
-          //   if (prevIndex < 0)
-          //     prevIndex += this.div;
-          //   if (nextIndex >= this.div)
-          //     nextIndex %= this.div;
-          //   for (let k = 0; k < cycle[cycleIndex].length; k++)
-          //   {
-          //     if ((typeof(this.semis[prevIndex]) != 'undefined') && this.semis[prevIndex] != null)
-          //     {
-          //       if (this.semis[nextIndex] != null && typeof(this.semis[nextIndex]) != 'undefined')
-          //       {
-          //         var a = 0;
-          //         if (this.semis[prevIndex].id == cycle[cycleIndex][k].id)
-          //         {
-          //           let prevIndex = cyclicIds.indexOf(nbrId) - 1;
-          //           if (prevIndex < 0)
-          //             prevIndex += cyclicIds.length;
-          //           if (cyclicIds[prevIndex] != this.semis[prevIndex].id)
-          //           {
-          //             defl += 1;
-          //           }
-          //           a = 1;
-
-          //         }
-          //         if (this.semis[nextIndex].id == cycle[cycleIndex][k].id)
-          //         {
-          //           if (a != 1)
-          //           {
-          //             let nextIndex = cyclicIds.indexOf(nbrId) + 1;
-          //             if (nextIndex > cyclicIds.length - 1)
-          //               nextIndex %= cyclicIds.length;
-          //             if (cyclicIds[nextIndex] != this.semis[nextIndex].id)
-          //             {
-          //               defl += 1;
-          //             }
-          //           }
-          //         }
-          //       }
-          //       else
-          //         defl += 0.5;
-          //     }
-          //     else
-          //       defl += 0.5;
-
-          //   }
-          // }
           defl += this.semis[semi].deflectionFromSemi(semi, o);
           deflArray.push(defl);
-          // if (this.semis[semi].length > 1)
-          // {}
         }
 
         var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
-        for (var _j6 = 0; _j6 < dupIndexes.length; _j6++) {
-          if (_j6 != index) this.semis[dupIndexes[_j6]] = null;
+        for (var _j9 = 0; _j9 < dupIndexes.length; _j9++) {
+          if (_j9 != index) this.semis[dupIndexes[_j9]] = null;
         }
       }
     } else {
-      if (this.nbrs[_i8].degree <= this.nbrs.length) ignoredNodes.push(nbrId);
+      if (this.nbrs[_i14].degree <= this.nbrs.length) ignoredNodes.push(nbrId);
     }
   }
   return ignoredNodes;
 };
 
-Arrangement.prototype.addIgnoredNodes = function (ignoredNodes, direction, cyclicIds) {
+Arrangement.prototype.addIgnoredNodes = function (ignoredNodes /*, direction*/, cyclicIds) {
   var lastItem = null;
   for (var j = 0; j < ignoredNodes.length; j++) {
     var freeIndexes = [];
@@ -2517,19 +3314,19 @@ Arrangement.prototype.addIgnoredNodes = function (ignoredNodes, direction, cycli
     }
 
     var nbr = null;
-    for (var _i9 = 0; _i9 < this.nbrs.length; _i9++) {
-      if (this.nbrs[_i9].id == ignoredNodes[j]) {
-        nbr = this.nbrs[_i9];
+    for (var _i15 = 0; _i15 < this.nbrs.length; _i15++) {
+      if (this.nbrs[_i15].id == ignoredNodes[j]) {
+        nbr = this.nbrs[_i15];
         break;
       }
     }
 
     //calculate the costs for all assignments and assigns to the one with lowest cost
     var deflArray = [];
-    for (var _i10 = 0; _i10 < freeIndexes.length; _i10++) {
-      var semi = freeIndexes[_i10][0];
+    for (var _i16 = 0; _i16 < freeIndexes.length; _i16++) {
+      var semi = freeIndexes[_i16][0];
       var o = nbr.octalCode();
-      var out = this.findCost(nbr, semi, freeIndexes[_i10][1], cyclicIds, direction, 2);
+      var out = this.findCost(nbr, semi, freeIndexes[_i16][1], cyclicIds);
       var defl = out[1];
       deflArray.push(defl);
     }
@@ -2538,7 +3335,7 @@ Arrangement.prototype.addIgnoredNodes = function (ignoredNodes, direction, cycli
   }
 };
 
-Arrangement.prototype.vacancy = function (N) {
+Arrangement.prototype.vacancy = function () {
   var vec = [];
   for (var i = 0; i < this.semis.length; i++) {
     var semi = this.semis[i];
@@ -2557,15 +3354,15 @@ Arrangement.prototype.basicAssignment = function () {
 module.exports = Arrangement;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var Nbr = __webpack_require__(2);
-var Arrangement = __webpack_require__(12);
-var quad = __webpack_require__(8);
+var Arrangement = __webpack_require__(13);
+var quad = __webpack_require__(9);
 
 function assign() {
   //this.arr;
@@ -2582,7 +3379,8 @@ assign.prototype.getCyclicOrder = function (node) {
     var dy = otherLoc.y - nodeLoc.y;
     var moved = other.moved;
     var degree = other.getDegree();
-    var neighbor = new Nbr(other.id, dx, dy, moved, degree);
+    var processd = other.processed;
+    var neighbor = new Nbr(other.id, dx, dy, degree, processd);
     neighbors.push(neighbor);
   }
   var arr = new Arrangement(neighbors, node.getDegree());
@@ -2590,85 +3388,68 @@ assign.prototype.getCyclicOrder = function (node) {
   return arr.getCyclicOrder();
 };
 
-assign.prototype.getNeighborAssignments = function (node, cyclicIds, highIds) {
+assign.prototype.getNeighborAssignments = function (node, cyclicIds, highIds, am) {
   var neighbors = [];
-  var cycles = [];
-  for (var i = 0; i < cyclicIds.length; i++) {
-    cycles.push([]);
-  }
-  for (var _i = 0; _i < node.edges.length; _i++) {
-    var edge = node.edges[_i];
+  for (var i = 0; i < node.edges.length; i++) {
+    var edge = node.edges[i];
     var other = edge.getOtherEnd(node);
-    if (other.getDegree() > 1) {
-      var index = cyclicIds.indexOf(other.id);
-      cycles[index] = this.dfs(other, node);
-    }
     var otherLoc = other.getCenter();
     var nodeLoc = node.getCenter();
     var dx = otherLoc.x - nodeLoc.x;
     var dy = otherLoc.y - nodeLoc.y;
-    var moved = other.moved;
     var degree = other.getDegree();
-    var neighbor = new Nbr(other.id, dx, dy, moved, degree, cycles);
+    var processd = other.processed;
+    var neighbor = new Nbr(other.id, dx, dy, degree, processd);
     neighbors.push(neighbor);
   }
   var arr = new Arrangement(neighbors, node.getDegree(), node.id, highIds);
   arr.getArrangement();
-  var asgns = arr.getAsgns(cyclicIds, cycles);
+  var asgns = arr.getAsgns(cyclicIds, am);
   return asgns;
-};
-
-assign.prototype.dfs = function (node, parent) {
-  var parentIndex = 0;
-  var otherNbrs = [];
-  for (var i = 0; i < parent.edges.length; i++) {
-    var otherNode = parent.edges[i].getOtherEnd(parent);
-    if (otherNode != node) otherNbrs.push(otherNode);else {
-      parentIndex = i;
-    }
-  }
-
-  var s = [];
-  var links = [];
-  var explored = [];
-  s.push(node);
-
-  explored.push(node);
-  var prev = parent;
-  var prevArr = [];
-  while (s.length != 0) {
-    var t = s.pop();
-    prevArr.push(t);
-    // Log every element that comes out of the Stack
-    console.log(t.id);
-    for (var _i2 = 0; _i2 < t.edges.length; _i2++) {
-      var otherNode = t.edges[_i2].getOtherEnd(t);
-      if (otherNode == prev) continue;else if (otherNode == parent) {
-        links.push(prevArr[prevArr.length - 1]);
-      } else if (!explored.includes(otherNode)) {
-        explored.push(otherNode);
-        s.push(otherNode);
-      }
-    }
-    prev = t;
-  }
-  return links;
 };
 
 module.exports = assign;
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var compass = __webpack_require__(16);
-var LinkShape = __webpack_require__(17);
+function bendSequence(bendtypes) {
+    var dIn = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+    var dOut = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
 
-function chain(gm, links) {
-    var cycle = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : False;
+    this.bendtypes = bendtypes;
+    this.bendpoints = [];
+    this.cost = 0;
+    this.incomingDirec = dIn;
+    this.outgoingDirec = dOut;
+};
+
+bendSequence.prototype.repr = function () {
+    var s = this.bendtypes.toString();
+    if (this.incomingDirec != null) s += ' entering ' + this.incomingDirec;
+    if (this.outgoingDirec != null) s += ' exiting ' + this.outgoingDirec;
+    return s;
+};
+
+module.exports = bendSequence;
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var compass = __webpack_require__(8);
+var LinkShape = __webpack_require__(18);
+var BendSequence = __webpack_require__(15);
+
+function chain(gm, nodes) {
+    var cycle = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
     /*
         :param gm: the Graph to which the Chain belongs
@@ -2677,52 +3458,60 @@ function chain(gm, links) {
         */
     this.gm = gm;
     this.aestheticBends = [];
-    if (links.length == 0) return;
-    this.links = links;
+    if (nodes.length == 0) return;
+    this.nodes = nodes;
     this.cycle = cycle;
-    // if (this.cycle)
-    // {
-    //     if (links.length < 3)
-    //         return;
-    //     // For cycles, we always store the links in clockwise order.
-    //     // Start by getting the index of a node of minimal y-coord.
-    //     for (let i = 0; i < links.length; i ++)
-    //     {
-    //         var arr = [];
-    //         arr[0] = links[i];
+    if (this.cycle) {
+        if (this.nodes.length < 3) return;
+        // For cycles, we always store the links in clockwise order.
+        // Start by getting the index of a node of minimal y-coord.
+        var min = this.nodes[0].getCenter().y;
+        var index1 = 0;
+        for (var i = 0; i < this.nodes.length; i++) {
+            var node = this.nodes[i];
+            var loc = node.getCenter();
+            var y = loc.y;
+            if (y < min) {
+                min = y;
+                index1 = i;
+            }
+        }
 
-    //     }
-    //     i1 = sorted(list(enumerate(this.links)),key=lambda p:p[1].y)[0][0]
-    //     i0 = (i1 - 1) % len(this.links)
-    //     i2 = (i1 + 1) % len(this.links)
-    //     n0, n1, n2 = map(lambda i: this.links[i], [i0, i1, i2])
-    //     if n0.x < n1.x:
-    //         # already clockwise
-    //         pass
-    //     elif n0.x > n1.x:
-    //         # anticlockwise
-    //         this.links.reverse()
-    //     else:
-    //         # Part and parcel of the assumption that the cycle even /has/ an interior
-    //         # is the assumption that it is not this-intersecting. Therefore, since
-    //         # both neighbouring links n0 and n2 have y-coord >= that of n1, they cannot
-    //         # both have the same x-coord as n1. Therefore...
-    //         assert(n2.x != n1.x)
-    //         if n2.x > n1.x:
-    //             # already clockwise
-    //             pass
-    //         else:
-    //             # anticlockwise
-    //             this.links.reverse()
-    // }
+        var index0 = index1 - 1;
+        if (index0 < 0) index0 = index0 + this.nodes.length;
+        var index2 = index1 + 1;
+        if (index2 < 0) index2 = index2 + this.nodes.length;
+        var node0 = this.nodes[index0];
+        var node1 = this.nodes[index1];
+        var node2 = this.nodes[index2];
+
+        if (node0.getCenter().x < node1.getCenter().x) {
+            // already clockwise
+        } else if (node0.getCenter().x > node1.getCenter().x) {
+            // anticlockwise
+            this.nodes.reverse();
+        } else {
+            // Part and parcel of the assumption that the cycle even /has/ an interior
+            // is the assumption that it is not this-intersecting. Therefore, since
+            // both neighbouring nodes n0 and n2 have y-coord >= that of n1, they cannot
+            // both have the same x-coord as n1. Therefore...
+
+            if (node2.getCenter().x > node1.getCenter().x) {
+                // already clockwise
+            } else {
+                // anticlockwise
+                this.nodes.reverse();
+            }
+        }
+    }
     // Compute and store the shape of each link.
     this.shapes = [];
-    for (var i = 0; i < links.length; i++) {
-        this.shapes.push(this.shapeOfLink(links[i]));
+    for (var _i = 0; _i < nodes.length; _i++) {
+        this.shapes.push(this.shapeOfLink(nodes[_i]));
     }
 
     // Determine the sequence of internal edges, as well as the
-    // anchor links and edges if it is not a cycle,
+    // anchor nodes and edges if it is not a cycle,
     // or the "return edge" if it is a cycle.
     this.edges = [];
     this.anchorNodeLeft = null;
@@ -2730,40 +3519,49 @@ function chain(gm, links) {
     this.anchorNodeRight = null;
     this.anchorEdgeRight = null;
     this.returnEdge = null;
-    var n0 = this.links[0];
+    var n0 = this.nodes[0];
     var e1 = n0.edges[0];
     var e2 = n0.edges[1];
     var n1 = e1.getOtherEnd(n0);
     var n2 = e2.getOtherEnd(n0);
-    // if len(this.links) == 1:
-    //     assert(not this.cycle)
-    //     # In this case 'left' and 'right' are meaningless, so record
-    //     # the links and edges in any way.
-    //     this.anchorNodeLeft = n1
-    //     this.anchorEdgeLeft = e1
-    //     this.anchorNodeRight = n2
-    //     this.anchorEdgeRight = e2
-    // else:
-    //     if n1 == this.links[1]:
-    //         this.anchorNodeLeft = n2
-    //         this.anchorEdgeLeft = e2
-    //         e0 = e1
-    //     else:
-    //         this.anchorNodeLeft = n1
-    //         this.anchorEdgeLeft = e1
-    //         e0 = e2
-    //     for n0 in this.links[1:]:
-    //         # Append the edge e0 that leads into n0 from the left.
-    //         this.edges.append(e0)
-    //         # And get the next edge.
-    //         E = set(n0.edges.values())
-    //         E.remove(e0)
-    //         for e0 in E: break
-    //     this.anchorEdgeRight = e0
-    //     this.anchorNodeRight = e0.otherEnd(n0)
-    //     if this.cycle:
-    //         # In the case of a cycle, the "anchors" are meaningless, but harmless.
-    //         this.returnEdge = this.anchorEdgeRight
+    var e0 = null;
+    if (nodes.length == 1) {
+        // In this case 'left' and 'right' are meaningless, so record
+        // the nodes and edges in any way.
+        this.anchorNodeLeft = n1;
+        this.anchorEdgeLeft = e1;
+        this.anchorNodeRight = n2;
+        this.anchorEdgeRight = e2;
+    } else {
+        if (n1 == nodes[1]) {
+            this.anchorNodeLeft = n2;
+            this.anchorEdgeLeft = e2;
+            e0 = e1;
+        } else {
+            this.anchorNodeLeft = n1;
+            this.anchorEdgeLeft = e1;
+            e0 = e2;
+        }
+        for (var _i2 = 1; _i2 < this.nodes.length; _i2++) {
+            var n0 = this.nodes[_i2];
+            //Append the edge e0 that leads into n0 from the left.
+            this.edges.push(e0);
+            // And get the next edge.
+            var E = [];
+            for (var j = 0; j < n0.edges.length; j++) {
+                E.push(n0.edges[j]);
+            }
+
+            E.splice(E.indexOf(e0), 1);
+            if (E.length > 0) e0 = E[0];
+        }
+        this.anchorEdgeRight = e0;
+        this.anchorNodeRight = e0.getOtherEnd(n0);
+        if (this.cycle) {
+            // In the case of a cycle, the "anchors" are meaningless, but harmless.
+            this.returnEdge = this.anchorEdgeRight;
+        }
+    }
 };
 
 chain.prototype.shapeOfLink = function (link) {
@@ -2775,12 +3573,38 @@ chain.prototype.shapeOfLink = function (link) {
         var edge = link.edges[i];
         var v = edge.getOtherEnd(link);
         var comp = new compass();
-        d.append(comp.cardinalDirection(link, v));
+        d.push(comp.cardinalDirection(link, v));
     }
     d.sort(function (a, b) {
         return a - b;
     });
-    return [['01', LinkShape.r], ['02', LinkShape.u], ['03', LinkShape.n], ['12', LinkShape.g], ['13', LinkShape.i], ['23', LinkShape.j]];
+    //convert array to string and remove commas
+    d = d.toString().replace(/,/g, "");
+
+    var out = null;
+    var ls = new LinkShape();
+    //get the respective linkshape
+    switch (d) {
+        case '01':
+            out = ls.r;
+            break;
+        case '02':
+            out = ls.u;
+            break;
+        case '03':
+            out = ls.n;
+            break;
+        case '12':
+            out = ls.g;
+            break;
+        case '13':
+            out = ls.i;
+            break;
+        case '23':
+            out = ls.j;
+            break;
+    }
+    return out;
 };
 // def __init__(this, gm, links, cycle=False):
 
@@ -2814,46 +3638,35 @@ chain.prototype.shapeOfLink = function (link) {
 //     for a in this.aestheticBends:
 //         a.addRoutePointToEdgeInGraph(G)
 
-// def getNode(this, i):
-//     """
-//     Together with the getEdge function, this function allows us to have the indices
-//         0, 1, 2, 3, ...
-//     refer to the first node in the chain, then the first edge, next node, next edge, ...
+chain.prototype.getNode = function (i) {
+    /*
+    Together with the getEdge function, this function allows us to have the indices
+        0, 1, 2, 3, ...
+    refer to the first node in the chain, then the first edge, next node, next edge, ...
+     :param i: an even integer from -2 to 2n, where n is the number of links in
+              this chain.
+    :return: left anchor node for i == -2, this.links[i/2] for i from 0 to 2n-2,
+             and right anchor node for i == 2n
+    */
+    var len = this.nodes.length;
+    //assert(i%2==0 and -2 <= i and i <= 2*n)
+    if (i == -2) return this.anchorNodeLeft;else if (i == 2 * len) return this.anchorNodeRight;else return this.nodes[i / 2];
+};
 
-//     :param i: an even integer from -2 to 2n, where n is the number of links in
-//               this chain.
-//     :return: left anchor node for i == -2, this.links[i/2] for i from 0 to 2n-2,
-//              and right anchor node for i == 2n
-//     """
-//     n = len(this.links)
-//     assert(i%2==0 and -2 <= i and i <= 2*n)
-//     if i == -2:
-//         return this.anchorNodeLeft
-//     elif i == 2*n:
-//         return this.anchorNodeRight
-//     else:
-//         return this.links[i/2]
-
-// def getEdge(this, i):
-//     """
-//     Together with the getNode function, this function allows us to have the indices
-//         0, 1, 2, 3, ...
-//     refer to the first node in the chain, then the first edge, next node, next edge, ...
-
-//     :param i: an odd integer from -1 to 2n-1, where n is the number of links in
-//               this chain
-//     :return: left anchor edge for i == -1, this.edges[(i-1)/2] for i from 1 to 2n-3,
-//              and right anchor edge for i == 2n-1
-//     """
-//     n = len(this.links)
-//     assert(i%2==1 and -1 <= i and i <= 2*n-1)
-//     if i == -1:
-//         return this.anchorEdgeLeft
-//     elif i == 2*n - 1:
-//         return this.anchorEdgeRight
-//     else:
-//         return this.edges[(i-1)/2]
-
+chain.prototype.getEdge = function (i) {
+    /*
+    Together with the getNode function, this function allows us to have the indices
+        0, 1, 2, 3, ...
+    refer to the first node in the chain, then the first edge, next node, next edge, ...
+     :param i: an odd integer from -1 to 2n-1, where n is the number of links in
+              this chain
+    :return: left anchor edge for i == -1, this.edges[(i-1)/2] for i from 1 to 2n-3,
+             and right anchor edge for i == 2n-1
+    */
+    var len = this.nodes.length;
+    //assert(i%2==1 and -1 <= i and i <= 2*n-1)
+    if (i == -1) return this.anchorEdgeLeft;else if (i == 2 * len - 1) return this.anchorEdgeRight;else return this.edges[(i - 1) / 2];
+};
 
 // def numBends(this):
 //     return len(filter(lambda sh: sh in LinkShape.bent, this.shapes))
@@ -2894,330 +3707,521 @@ chain.prototype.shapeOfLink = function (link) {
 //     """
 //     return this.nextBendIndex(0)
 
-// def bendCost(this, bendtype, i0):
-//     """
-//     :param bendtype: a bent LinkShape
-//     :param i0: a position in the chain -- evens for links, odds for edges
-//     :return: the cost of creating that bend shape at that position, given
-//              current geometry.
-//              If this Chain is a cycle, then the cost takes into account that
-//              the links are in clockwise order.
-//     """
-//     # First compute the angle alpha for position i0.
-//     # This is the atan2 for a vector z from point p to point q, where
-//     # if i0 is an edge then p is centre of node i0 - 1 and q centre of node i0 + 1;
-//     # if i0 is a node then p and q are points on edges i0 - 1 and i0 + 1 resp, a
-//     # each a unit distance from centre of node i0.
-//     if i0 % 2 == 1:
-//         u, w = this.getNode(i0 - 1), this.getNode(i0 + 1)
-//         p, q = (u.x, u.y), (w.x, w.y)
-//     else:
-//         u, v, w = [this.getNode(i0 + di) for di in [-2, 0, 2]]
-//         p, q = (u.x - v.x, u.y - v.y), (w.x - v.x, w.y - v.y)
-//         lp, lq = math.sqrt(p[0]**2 + p[1]**2), math.sqrt(q[0]**2 + q[1]**2)
-//         p = [c/lp for c in p]
-//         q = [c/lq for c in q]
-//     z = [q[0] - p[0], q[1] - p[1]]
-//     # Get angle in degrees.
-//     alpha0 = math.atan2(z[1], z[0]) * (180 / math.pi)
-//     r, g, j, n = LinkShape.bentCW
-//     if this.cycle:
-//         # For a cycle each type of bend has a specific angle associated with it,
-//         # so you can be up to +/-180 degrees off.
-//         beta = {
-//             r: -45, g: 45, j: 135, n: -135
-//         }[bendtype]
-//         alpha1 = alpha0 - beta
-//         assert(-360 < alpha1 and alpha1 <= 360)
-//         if alpha1 <= -180: alpha1 += 360
-//         elif alpha1 > 180: alpha1 -= 360
-//         assert(-180 < alpha1 and alpha1 <= 180)
-//         # Normalise the cost.
-//         cost = abs(alpha1/180.0)
-//     else:
-//         # For a non-cycle we don't distinguish between r and j, or between g and n
-//         # bends, so you can only be up to +/- 90 degrees off.
-//         assert(-180 < alpha0 and alpha0 <= 180)
-//         if alpha0 <= -90: alpha0 += 180
-//         elif alpha0 > 90: alpha0 -= 180
-//         assert(-90 < alpha0 and alpha0 <= 90)
-//         beta = {
-//             r: -45, g: 45, j: -45, n: 45
-//         }[bendtype]
-//         alpha1 = alpha0 - beta
-//         assert(-135 < alpha1 and alpha1 <= 135)
-//         if alpha1 <= -90: alpha1 += 180
-//         elif alpha1 > 90: alpha1 -= 180
-//         assert(-90 < alpha1 and alpha1 <= 90)
-//         # Normalise the cost.
-//         cost = abs(alpha1/90.0)
-//     return cost
+chain.prototype.bendCost = function (bendtype, i0) {
+    /*
+    :param bendtype: a bent LinkShape
+    :param i0: a position in the chain -- evens for links, odds for edges
+    :return: the cost of creating that bend shape at that position, given
+             current geometry.
+             If this Chain is a cycle, then the cost takes into account that
+             the links are in clockwise order.
+    */
+    // First compute the angle alpha for position i0.
+    // This is the atan2 for a vector z from point p to point q, where
+    // if i0 is an edge then p is centre of node i0 - 1 and q centre of node i0 + 1;
+    // if i0 is a node then p and q are points on edges i0 - 1 and i0 + 1 resp, a
+    // each a unit distance from centre of node i0.
+    var p = 0;
+    var q = 0;
+    if (i0 % 2 == 1) //i0 is an edge
+        {
+            var u = this.getNode(i0 - 1).getCenter();
+            var w = this.getNode(i0 + 1).getCenter();
+            p = [u.x, u.y];
+            q = [w.x, w.y];
+        } else {
+        var _u = this.getNode(i0 - 2).getCenter();
+        var v = this.getNode(i0).getCenter();
+        var _w = this.getNode(i0 + 2).getCenter();
+        p = [_u.x - v.x, _u.y - v.y];
+        q = [_w.x - v.x, _w.y - v.y];
+        var lp = Math.sqrt(Math.pow(p[0], 2) + Math.pow(p[1], 2));
+        var lq = Math.sqrt(Math.pow(q[0], 2) + Math.pow(q[1], 2));
 
-// def nextLocalOptimalPoint(this, i0, bendtype, remaining=0):
-//     """
-//     :param i0: a position in the chain
-//     :param bendtype: a bent LinkShape
-//     :param remaining: how many more points we must choose /after/ this one
-//     :return: (i1, c) being the chosen point and the cost there
+        p[0] = p[0] / lp;
+        p[1] = p[1] / lp;
+        q[0] = q[0] / lq;
+        q[1] = q[1] / lq;
+    }
+    var z = [q[0] - p[0], q[1] - p[1]];
+    // Get angle in degrees.
+    var alpha0 = Math.atan2(z[1], z[0]) * (180 / Math.PI);
 
-//     We choose a locally optimal point i1 /at or after/ position i0, at which to create
-//     the given bend type. Optimality means minimal cost, from the bendCost function.
+    //values from LInkShape.bentCW = [0, 3, 5, 2];
+    var r = 0;
+    var g = 3;
+    var j = 5;
+    var n = 2;
+    var cost = null;
+    if (this.cycle) {
+        // For a cycle each type of bend has a specific angle associated with it,
+        // so you can be up to +/-180 degrees off.
+        var beta = [-45, null, -135, 45, null, 135][bendtype];
+        var alpha1 = alpha0 - beta;
+        //assert(-360 < alpha1 and alpha1 <= 360)
+        if (alpha1 <= -180) alpha1 = alpha1 + 360;else if (alpha1 > 180) alpha1 = alpha1 - 360;
+        //assert(-180 < alpha1 and alpha1 <= 180)
+        // Normalise the cost.
+        cost = Math.abs(alpha1 / 180);
+    } else {
+        // For a non-cycle we don't distinguish between r and j, or between g and n
+        // bends, so you can only be up to +/- 90 degrees off.
+        //assert(-180 < alpha0 and alpha0 <= 180)
+        if (alpha0 <= -90) alpha0 = alpha0 + 180;else if (alpha0 > 90) alpha0 -= alpha0 - 180;
+        //assert(-90 < alpha0 and alpha0 <= 90)
+        var _beta = [-45, null, 45, 45, null, -45][bendtype];
+        var _alpha = alpha0 - _beta;
+        //assert(-135 < alpha1 and alpha1 <= 135)
+        if (_alpha <= -90) _alpha = _alpha + 180;else if (_alpha > 90) _alpha = _alpha - 180;
+        //assert(-90 < alpha1 and alpha1 <= 90)
+        // Normalise the cost.
+        cost = Math.abs(_alpha / 90);
+    }
+    return cost;
+};
 
-//     If remaining == r and there are at least r positions left after i0 in the chain,
-//     then we return an i1 which has at least r points left after it; if not,
-//     then we just return i1 = i0.
-//     """
-//     n = len(this.links)
-//     candidate = None
-//     bestCost = 10 # effectively infinity since costs are at most 1
-//     i1 = i0
-//     M = 2*n - 1
-//     if this.cycle: M += 1
-//     M -= remaining
-//     cost = bestCost
-//     for i in range(i0, M):
-//         cost = this.bendCost(bendtype, i)
-//         if candidate is not None and cost > bestCost:
-//             i1 = candidate
-//             cost = bestCost
-//             break
-//         # To even be considered a candidate for optimal position, the cost
-//         # has to be less than 0.5. Else we might start at bad and go to worse,
-//         # and thereby accept bad.
-//         if cost < 0.5 and cost < bestCost:
-//             candidate = i
-//             bestCost = cost
-//     else:
-//         if candidate is not None:
-//             i1 = candidate
-//             cost = bestCost
-//     return (i1, cost)
+chain.prototype.nextLocalOptimalPoint = function (i0, bendtype) {
+    var remaining = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
 
-// def globalOptimalPoint(this, bendtype, beginAt=0):
-//     """
-//     :param bendtype: a bent LinkShape
-//     :param beginAt: a position in the chain
-//     :return: (i, c) being the point and the cost
+    /*
+    :param i0: a position in the chain
+    :param bendtype: a bent LinkShape
+    :param remaining: how many more points we must choose /after/ this one
+    :return: (i1, c) being the chosen point and the cost there
+     We choose a locally optimal point i1 /at or after/ position i0, at which to create
+    the given bend type. Optimality means minimal cost, from the bendCost function.
+     If remaining == r and there are at least r positions left after i0 in the chain,
+    then we return an i1 which has at least r points left after it; if not,
+    then we just return i1 = i0.
+    */
+    var len = this.nodes.length;
+    var candidate = null;
+    var bestCost = 10; // effectively infinity since costs are at most 1
+    var i1 = i0;
+    var M = 2 * len - 1;
 
-//     We choose a locally optimal point /at or after/ position beginAt, at which to create
-//     the given bend type. Optimality means minimal cost, from the bendCost function.
+    if (this.cycle) M = M + 1;
 
-//     If there are no points left after beginAt, we return None.
-//     """
-//     n = len(this.links)
-//     i0 = None
-//     cost = 10 # max cost is 1, so 10 is effectively infinity
-//     M = 2*n - 1
-//     if this.cycle: M += 1
-//     for i in range(beginAt, M):
-//         c = this.bendCost(bendtype, i)
-//         if c < cost:
-//             i0, cost = i, c
-//     return (i0, cost)
+    M = M - remaining;
+    var cost = bestCost;
 
-// def evaluateBendSeq(this, bendseq):
-//     """
-//     :param bendseq: a BendSequence object
-//     :return: the given bendseq object, for convenience
+    var check = false;
+    for (var i = i0; i < M; i++) {
+        cost = this.bendCost(bendtype, i);
+        if (candidate != null && cost > bestCost) {
+            i1 = candidate;
+            cost = bestCost;
+            check = true;
+            break;
+        }
+        // To even be considered a candidate for optimal position, the cost
+        // has to be less than 0.5. Else we might start at bad and go to worse,
+        // and thereby accept bad.
+        if (cost < 0.5 && cost < bestCost) {
+            candidate = i;
+            bestCost = cost;
+        }
+    }
+    if (check == false) {
+        if (candidate != null) {
+            i1 = candidate;
+            cost = bestCost;
+        }
+    }
+    return [i1, cost];
+};
+chain.prototype.globalOptimalPoint = function (bendtype) {
+    var beginAt = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
 
-//     We compute the best places for the prescribed bendtypes to occur and stash them in
-//     the bendpoints field of the bendseq object, and the cost of creating these bends in
-//     the cost field.
+    /*
+    :param bendtype: a bent LinkShape
+    :param beginAt: a position in the chain
+    :return: (i, c) being the point and the cost
+     We choose a locally optimal point /at or after/ position beginAt, at which to create
+    the given bend type. Optimality means minimal cost, from the bendCost function.
+     If there are no points left after beginAt, we return None.
+    */
+    var len = this.nodes.length;
+    var i0 = null;
+    var cost = 10; // max cost is 1, so 10 is effectively infinity
+    var M = 2 * len - 1;
 
-//     The "places" are indices 0, 1, 2, 3, ... which refer to the first node in the chain,
-//     then the first edge, next node, next edge, and so on, with even numbers meaning links
-//     and odd numbers meaning edges.
-//     """
-//     queue = Deque(bendseq.bendtypes)
-//     i = 0
-//     cost = 0
-//     bendpoints = []
-//     while len(queue) > 1:
-//         bendtype = queue.popleft()
-//         i, c = this.nextLocalOptimalPoint(i, bendtype, remaining=len(queue))
-//         if i is not None:
-//             bendpoints.append(i)
-//             cost += c
-//             i += 1
-//     if len(queue) == 1:
-//         bendtype = queue.popleft()
-//         i, c = this.globalOptimalPoint(bendtype, beginAt=i)
-//         if i is not None:
-//             bendpoints.append(i)
-//             cost += c
-//             i += 1
-//     bendseq.bendpoints = bendpoints
-//     bendseq.cost = cost
-//     return bendseq
+    if (this.cycle) M = M + 1;
 
-// def writeConfigSeq(this, bendseq):
-//     """
-//     :param bendseq: a BendSequence object, whose bendpoints are indices into this
-//             Chain's sequence of links AND edges -- thus even indices for links and
-//             odd indices for edges. Its corresponding bendtypes are the types of bends
-//             that should occur at those indices.
+    for (var i = beginAt; i < M; i++) {
+        var c = this.bendCost(bendtype, i);
+        if (c < cost) {
+            i0 = i;
+            cost = c;
+        }
+    }
 
-//     :return: a "configuration sequence," which looks like
-//                 [ c0, c1, ..., cm-1 ]
-//             where m the number of edges to be configured, which is n - 1 if this is
-//             not a cycle, and n if it is -- n the number of links in the chain --
-//             and each ci is a list of length 1 or 2, containing Compass directions.
+    return [i0, cost];
+};
 
-//             When ci == [ d ], then edge i is to be configured in direction d.
-//             When ci == [d1, d2], then edge i is to be replaced by a bend point,
-//             which we go into in direction d1, and come out of in direction d2.
-//     """
-//     m = len(this.edges)
-//     config = []
-//     bends = zip(bendseq.bendpoints, bendseq.bendtypes)
-//     if this.cycle:
-//         m += 1
-//         assert(len(bends) == 4)
-//         bt0 = bends[0][1]
-//         # Since we always run cycles clockwise, we can infer from the first bendtype
-//         # what the incoming direction must be.
-//         dIn = cwIncomingDirForBend(bt0)
-//     else:
-//         # Not a cycle
-//         dIn = bendseq.incomingDirec
-//         assert(dIn is not None)
-//     ptr = 0
-//     direc = dIn
-//     for j in range(m):
-//         if ptr == len(bends):
-//             # All remaining edges get the current direc.
-//             config.append([direc])
-//         else:
-//             k = 2*j + 1
-//             bs = []
-//             while ptr < len(bends) and bends[ptr][0] in [k, k - 1]:
-//                 bs.append(bends[ptr])
-//                 ptr += 1
-//             # At this point, k is an odd number, referring to an edge in the chain,
-//             # direc is the incoming direction into node k - 1, and bs is a list of
-//             # bend points of length 0, 1, or 2, occurring at node k - 1 and/or edge k.
-//             # Our job is to: (a) describe what happens at edge k, namely either that
-//             # it be configured to run in a certain compass direction, or that it contain
-//             # a bend point, with certain incoming and outgoing compass directions;
-//             # and (b) to set direc equal to the (outgoing) direction of the edge that
-//             # leads into node k + 1.
-//             if len(bs) == 2:
-//                 bp0, bt0 = bs[0]
-//                 bp1, bt1 = bs[1]
-//                 dir0 = applyBendToDir(bt0, direc)
-//                 dir1 = applyBendToDir(bt1, dir0)
-//                 config.append([dir0, dir1])
-//                 direc = dir1
-//             elif len(bs) == 1:
-//                 bp, bt = bs[0]
-//                 nextDir = applyBendToDir(bt, direc)
-//                 assert(nextDir is not None)
-//                 if bp == k:
-//                     # Next bend should occur at this edge.
-//                     config.append([direc, nextDir])
-//                 elif bp == k - 1:
-//                     # Next bend should occur at the node before this edge.
-//                     config.append([nextDir])
-//                 direc = nextDir
-//             else:
-//                 # Carry on with current direction.
-//                 # In particular, this case handles what happens if the final
-//                 # bend is to occur at the final node. For in that case all we
-//                 # can do is carry on with the current direction, and it is
-//                 # up to the anchorEdgeRight to make the final bend happen.
-//                 config.append([direc])
-//     return config
+chain.prototype.evaluateBendSeq = function (bendseq) {
+    /*
+    :param bendseq: a BendSequence object
+    :return: the given bendseq object, for convenience
+     We compute the best places for the prescribed bendtypes to occur and stash them in
+    the bendpoints field of the bendseq object, and the cost of creating these bends in
+    the cost field.
+     The "places" are indices 0, 1, 2, 3, ... which refer to the first node in the chain,
+    then the first edge, next node, next edge, and so on, with even numbers meaning links
+    */
 
-// def possibleBendSeqs(this):
-//     """
-//     :return: list [s0, s1, ..., sk] where each si is a BendSequence object,
-//              indicating a sequence of bends that this
-//              chain may have, given its endpoints.
+    var queue = JSON.parse(JSON.stringify(bendseq.bendtypes));
+    var i = 0;
+    var cost = 0;
+    var bendpoints = [];
+    while (queue.length > 1) {
+        var bendtype = queue[0];
+        queue.shift();
+        var out = this.nextLocalOptimalPoint(i, bendtype, queue.length);
+        i = out[0];
+        var c = out[1];
+        if (i != null) {
+            bendpoints.push(i);
+            cost = cost + c;
+            i = i + 1;
+        }
+    }
+    if (queue.length == 1) {
+        var _bendtype = queue[0];
+        queue.shift();
+        var _out = this.globalOptimalPoint(_bendtype, i);
+        i = _out[0];
+        var _c = _out[1];
+        if (i != null) {
+            bendpoints.push(i);
+            cost = cost + _c;
+            i = i + 1;
+        }
+    }
 
-//              If "no bends" is a possibility, we return a BendSequence with empty
-//              list of bend types.
-//     """
-//     if len(this.links) == 1: return None
-//     assert(len(this.links) >= 2)
-//     seqs = []
-//     if this.cycle:
-//         seqs = [BendSequence(LinkShape.cwBendsFrom(bt)) for bt in LinkShape.bent]
-//     else:
-//         # Get incoming and outgoing directions:
-//         A, Z = this.anchorNodeLeft, this.anchorNodeRight
-//         b, y = this.links[0], this.links[-1]
-//         dIn = this.gm.nodeConf.getDirec(A, b)
-//         dOut = this.gm.nodeConf.getDirec(y, Z)
-//         # If edge (A, b) or (y, Z) is not configured, we look up possible directions.
-//         dIns = [dIn] if dIn is not None else Compass.possibleCardinalDirections(A, b)
-//         dOuts = [dOut] if dOut is not None else Compass.possibleCardinalDirections(y, Z)
-//         # Now compute the sequences.
-//         for d0 in dIns:
-//             for d1 in dOuts:
-//                 seqs.extend([
-//                     BendSequence(bs, dIn=d0, dOut=d1)
-//                     for bs in lookupMinimalBendSeqs(A, d0, Z, d1)
-//                 ])
-//     return seqs
+    bendseq.bendpoints = bendpoints;
+    bendseq.cost = cost;
+    return bendseq;
+};
 
-// def takeShapeBasedConfiguration(this):
-//     """
-//     Give this chain an orthogonal configuration best fitting its present
-//     geometric shape, i.e. putting the bend points in the most natural places,
-//     including the possibility that they go where edges are (meaning a new bend
-//     point is created).
+chain.prototype.cwIncomingDirForBend = function (b) {
+    /*
+    :param b: a bent LinkShape
+    :return: the clockwise incoming Compass direction for the given bend type
+    */
+    var arr = [3, null, 2, 0, null, 1];
+    return arr[b];
+};
 
-//     :return: boolean saying if anything changed
-//     """
-//     # For a chain of one node, there is nothing to do.
-//     if len(this.links) == 1: return False
-//     # Else there is at least one internal edge, and we assume that none of the
-//     # internal edges is yet configured. Therefore we /will/ be making
-//     # changes -- even if not creating any bent links (straight chains still need
-//     # to be configured).
-//     changes = True
-//     seqs = this.possibleBendSeqs()
-//     assert(len(seqs) > 0)
-//     for bs in seqs: this.evaluateBendSeq(bs)
-//     seqs.sort(key=lambda bs: bs.cost)
-//     bestSeq = seqs[0]
-//     configseq = this.writeConfigSeq(bestSeq)
-//     # Now create the configuration.
-//     G = this.gm;
-//     for j, conf in enumerate(configseq):
-//         # Get the edge and the links u, v that come before and after
-//         # it in the chain, respectively.
-//         k = 2*j + 1
-//         edge = this.getEdge(k)
-//         u, v = this.getNode(k - 1), this.getNode(k + 1)
-//         if len(conf) == 1:
-//             # In this case the edge is to be aligned in a compass direction.
-//             this.gm.nodeConf.setDirec(u, v, conf[0])
-//         else:
-//             assert(len(conf) == 2)
-//             # In this case we are to create a bend point.
-//             # First sever the edge and free any config on the links.
-//             this.gm.severEdge(edge)
-//             this.gm.nodeConf.free(u, v)
-//             # Create a bend point, giving it a reasonable initial location
-//             # midway between u and v. It is not yet aligned with either of
-//             # them; that will wait until we project onto the new constraints.
-//             x, y = (u.x + v.x) / 2.0, (u.y + v.y) / 2.0
-//             bp = G.createAndAddNewBendNode(x, y)
-//             bp.setIDAsLabel()
-//             # Configure
-//             G.nodeConf.setDirec(u, bp, conf[0])
-//             G.nodeConf.setDirec(bp, v, conf[1])
-//             # Add edges.
-//             G.createAndAddNewEdge(u.ID, bp.ID)
-//             G.createAndAddNewEdge(bp.ID, v.ID)
-//             # Save a record.
-//             this.aestheticBends.append(AestheticBend(bp, u, v))
-//     return changes
+chain.prototype.applyBendToDir = function (b, d) {
+    /*
+    :param b: a bent LinkShape
+    :param d: a cardinal Compass direction
+    :return: the cardinal direction you would be going if you came into bend b
+             going in direction d, and then followed the bend; None if b and d
+             are incompatible
+    */
+    var lookup = [[null, null, 1, 0], null, [null, 0, 3, null], [1, null, null, 2], null, [3, 2, null, null]];
+    return lookup[b][d];
+};
+
+chain.prototype.writeConfigSeq = function (bendseq) {
+    /*
+    :param bendseq: a BendSequence object, whose bendpoints are indices into this
+            Chain's sequence of links AND edges -- thus even indices for links and
+            odd indices for edges. Its corresponding bendtypes are the types of bends
+            that should occur at those indices.
+     :return: a "configuration sequence," which looks like
+                [ c0, c1, ..., cm-1 ]
+            where m the number of edges to be configured, which is n - 1 if this is
+            not a cycle, and n if it is -- n the number of links in the chain --
+            and each ci is a list of length 1 or 2, containing Compass directions.
+             When ci == [ d ], then edge i is to be configured in direction d.
+            When ci == [d1, d2], then edge i is to be replaced by a bend point,
+            which we go into in direction d1, and come out of in direction d2.
+    */
+    var m = this.edges.length;
+    var config = [];
+    var bends = [];
+
+    var dIn = null;
+
+    for (var i = 0; i < bendseq.bendpoints.length; i++) {
+        bends.push([bendseq.bendpoints[i], bendseq.bendtypes[i]]);
+    }
+
+    if (this.cycle) {
+        m = m + 1;
+        //assert(len(bends) == 4)
+        var bt0 = bends[0][1]; //get first bendtype
+        // Since we always run cycles clockwise, we can infer from the first bendtype
+        // what the incoming direction must be.
+        dIn = this.cwIncomingDirForBend(bt0);
+    } else {
+        // Not a cycle
+        dIn = bendseq.incomingDirec;
+        //assert(dIn is not None)
+    }
+    var ptr = 0;
+    var direc = dIn;
+    for (var j = 0; j < m; j++) {
+        if (ptr == bends.length) {
+            // All remaining edges get the current direc.
+            config.push([direc]);
+        } else {
+            var k = 2 * j + 1;
+            var bs = [];
+            while (ptr < bends.length && (bends[ptr][0] == k || bends[ptr][0] == k - 1)) {
+                bs.push(bends[ptr]);
+                ptr = ptr + 1;
+            }
+            // At this point, k is an odd number, referring to an edge in the chain,
+            // direc is the incoming direction into node k - 1, and bs is a list of
+            // bend points of length 0, 1, or 2, occurring at node k - 1 and/or edge k.
+            // Our job is to: (a) describe what happens at edge k, namely either that
+            // it be configured to run in a certain compass direction, or that it contain
+            // a bend point, with certain incoming and outgoing compass directions;
+            // and (b) to set direc equal to the (outgoing) direction of the edge that
+            // leads into node k + 1.
+            if (bs.length == 2) {
+                var bp0 = bs[0][0];
+                var _bt = bs[0][1];
+                var bp1 = bs[1][0];
+                var bt1 = bs[1][1];
+                var dir0 = this.applyBendToDir(_bt, direc);
+                var dir1 = this.applyBendToDir(bt1, dir0);
+                config.push([dir0, dir1]);
+                direc = dir1;
+            } else if (bs.length == 1) {
+                var bp = bs[0][0];
+                var bt = bs[0][1];
+                var nextDir = this.applyBendToDir(bt, direc);
+                //assert(nextDir is not None)
+                if (bp == k) {
+                    // Next bend should occur at this edge.
+                    config.push([direc, nextDir]);
+                } else if (bp == k - 1) {
+                    // Next bend should occur at the node before this edge.
+                    config.push([nextDir]);
+                }
+                direc = nextDir;
+            } else {
+                // Carry on with current direction.
+                // In particular, this case handles what happens if the final
+                // bend is to occur at the final node. For in that case all we
+                // can do is carry on with the current direction, and it is
+                // up to the anchorEdgeRight to make the final bend happen.
+                config.push([direc]);
+            }
+        }
+    }
+    return config;
+};
+
+chain.prototype.possibleBendSeqs = function (edgeLength) {
+    /*
+    :return: list [s0, s1, ..., sk] where each si is a BendSequence object,
+             indicating a sequence of bends that this
+             chain may have, given its endpoints.
+              If "no bends" is a possibility, we return a BendSequence with empty
+             list of bend types.
+    */
+    if (this.nodes.length == 1) return;
+
+    var seqs = [];
+    if (this.cycle) {
+        for (var i = 0; i < LinkShape.bent.length; i++) {
+            var bt = LinkShape.bent[i];
+            var ls = new LinkShape();
+            var bs = new BendSequence(ls.cwBendsFrom(bt));
+            seqs.push(bs);
+        }
+    } else {
+        // Get incoming and outgoing directions:
+        var A = this.anchorNodeLeft;
+        var Z = this.anchorNodeRight;
+        var b = this.nodes[0];
+        var y = this.nodes[this.nodes.length - 1];
+        var dIn = A.getDirec(b, edgeLength);
+        var dOut = y.getDirec(Z, edgeLength);
+        var dIns = [];
+        var dOuts = [];
+
+        // If edge (A, b) or (y, Z) is not configured, we look up possible directions.
+        if (dIn != null) dIns = [dIn];else {
+            var comp = new compass();
+            dIns = comp.possibleCardinalDirections(A, b);
+        }
+
+        if (dOut != null) dOuts = [dOut];else {
+            var comp = new compass();
+            dOuts = comp.possibleCardinalDirections(y, Z);
+        }
+
+        // Now computing the sequences.
+        for (var _i3 = 0; _i3 < dIns.length; _i3++) {
+            var d0 = dIns[_i3];
+            for (var j = 0; j < dOuts.length; j++) {
+                var d1 = dOuts[j];
+                var bendSeqs = this.lookupMinimalBendSeqs(A, d0, Z, d1);
+                for (var k = 0; k < bendSeqs.length; k++) {
+                    var _bs = bendSeqs[k];
+                    var temp = new BendSequence(_bs, dIn = d0, dOut = d1);
+                    seqs.push(temp);
+                }
+            }
+        }
+    }
+    return seqs;
+};
+
+chain.prototype.lookupMinimalBendSeqs = function (A, d0, Z, d1) {
+    /*
+    :param A: Node at beginning of path
+    :param d0: Compass direction in which to depart from A
+    :param Z: Node at end of path
+    :param d1: Compass direction in which to enter Z
+    :return: a list [s0, s1, ..., sk-1] where each si is a list of LinkShapes.
+             These are all and only the sequences of bends that can occur on
+             a bend-minimal orthogonal route from node A to node Z, with the
+             prescribed departure and arrival directions d0 and d1.
+              You always get at least one si, but it itself may be empty (meaning
+             that the best path has zero bends).
+    */
+
+    //values from LInkShape.bentCW = [0, 3, 5, 2];
+    var r = 0;
+    var g = 3;
+    var j = 5;
+    var n = 2;
+
+    var pMap = [[0, 2, 2, 3, 5, 5, 6, 8, 8], //E
+    [6, 3, 0, 8, 5, 2, 8, 5, 2], //S
+    [8, 8, 6, 5, 5, 3, 2, 2, 0], //W
+    [2, 5, 8, 2, 5, 8, 0, 3, 6]][d1]; //N
+
+    var d0Map = [[0, 1, 2, 3], //E
+    [3, 0, 1, 2], //S
+    [2, 3, 0, 1], //W
+    [1, 2, 3, 0]][d1]; //N
+
+    var bendMap = [[r, null, n, g, null, j], //E
+    [g, null, r, j, null, n], //S
+    [j, null, g, n, null, r], //W
+    [n, null, j, r, null, g]][d1]; //N
+
+    var x = null;
+    var y = null;
+
+    if (A.getCenter().x < Z.getCenter().x) x = 0;else {
+        if (A.getCenter().x == Z.getCenter().x) x = 1;else x = 2;
+    }
+
+    if (A.getCenter().y < Z.getCenter().y) y = 0;else {
+        if (A.getCenter().y == Z.getCenter().y) y = 1;else y = 2;
+    }
+
+    var p = 3 * y + x;
+
+    var eastFinalLookup = [[[[g, n]], [[n]], [[r, n]], [[r, g, n], [g, r, n]]], //0
+    null, //1
+    [[[j, g, r, n], [g, j, r, n], [g, j, n, r]], [[j, r, n], [j, n, r]], [[r, n]], [[g, r, n]]], //2
+    [[[]], [[n, j, r]], [[n, r, g, n], [r, n, j, r]], [[r, g, n]]], //3
+    null, //4
+    [[[j, g, r, n], [g, j, n, r]], [[j, n, r]], [[n, g, r, n], [r, j, n, r]], [[g, r, n]]], //5
+    [[[j, r]], [[n, j, r], [j, n, r]], [[n, r]], [[r]]], //6
+    null, //7
+    [[[g, j, n, r], [j, g, n, r], [j, g, r, n]], [[j, n, r]], [[n, r]], [[g, n, r], [g, r, n]]] //8
+    ];
+
+    var lookup = eastFinalLookup[pMap[p]][d0Map[d0]];
+    var bends = [];
+
+    for (var i = 0; i < lookup.length; i++) {
+        var seq = lookup[i];
+        var temp = [];
+        for (var _j = 0; _j < seq.length; _j++) {
+            var bend = seq[_j];
+            temp.push(bendMap[bend]);
+        }
+        bends.push(temp);
+    }
+
+    return bends;
+};
+
+chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
+    /*
+    Give this chain an orthogonal configuration best fitting its present
+    geometric shape, i.e. putting the bend points in the most natural places,
+    including the possibility that they go where edges are (meaning a new bend
+    point is created).
+     :return: boolean saying if anything changed
+    */
+
+    // For a chain of one node, there is nothing to do.
+    if (this.nodes.length == 1) return [];else if (this.nodes.length == 2 && this.anchorNodeLeft == this.anchorNodeRight) return [];
+
+    // Else there is at least one internal edge, and we assume that none of the
+    // internal edges is yet configured. Therefore we /will/ be making
+    // changes -- even if not creating any bent links (straight chains still need
+    // to be configured).
+    var changes = [];
+    var seqs = this.possibleBendSeqs(edgeLength);
+    for (var i = 0; i < seqs.length; i++) {
+        var bs = seqs[i];
+        //find the cost for each bend sequence
+        this.evaluateBendSeq(bs);
+    }
+
+    //finding the index with smallest cost
+    var min = seqs[0].cost;
+    var index = 0;
+    for (var _i4 = 1; _i4 < seqs.length; _i4++) {
+        var _bs2 = seqs[_i4];
+        if (_bs2.cost < min) {
+            min = _bs2.cost;
+            index = _i4;
+        }
+    }
+    var bestSeq = seqs[index];
+    var configseq = this.writeConfigSeq(bestSeq);
+    // Now create the configuration.
+    var G = this.gm;
+    for (var j = 0; j < configseq.length; j++) {
+        var conf = configseq[j];
+        // Get the edge and the links u, v that come before and after
+        // it in the chain, respectively.
+        var k = 2 * j + 1;
+        var edge = this.getEdge(k);
+        var u = this.getNode(k - 1);
+        var v = this.getNode(k + 1);
+        if (conf.length == 1) {
+            changes.push([[u, v, conf[0]]]);
+            // In this case the edge is to be aligned in a compass direction.
+        } else {
+            //assert(len(conf) == 2)
+            // In this case we are to create a bend point.
+            // First sever the edge and free any config on the links.
+            //this.gm.severEdge(edge)
+            //this.gm.nodeConf.free(u, v)
+            // Create a bend point, giving it a reasonable initial location
+            // midway between u and v. It is not yet aligned with either of
+            // them; that will wait until we project onto the new constraints.
+            var x = (u.getCenter().x + v.getCenter().x) / 2;
+            var y = (u.getCenter().y + v.getCenter().y) / 2;
+            var bendpoint = [x, y];
+
+            changes.push([[u, bendpoint, conf[0]], [bendpoint, v, conf[1]]]);
+        }
+    }
+    return changes;
+};
+
 module.exports = chain;
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3243,8 +4247,9 @@ var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
-var assign = __webpack_require__(13);
-var chain = __webpack_require__(14);
+var assign = __webpack_require__(14);
+var chain = __webpack_require__(16);
+var nodeBuckets = __webpack_require__(19);
 
 // Constructor
 function cholaLayout() {
@@ -3413,7 +4418,6 @@ cholaLayout.prototype.findCompoundNodes = function (gm) {
   return compoundNodes;
 };
 
-//removes all leaf nodes except compound leaf nodes
 cholaLayout.prototype.removeLeafNodes = function (gm, compoundNodes, idList) {
   var allNodes = gm.getAllNodes();
   var count = 0;
@@ -3441,6 +4445,110 @@ cholaLayout.prototype.removeLeafNodes = function (gm, compoundNodes, idList) {
     allNodes = gm.getAllNodes();
   } while (count !== 0);
 };
+
+// //removes all leaf nodes except compound leaf nodes
+// cholaLayout.prototype.removeLeafNodes = function(gm, compoundNodes, idList) {
+//   var allNodes = gm.getAllNodes();
+//   var count = 0;
+
+//   //var buckets = new nodeBuckets(gm);
+//   //var h = this.newGraphManager();
+//   // var leaves = buckets.takeLeaves();
+//   // var stems = stemsFromLeaves(leaves);
+//   do
+//   {
+//     count = 0;
+//     for (var i = 0; i < /*leaves*/allNodes.length; i++) {
+//       var node = allNodes[i];
+
+//       if (!compoundNodes.includes(node))
+//       {
+//             //we do not remove leaf nodes if they are the only remaining children of a parent compound node
+//             if (node.getParent().id !== undefined && compoundNodes.includes(node.getParent()) && node.getParent().child.nodes.length === 1)
+//             {
+//               continue;
+//             }
+//             console.log(node);
+//             var edge = node.edges[0];
+//             if (edge.source.owner !== edge.target.owner)
+//             {
+//               continue;
+//             }
+//             count++;
+
+//             // var otherNode = edge.getOtherEnd(node);
+//             // var otherNodeDegree = otherNode.getDegree();
+//             // var index = buckets[otherNodeDegree].indexOf(otherNode);
+//             // buckets[otherNodeDegree].splice(index);
+//             // buckets[otherNodeDegree - 1].push(otherNode);
+//             node.owner.remove(node);
+//             idList.push(node.id);
+//       }
+//     }
+
+//     gm.resetAllEdges();
+//     gm.resetAllNodes();
+//     gm.getAllEdges();
+//     allNodes = gm.getAllNodes();
+
+//     // if (gm.getAllNodes().length == 0)
+//     //   stems = stems[0];
+//     // for (let i = 0; i < stems.length; i++)
+//     // {
+//     //   stem[i].addSelfToGraph(h);
+//     // }
+
+//   }while(count!==0);
+// };
+
+// cholaLayout.prototype.pruneTrees = function(gm)
+// {
+//   var buckets = new nodeBuckets(gm);
+//   var h = this.newGraphManager();
+//   var leaves = buckets.takeLeaves();
+//   while (leaves.length > 0)
+//   {
+//     var stems = stemsFromLeaves(leaves);
+//     G.severNodes(leaves,bucket=buckets)
+//     if G.isEmpty():
+//         stems = stems[];
+//     for stem in stems: stem.addSelfToGraph(H);
+//     leaves = buckets.takeLeaves()
+//   }
+//   C = H.connComps()
+//   for c in C:
+//       c.identifyRootNode()
+//   # G will now have 3 or more nodes iff it was
+//   # not in fact a tree, to begin with.
+//   if G.getNumNodes() >= 3:
+//       C.insert(0,G)
+//       # It will be helpful to let each root node in G know that it is a root node.
+//       for c in C[1:]:
+//           rp = c.rootNode
+//           r = G.nodes[rp.ID]
+//           r.isRootNode = True
+//   return C
+
+
+// };
+
+// cholaLayout.prototype.stemsFromLeaves = function(leaves)
+// {
+//   /*
+//   L: {ID:Node} dict
+//   return: list of Stems
+//   */
+//   var stems = [];
+//   for (i = 0; i < leaves.length; i++)
+//   {
+//     let leaf = leaves[i];
+//     let edge = leaf.edges[0];
+//     let root = edge.getOtherEnd(leaf);
+//     let s = new stem(leaf, root);
+//     stems.push(s);
+//   }
+//   return stems;
+// };
 
 cholaLayout.prototype.deleteLeafNodes = function (cy, idList) {
   var cyNodes = cy.nodes();
@@ -3486,6 +4594,20 @@ cholaLayout.prototype.coseOnCore = function (options, idToLNode, cholaNodesMap, 
   coseLayout.runLayout();
 };
 
+cholaLayout.prototype.computeAvgNodeDim = function (gm) {
+  //Compute the average of all node heights and widths.
+  var sum = 0;
+  var num = 0;
+  var allNodes = gm.getAllNodes();
+  for (var i = 0; i < allNodes.length; i++) {
+    var node = allNodes[i];
+    sum += node.getWidth() + node.getHeight();
+    num += 2;
+  }
+
+  return sum / num;
+};
+
 cholaLayout.prototype.getMaxNodeWidth = function (gm) {
   var allNodes = gm.getAllNodes();
   var max = 0;
@@ -3497,10 +4619,23 @@ cholaLayout.prototype.getMaxNodeWidth = function (gm) {
   return max;
 };
 
+cholaLayout.prototype.addPaddingToNodes = function (gm, padding) {
+  var allNodes = gm.getAllNodes();
+  for (var i = 0; i < allNodes.length; i++) {
+    var node = allNodes[i];
+    node.addPadding(padding, padding);
+  }
+};
+
 cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) {
 
   //ideal edge length based on the highest width node
   var edgeLength = this.getMaxNodeWidth(gm) / 2 + 100;
+  // var avgDim = this.computeAvgNodeDim(gm);
+  // var edgeLength = cholaConstants.IEL_MULTIPLIER * avgDim;
+  // var nodePadding = cholaConstants.NODE_PADDING_IEL_SCALAR * edgeLength;
+  // this.addPaddingToNodes(gm, nodePadding);
+
   var cyclicIds = [];
   var asgns = [];
   var highIds = [];
@@ -3514,8 +4649,9 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) 
 
   for (var _i = 0; _i < highDegreeNodes.length; _i++) {
     var _node = highDegreeNodes[_i][0];
+    var am = this.getAdjacencyMatrix(gm);
     var asgn = new assign();
-    var asgns = asgn.getNeighborAssignments(_node, cyclicIds[_i], highIds);
+    var asgns = asgn.getNeighborAssignments(_node, cyclicIds[_i], highIds, am);
     var degree = _node.getDegree();
     var ids = [];
     for (var j = 0; j < asgns.semis.length; j++) {
@@ -3541,9 +4677,49 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) 
         nbr.setCenter(loc.x, loc.y - edgeLength);
       }
     }
+    _node.processed = true;
+    // changing the status of node to processed in cyclic list
+    for (var _j2 = 0; _j2 < cyclicIds.length; _j2++) {
+      var arr = cyclicIds[_j2];
+      for (var k = 0; k < arr.length; k++) {
+        if (arr[k].id == _node.id) {
+          arr[k].processed = true;
+        }
+      }
+    }
     // if (i==2)
     //   break;
   }
+};
+
+cholaLayout.prototype.getAdjacencyMatrix = function (gm) {
+  /*
+   :return: a sparse adjacency matrix am
+    For IDs u, v of adjacent nodes, both am[u][v] and am[v][u] return True.
+   But if the nodes are not adjacent, then am[u][v] is NOT DEFINED.
+   However, am[u] IS DEFINED for all node IDs u.
+   */
+  var am = [];
+  var nodeIds = [];
+  var allNodes = gm.getAllNodes();
+  for (var i = 0; i < allNodes.length; i++) {
+    var temp = [];
+    nodeIds.push(allNodes[i].id);
+    for (var j = 0; j < allNodes.length; j++) {
+      temp[j] = false;
+    }
+    am.push(temp);
+  }
+  var allEdges = gm.getAllEdges();
+  for (var _i2 = 0; _i2 < allEdges.length; _i2++) {
+    var edge = allEdges[_i2];
+    var srcIndex = allNodes.indexOf(edge.getSource());
+    var trgtIndex = allNodes.indexOf(edge.getTarget());
+    am[srcIndex][trgtIndex] = true;
+    am[trgtIndex][srcIndex] = true;
+  }
+
+  return [am, nodeIds];
 };
 
 cholaLayout.prototype.chainNodesConfiguration = function (gm, chainNodes) {
@@ -3551,22 +4727,53 @@ cholaLayout.prototype.chainNodesConfiguration = function (gm, chainNodes) {
   var edgeLength = this.getMaxNodeWidth(gm) / 2 + 100;
 
   var output = this.getChainsAndCycles(gm);
-  var chains;
-  var cycles;
+  var chains = [];
+  var cycles = [];
 
   for (var i = 0; i < output[0].length; i++) {
-    var _chain = new _chain(gm, output[0][i]);
-    chains.push(_chain);
+    //if the chain consists of only one node, then it will already be aligned
+    //so that node is ignored
+    // if (output[0][i].length == 1)
+    //   continue;
+    var _c = new chain(gm, output[0][i]);
+    chains.push(_c);
   }
-  for (var _i2 = 0; _i2 < output[1].length; _i2++) {
-    var cycle = new chain(gm, output[1][_i2]);
+  for (var _i3 = 0; _i3 < output[1].length; _i3++) {
+    var cycle = new chain(gm, output[1][_i3], true);
     chains.push(cycle);
   }
 
-  // for chain in chains:
-  //     print chain
-  //     pbs = chain.possibleBendSeqs()
-  //     print '    pbs: %s\n' % pbs
+  //let changes = []; 
+  for (var _i4 = 0; _i4 < chains.length; _i4++) {
+    var c = chains[_i4];
+    var changes = c.takeShapeBasedConfiguration(edgeLength);
+    for (var j = 0; j < changes.length; j++) {
+      var conf = changes[j];
+      for (var k = 0; k < conf.length; k++) {
+        var temp = conf[k];
+        var startNode = null;
+        var endNode = null;
+        var direction = null;
+        if (conf.length == 1) {
+          startNode = temp[0];
+          endNode = temp[1];
+          direction = temp[2];
+          var loc = startNode.getCenter();
+          if (direction == 0) {
+            endNode.setCenter(loc.x + edgeLength, loc.y);
+          } else if (direction == 1) {
+            endNode.setCenter(loc.x, loc.y + edgeLength);
+          } else if (direction == 2) {
+            endNode.setCenter(loc.x - edgeLength, loc.y);
+          } else if (direction == 3) {
+            endNode.setCenter(loc.x, loc.y - edgeLength);
+          }
+        } else if (conf.length == 2) {
+          //create bendpoint in an edge
+        }
+      }
+    }
+  }
 };
 
 cholaLayout.prototype.getChainsAndCycles = function (gm) {
@@ -3590,8 +4797,8 @@ cholaLayout.prototype.getChainsAndCycles = function (gm) {
     var edges = linkNode.edges;
     var direction = -1;
     var polygon = false;
-    for (var _i3 = 0; _i3 < edges.length; _i3++) {
-      var edge = edges[_i3];
+    for (var _i5 = 0; _i5 < edges.length; _i5++) {
+      var edge = edges[_i5];
       if (polygon) break;
 
       // Explore from linknode in one direction.
@@ -3682,265 +4889,130 @@ cholaLayout.prototype.findNeighbors = function (node) {
 module.exports = cholaLayout;
 
 /***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-function compass() {
-    var EAST = 0;
-    var SOUTH = 1;
-    var WEST = 2;
-    var NORTH = 3;
-    var SE = 4;
-    var SW = 5;
-    var NW = 6;
-    var NE = 7;
-
-    var cwCards = [0, 1, 2, 3];
-    var acwCards = [0, 3, 2, 1];
-
-    var cwOrds = [4, 5, 6, 7];
-    var acwOrds = [4, 7, 6, 5];
-
-    var cwRose = [0, 4, 1, 5, 2, 6, 3, 7];
-    var acwRose = [0, 7, 3, 6, 2, 5, 1, 4];
-
-    var horizontal = [0, 2];
-    var vertical = [1, 3];
-
-    var increasing = [0, 1];
-    var decreasing = [2, 3];
-
-    var abbrev = [[EAST, "E"], [SOUTH, "S"], [WEST, "W"], [NORTH, "N"], [SE, "SE"], [SW, "SW"], [NW, "NW"], [NE, "NE"]];
-
-    // Directions w.r.t which we must /increase/ the const
-    // coord in order to move to the right:
-    var rightSidePlus = [NORTH, EAST];
-    // Directions w.r.t which we must /decrease/ the const
-    // coord in order to move to the right:
-    var rightSideMinus = [SOUTH, WEST];
-
-    var variableDimension = [[EAST, 0], [SOUTH, 1], [WEST, 0], [NORTH, 1]];
-
-    var constantDimension = [[EAST, 1], [SOUTH, 0], [WEST, 1], [NORTH, 0]];
-
-    var components = [[SE, [SOUTH, EAST]], [SW, [SOUTH, WEST]], [NW, [NORTH, WEST]], [NE, [NORTH, EAST]], [EAST, [EAST]], [SOUTH, [SOUTH]], [WEST, [WEST]], [NORTH, [NORTH]]];
-
-    var signs = [[EAST, [1, 0]], [SE, [1, 1]], [SOUTH, [0, 1]], [SW, [-1, 1]], [WEST, [-1, 0]], [NW, [-1, -1]], [NORTH, [0, -1]], [NE, [1, -1]]];
-
-    var libavoidVisibility = [[EAST, 8], [SOUTH, 2], [WEST, 4], [NORTH, 1]];
-};
-// @classmethod
-// def cwClosedInterval(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: list of all compass directions from d0 to d1 inclusive, going clockwise
-//     """
-//     rr = cls.cwRose + cls.cwRose
-//     i0 = rr.index(d0)
-//     i1 = i0 + rr[i0:].index(d1)
-//     return rr[i0:i1+1]
-
-// @classmethod
-// def acwClosedInterval(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: list of all compass directions from d0 to d1 inclusive, going anticlockwise
-//     """
-//     return list(reversed(cls.cwClosedInterval(d1, d0)))
-
-// @classmethod
-// def cwRoseDistance(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: the number of steps on the compass rose going clockwise from d0 to d1
-//     """
-//     return len(cls.cwClosedInterval(d0, d1)) - 1
-
-// @classmethod
-// def shortestRoseDistance(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: the minimum number of steps on the compass rose from d0 to d1, going in either direction
-//     """
-//     return min(cls.cwRoseDistance(d0, d1), cls.acwRoseDistance(d0, d1))
-
-// @classmethod
-// def acwRoseDistance(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: the number of steps on the compass rose going anticlockwise from d0 to d1
-//     """
-//     return len(cls.acwClosedInterval(d0, d1)) - 1
-
-// @classmethod
-// def sameDimension(cls, d0, d1):
-//     """
-//     :param d0: a cardinal Compass direction
-//     :param d1: a cardinal Compass direction
-//     :return: boolean saying if these directions are in the same dimension
-//     """
-//     return (d0 % 2) == (d1 % 2)
-
-// @classmethod
-// def perpendicular(cls, d0, d1):
-//     """
-//     :param d0: a cardinal Compass direction
-//     :param d1: a cardinal Compass direction
-//     :return: boolean saying if these directions are perpendicular to one another
-//     """
-//     return not cls.sameDimension(d0, d1)
-
-
-compass.prototype.cardinalDirection = function (p1, p2) {
-    /*
-    :param p1: either a Node object, or the coords (x1, y1) of a point
-    :param p2: either a Node object, or the coords (x2, y2) of a point
-    :return: the predominant cardinal direction from p1 to p2
-    */
-    var p1Loc = p1.getCenter();
-    var p2Loc = p2.getCenter();
-    var dx = p2Loc.x - p1Loc.x;
-    var dy = p2Loc.y - p2Loc.y;
-
-    if (Math.abs(dy) <= Math.abs(dx)) {
-        if (x1 < x2) return this.EAST;else return this.WEST;
-    } else {
-        if (y1 < y2) return this.SOUTH;else return this.NORTH;
-    }
-};
-// @classmethod
-// def possibleCardinalDirections(cls, node1, node2):
-//     """
-//     :param node1: a Node
-//     :param node2: a Node
-//     :return: a list of the possible cardinal directions from node1 to node2,
-//              if they were to be aligned non-aggressively
-//     """
-//     x1, y1 = node1.x, node1.y
-//     x2, y2 = node2.x, node2.y
-//     dx, dy = x2 - x1, y2 - y1
-//     dirs = []
-//     if dx > 0:
-//         dirs.append(cls.EAST)
-//     if dx < 0:
-//         dirs.append(cls.WEST)
-//     if dy > 0:
-//         dirs.append(cls.SOUTH)
-//     if dy < 0:
-//         dirs.append(cls.NORTH)
-//     return dirs
-
-// @classmethod
-// def getRotationFunction(cls, fromDir, toDir):
-//     # For now we only handle cardinal directions.
-//     if fromDir not in cls.cwCards or toDir not in cls.cwCards:
-//         raise Exception("only cardinal directions are currently handled")
-//     a, b = fromDir, toDir
-//     d = (b - a) % 4
-//     return [
-//         lambda v: (v[0], v[1]),
-//         lambda v: (-v[1], v[0]),
-//         lambda v: (-v[0], -v[1]),
-//         lambda v: (v[1], -v[0])
-//     ][d]
-
-// @classmethod
-// def flip(cls, direc):
-//     i0 = cls.cwRose.index(direc)
-//     return cls.cwRose[(i0+4)%8]
-
-// @classmethod
-// def cw90(cls, direc):
-//     i0 = cls.cwRose.index(direc)
-//     return cls.cwRose[(i0+2)%8]
-
-// @classmethod
-// def acw90(cls, direc):
-//     i0 = cls.cwRose.index(direc)
-//     return cls.cwRose[(i0-2)%8]
-
-// @classmethod
-// def rotateCW(cls, n, direc):
-//     i0 = cls.cwRose.index(direc)
-//     return cls.cwRose[(i0+n)%8]
-
-// @classmethod
-// def vectorSigns(cls, direc):
-//     """
-//     :param direc: a Compass direction
-//     :return: (xs, ys) where xs in {-1, 0, 1} represents the sign of
-//     the x-coordinate of a vector lying in the "octant" represented
-//     by direc, and likewise for ys. Here an "octant" is a semiaxis for
-//     a cardinal direction and an open quadrant for an ordinal direction.
-//     """
-//     return cls.signs[direc]
-
-// @classmethod
-// def vector(cls, direc, mag=1):
-//     """
-//     :param direc: a Compass direction, cardinal or ordinal
-//     :param mag: a float
-//     :return: a vector in the form [x, y] having the given magnitude and
-//              pointing in the given direction
-//     """
-//     hsqrt2 = 0.7071067811865476
-//     v = {
-//         cls.EAST: [1, 0],
-//         cls.SOUTH: [0, 1],
-//         cls.WEST: [-1, 0],
-//         cls.NORTH: [0, -1],
-//         cls.SE: [hsqrt2, hsqrt2],
-//         cls.SW: [-hsqrt2, hsqrt2],
-//         cls.NW: [-hsqrt2, -hsqrt2],
-//         cls.NE: [hsqrt2, -hsqrt2]
-//     }[direc]
-//     return [mag*c for c in v]
-
-module.exports = compass;
-
-/***/ }),
-/* 17 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-function LinkShape() {};
-
-LinkShape.prototype.cwBendsFrom = function (firstBend) {
-    // var k0 = this.bentCW.index(firstBend)
-    // return cls.bentCW[k0:] + cls.bentCW[:k0]
-};
-
-LinkShape.r = 0; // looks like Latin lowercase 'r'
-LinkShape.u = 1; // looks like Hangul 'uh' character
-LinkShape.n = 2; // looks like Hangul n
-LinkShape.g = 3; // looks like Hangul g
-LinkShape.i = 4; // looks like Hangul i ("ee" sound)
-LinkShape.j = 5; // looks like Latin 'J' (sans serif)
-
-LinkShape.bent = [0, 2, 3, 5];
-LinkShape.bentCW = [0, 3, 5, 2];
-LinkShape.straight = [1, 4];
-
-module.exports = LinkShape;
-
-/***/ }),
 /* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var impl = __webpack_require__(9);
+function linkShape() {
+	this.r = 0; // looks like Latin lowercase 'r'
+	this.u = 1; // looks like Hangul 'uh' character
+	this.n = 2; // looks like Hangul n
+	this.g = 3; // looks like Hangul g
+	this.i = 4; // looks like Hangul i ("ee" sound)
+	this.j = 5; // looks like Latin 'J' (sans serif)
+
+	this.bent = [0, 2, 3, 5];
+	this.bentCW = [0, 3, 5, 2];
+	this.straight = [1, 4];
+};
+
+linkShape.prototype.cwBendsFrom = function (firstBend) {
+	var k0 = this.bentCW.indexOf(firstBend);
+	var p1 = this.bentCW.slice(k0);
+	var p2 = this.bentCW.slice(0, k0);
+	var output = p1.concat(p2);
+	return output;
+};
+
+linkShape.r = 0; // looks like Latin lowercase 'r'
+linkShape.u = 1; // looks like Hangul 'uh' character
+linkShape.n = 2; // looks like Hangul n
+linkShape.g = 3; // looks like Hangul g
+linkShape.i = 4; // looks like Hangul i ("ee" sound)
+linkShape.j = 5; // looks like Latin 'J' (sans serif)
+
+linkShape.bent = [0, 2, 3, 5];
+linkShape.bentCW = [0, 3, 5, 2];
+linkShape.straight = [1, 4];
+
+module.exports = linkShape;
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+// function nodeBuckets(gm) {
+//     this.graph = gm
+//     this.buckets;
+//     this.maxDegree = gm.getMaxDegree();
+
+//     for (let i = 0; i < this.maxDegree + 1; i++)
+//         this.buckets.push([]);
+
+//     let allNodes = gm.getAllNodes();
+//     for (let i = 0; i < allNodes.length; i++)
+//     {
+//         let node = allNodes[i];
+//         let index = node.getDegree();
+//         this.buckets[index].push(node);
+//     }
+// };
+
+// nodeBuckets.prototype.takeLeaves = function()
+// {
+//     var leaves = this.buckets[1];
+//     this.buckets[1] = [];
+//     return leaves;
+// };
+
+// nodeBuckets.prototype.hasLeaves = function()
+// {
+//     return len(this.buckets[1].keys()) > 0
+// };
+
+// nodeBuckets.prototype.cutOneStem = function()
+// {
+//     /*
+//     If there are any leaves, make a Stem object to represent one of
+//     them, cut the leaf from the graph, and adjust buckets.
+//     */
+//     stem = None
+//     if this.hasLeaves():
+//         # Choose a leaf.
+//         k0 = this.buckets[1].keys()[0]
+//         leaf = this.buckets[1][k0]
+//         # Make a stem for it.
+//         el = leaf.edgeList()
+//         edge = el[0]
+//         root = edge.otherEnd(leaf)
+//         stem = Stem(leaf, root)
+//         # Move nodes up in the bucket stack.
+//         this.moveNode(leaf.ID, 1, 0)
+//         rootDeg = root.degree
+//         this.moveNode(root.ID, rootDeg, rootDeg - 1)
+//         # Cut from graph.
+//         this.graph.severEdge(edge)
+//         this.graph.deleteNode(leaf)
+//     return stem
+// };
+// nodeBuckets.prototype.moveNode = function(ID,oldDeg,newDeg)
+// {
+//     /*
+//     Move node of given ID from old degree to new degree.
+//     Fails quietly if there is no node of given ID in
+//     oldDeg bucket.
+//     */
+//     try:
+//         node = this.buckets[oldDeg][ID]
+//         this.buckets[newDeg][ID] = node
+//         del this.buckets[oldDeg][ID]
+//     except: pass
+// }
+
+// module.exports = bendSequence;
+
+
+/***/ }),
+/* 20 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var impl = __webpack_require__(10);
 
 // registers the extension on a cytoscape lib ref
 var register = function register(cytoscape) {
@@ -3959,7 +5031,7 @@ if (typeof cytoscape !== 'undefined') {
 module.exports = register;
 
 /***/ }),
-/* 19 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3973,10 +5045,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-// n.b. .layoutPositions() handles all these options for you
-
-//let cholaLayout = require('../chola/cholaLayout');
-//let cholaConstants = require('../chola/cholaConstants');
 var CoSELayout = __webpack_require__(0).CoSELayout;
 var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
@@ -3985,7 +5053,7 @@ var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
 var cholaConstants = __webpack_require__(4);
 var cholaGraphManager = __webpack_require__(6);
 var cholaNode = __webpack_require__(7);
-var cholaLayout = __webpack_require__(15);
+var cholaLayout = __webpack_require__(17);
 var cholaEdge = __webpack_require__(1);
 var cholaGraph = __webpack_require__(5);
 var PointD = __webpack_require__(0).layoutBase.PointD;
@@ -3993,7 +5061,7 @@ var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
 
-var assign = __webpack_require__(10);
+var assign = __webpack_require__(11);
 
 var defaults = Object.freeze((_Object$freeze = {
   quality: 'default',
@@ -4072,6 +5140,8 @@ var chola = function () {
       layout.processChildrenList(this.options, gm.addRoot(), topMostNodes, layout, "chola", cholaIdToLNode, cholaNodesMap);
       layout.processEdges(layout, gm, edges, cholaIdToLNode);
 
+      if (this.cholaGm.getAllEdges().length == 0) return;
+
       //finds and saves the compound nodes
       var compoundNodes = layout.findCompoundNodes(this.cholaGm);
       //removes the leaf nodes
@@ -4110,7 +5180,7 @@ var chola = function () {
       layout.higherNodesConfiguration(this.cholaGm, highDegreeNodes);
 
       //orthogonal layout for lower degree nodes
-      //layout.chainNodesConfiguration(this.cholaGm, chainNodes);
+      layout.chainNodesConfiguration(this.cholaGm, chainNodes);
 
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
@@ -4122,7 +5192,7 @@ var chola = function () {
 module.exports = chola;
 
 /***/ }),
-/* 20 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 (function webpackUniversalModuleDefinition(root, factory) {

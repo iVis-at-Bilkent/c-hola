@@ -1,8 +1,12 @@
 var LNode = require('cose-base').layoutBase.LNode;
 var IMath = require('cose-base').layoutBase.IMath;
 
+const cholaEdge = require('../chola/cholaEdge');
+
 function cholaNode(gm, loc, size, vNode) {
   LNode.call(this, gm, loc, size, vNode);
+  this.processed = false;
+  this.treeSerialNo = -1;
 }
 
 
@@ -126,4 +130,70 @@ cholaNode.prototype.isCompound = function() {
 		}
 };
 
+cholaNode.prototype.getDegree = function()
+{
+  var edges = this.getEdges();
+  var degree = 0;
+
+  // For the edges connected
+  for (var i = 0; i < edges.length; i++) {
+    var edge = edges[i];
+    if (edge.getSource().id !== edge.getTarget().id) {
+      degree = degree + 1;
+    }
+  }
+  return degree;
+};
+
+cholaNode.prototype.findDistance = function(node)
+{
+  var thisLoc = this.getCenter();
+  var nodeLoc = node.getCenter();
+  var distance = Math.sqrt(Math.pow((thisLoc.x - nodeLoc.x).toFixed(10), 2) + Math.pow((thisLoc.y - nodeLoc.y).toFixed(10), 2));
+  return distance;
+};
+
+cholaNode.prototype.addPadding = function(xPad, yPad)
+{
+  this.setWidth(this.getWidth() + xPad);
+  this.setHeight(this.getHeight() + yPad);
+};
+
+cholaNode.prototype.getDirec = function(v, edgeLength)
+{        
+  /*
+  :param v: a Node object
+  :return: the configured Compass direction from current node to v if any, else None
+  */
+  var thisLoc = this.getCenter();
+  var vLoc = v.getCenter();
+  let x1 = thisLoc.x;
+  let y1 = thisLoc.y;
+  let x2 = vLoc.x;
+  let y2 = vLoc.y;
+
+  let d = null;
+
+  //checking if the nodes are already configured
+  if (x1 == x2 || y1 == y2) 
+  {
+    //checking if node v is aligned to north or south of node
+    if (x1 == x2)
+    {
+      if (y2 == y1 + edgeLength)
+        d = 1;           //south
+      else if (y2 == y1 - edgeLength)
+        d = 3;           //north  
+    }
+    //checking if node v is aligned to east or west of node
+    else if (y1 == y2)
+    {
+      if (x2 == x1 + edgeLength)
+        d = 0;           //east
+      else if (x2 == x1 - edgeLength)
+        d = 2;           //west
+    }
+  }
+  return d;
+}
 module.exports = cholaNode;
