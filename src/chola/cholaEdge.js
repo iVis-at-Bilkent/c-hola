@@ -3,6 +3,7 @@ var IGeometry = require('cose-base').layoutBase.IGeometry;
 
 function cholaEdge(source, target, vEdge) {
   LEdge.call(this, source, target, vEdge);
+  this.bendPoints = [];
 }
 
 cholaEdge.prototype = Object.create(LEdge.prototype);
