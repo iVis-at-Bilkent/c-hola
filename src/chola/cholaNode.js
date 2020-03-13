@@ -86,6 +86,171 @@ cholaNode.prototype.propogateDisplacementToChildren = function (dX, dY)
   }
 };
 
+cholaNode.prototype.octalCode = function ()
+{
+  //Semi axes get octal codes 0,2,4,6; East:0; North:2; West:4; South:6
+  //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
+  var thisLoc = this.getCenter();
+  var o = -1;
+  var x = thisLoc.x;
+  var y = thisLoc.y;
+  if (x > 0)
+  {
+    if (y < 0)
+      o = 7;
+    else
+    {
+      if (y === 0)
+        o = 0;
+      else
+        o = 1;
+    }
+  }
+  else if (x === 0)
+  {
+    if (y < 0)
+      o = 6;
+    else
+      o = 2;
+  }
+  else
+  {
+    if (y < 0)
+      o = 5;
+    else
+    {
+      if (y === 0)
+        o = 4;
+      else
+        o = 3;
+    }
+  }
+  return o;
+};
+
+
+cholaNode.prototype.getFreeSemiLocations = function (edgeLength)
+{
+  let edges = this.edges;
+  let nbr = null;
+  let availableSemis = [0, 1, 2, 3];
+  let nbrLocX = null;
+  let nbrLocY = null;
+  for (let i = 0; i < edges.length; i++)
+  {
+    let direction = null;
+    let edge = edges[i];
+    if (edge.bendPoints.length == 0)
+    {
+      nbr = edge.getOtherEnd(this); 
+      nbrLocX = nbr.getCenter().x;
+      nbrLocY = nbr.getCenter().y;
+    }
+    else
+    {  
+      nbr = edge.bendPoints[0];
+      nbrLocX = nbr[0];
+      nbrLocY = nbr[1];
+    }
+
+    let nodeLoc = this.getCenter();
+    if (nodeLoc.x == nbrLocX)
+    {
+      if (nbrLocY == nodeLoc.y + edgeLength)
+        direction = 1;
+      else if (nbrLocY == nodeLoc.y - edgeLength)
+        direction = 3;
+    }
+    else if (nodeLoc.y == nbrLocY)
+    {
+      if (nbrLocX == nodeLoc.x + edgeLength)
+        direction = 0;
+      else if (nbrLocX == nodeLoc.x - edgeLength)
+        direction = 2;
+    }
+
+    if (direction != null)
+    {
+      let index = availableSemis.indexOf(direction);
+      availableSemis.splice(index, 1);
+    }
+  }
+  return availableSemis;
+}
+
+cholaNode.prototype.deflectionFromSemi = function(semi, o)
+{
+  var x = this.getCenter().x;
+  var y = this.getCenter().y;
+  var xSquare = x*x;
+  var ySquare = y*y;
+  var lSquare = xSquare + ySquare;
+  var defl = 0;
+
+  switch (semi) {
+    case 0: case 2:
+      defl = ySquare/lSquare;
+      break;
+    case 1: case 3:
+      defl = xSquare/lSquare;
+      break;
+    default:
+      break;
+
+  }
+
+  switch (semi) {
+    case 0:
+      switch (o) {
+        case 3: case 5:
+          defl = 2 - defl;
+          break;
+        case 4:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 1:
+      switch (o) {
+        case 5: case 7:
+          defl = 2 - defl;
+          break;
+        case 6:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 2:
+      switch (o) {
+        case 7: case 1:
+          defl = 2 - defl;
+          break;
+        case 0:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+      case 3:
+        switch (o) {
+          case 1: case 3:
+            defl = 2 - defl;
+            break;
+          case 2:
+            defl = 2;
+            break;
+          default:
+        }
+        break;
+    default:
+        break;
+  }
+  return defl;
+
+}
+
 cholaNode.prototype.setPred1 = function (pred1)
 {
   this.pred1 = pred1;
@@ -147,9 +312,23 @@ cholaNode.prototype.getDegree = function()
 
 cholaNode.prototype.findDistance = function(node)
 {
+  var nodeLoc = null;
+  var nodeLocX = null;
+  var nodeLocY = null;
+
+  if (Array.isArray(node))
+  {  
+    nodeLocX = node[0];
+    nodeLocY = node[1]
+  }
+  else
+  {  
+    nodeLocX = node.getCenter().x;
+    nodeLocY = node.getCenter().y;
+  }
+
   var thisLoc = this.getCenter();
-  var nodeLoc = node.getCenter();
-  var distance = Math.sqrt(Math.pow((thisLoc.x - nodeLoc.x).toFixed(10), 2) + Math.pow((thisLoc.y - nodeLoc.y).toFixed(10), 2));
+  var distance = Math.sqrt(Math.pow((thisLoc.x - nodeLocX).toFixed(10), 2) + Math.pow((thisLoc.y - nodeLocY).toFixed(10), 2));
   return distance;
 };
 
