@@ -158,14 +158,18 @@ class chola {
 
       var output = layout.getHighDegreeNodes(gm);
       var highDegreeNodes = output[0];
-      var chainNodes = output[1];
-
+      var oneDegreeNodes = output[1];
+      console.log(highDegreeNodes);
       //creating orthogonal layout for higher degree nodes
       layout.higherNodesConfiguration(this.cholaGm, highDegreeNodes);
 
-      //orthogonal layout for lower degree nodes
-      layout.chainNodesConfiguration(this.cholaGm, chainNodes);
+      // // //orthogonal layout for lower degree nodes
+       layout.chainNodesConfiguration(this.cholaGm);
       
+      // // //orthogonal layout for one-degree nodes 
+      //1 degree nodes attached to 2 degree nodes will be left unaligned after the previous step
+     // layout.oneDegreeNodesConfiguration(this.cholaGm, oneDegreeNodes);
+
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
   }
