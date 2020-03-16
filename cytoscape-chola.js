@@ -73,7 +73,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 20);
+/******/ 	return __webpack_require__(__webpack_require__.s = 19);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -82,7 +82,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
-		module.exports = factory(__webpack_require__(22));
+		module.exports = factory(__webpack_require__(21));
 	else if(typeof define === 'function' && define.amd)
 		define(["layout-base"], factory);
 	else if(typeof exports === 'object')
@@ -1798,161 +1798,6 @@ module.exports = compass;
 "use strict";
 
 
-function Nbr(id, dx, dy, degree) {
-  this.id = id;
-  this.x = dx;
-  this.y = dy;
-  this.degree = degree;
-}
-
-Nbr.prototype.octalCode = function () {
-  //Semi axes get octal codes 0,2,4,6; East:0; North:2; West:4; South:6
-  //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
-  var o = -1;
-  var x = this.x;
-  var y = this.y;
-  if (x > 0) {
-    if (y < 0) o = 7;else {
-      if (y === 0) o = 0;else o = 1;
-    }
-  } else if (x === 0) {
-    if (y < 0) o = 6;else o = 2;
-  } else {
-    if (y < 0) o = 5;else {
-      if (y === 0) o = 4;else o = 3;
-    }
-  }
-  return o;
-};
-
-Nbr.prototype.deflection = function () {
-  var x = this.x;
-  var y = this.y;
-  var xSquare = x * x;
-  var ySquare = y * y;
-  var lSquare = xSquare + ySquare;
-  var o = this.octalCode();
-  var arr = [0, 1, 4, 5];
-  var defl;
-  if (arr.includes(o)) defl = ySquare / lSquare;else defl = xSquare / lSquare;
-  return defl;
-};
-
-Nbr.prototype.deflectionFromSemi = function (semi, o) {
-  var x = this.x;
-  var y = this.y;
-  var xSquare = x * x;
-  var ySquare = y * y;
-  var lSquare = xSquare + ySquare;
-  var defl = 0;
-
-  switch (semi) {
-    case 0:case 2:
-      defl = ySquare / lSquare;
-      break;
-    case 1:case 3:
-      defl = xSquare / lSquare;
-      break;
-    default:
-      break;
-
-  }
-
-  switch (semi) {
-    case 0:
-      switch (o) {
-        case 3:case 5:
-          defl = 2 - defl;
-          break;
-        case 4:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    case 1:
-      switch (o) {
-        case 5:case 7:
-          defl = 2 - defl;
-          break;
-        case 6:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    case 2:
-      switch (o) {
-        case 7:case 1:
-          defl = 2 - defl;
-          break;
-        case 0:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    case 3:
-      switch (o) {
-        case 1:case 3:
-          defl = 2 - defl;
-          break;
-        case 2:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    default:
-      break;
-  }
-  return defl;
-};
-
-module.exports = Nbr;
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-//a struct to represent an assignment of neighbors to semiaxes, and the cost of this assignment
-function Assignment(semis, cost) {
-  //semis is a list [a, b, c, d] of lists of neighbors to be assigned to the semiaxes s0, s1, s2, s3 respectively
-  this.semis = semis;
-  this.cost = cost;
-}
-
-Assignment.prototype.union = function (other) {
-  //returns a new assignment by taking a union of this assignment with another
-  var semis = [[], [], [], []];
-  for (var i = 0; i < this.semis.length; i++) {
-    var s = this.semis[i];
-    for (var j = 0; j < s.length; j++) {
-      semis[i].push(s[j]);
-    }
-
-    var o = other.semis[i];
-    for (var _j = 0; _j < o.length; _j++) {
-      semis[i].push(o[_j]);
-    }
-  }
-  var cost = this.cost + other.cost;
-  var asgn = new Assignment(semis, cost);
-  return asgn;
-};
-
-module.exports = Assignment;
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var compass = __webpack_require__(2);
 
@@ -2133,7 +1978,7 @@ cholaConstants.USE_SCALING_IN_MAJORIZATION = false;
 module.exports = cholaConstants;
 
 /***/ }),
-/* 6 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2153,7 +1998,7 @@ for (var prop in LGraph) {
 module.exports = cholaGraph;
 
 /***/ }),
-/* 7 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2195,7 +2040,7 @@ cholaGraphManager.prototype.getNode = function (node) {
 module.exports = cholaGraphManager;
 
 /***/ }),
-/* 8 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2210,6 +2055,8 @@ function cholaNode(gm, loc, size, vNode) {
   LNode.call(this, gm, loc, size, vNode);
   this.processed = false;
   this.treeSerialNo = -1;
+  this.dx = null;
+  this.dy = null;
 }
 
 cholaNode.prototype = Object.create(LNode.prototype);
@@ -2275,8 +2122,8 @@ cholaNode.prototype.octalCode = function () {
   //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
   var thisLoc = this.getCenter();
   var o = -1;
-  var x = thisLoc.x;
-  var y = thisLoc.y;
+  var x = this.dX;
+  var y = this.dy;
   if (x > 0) {
     if (y < 0) o = 7;else {
       if (y === 0) o = 0;else o = 1;
@@ -2396,6 +2243,24 @@ cholaNode.prototype.deflectionFromSemi = function (semi, o) {
   return defl;
 };
 
+cholaNode.prototype.getNeighbors = function () {
+  //returns a list of neighbors sorted in descending order of degree
+  var neighbors = [];
+  for (var i = 0; i < this.edges.length; i++) {
+    var nbr = this.edges[i].getOtherEnd(this);
+    neighbors.push([nbr, nbr.getDegree()]);
+  }
+  neighbors.sort(function compareSecondColumn(a, b) {
+    if (a[1] === b[1]) {
+      return 0;
+    } else {
+      return a[1] < b[1] ? -1 : 1;
+    }
+  });
+  neighbors.reverse();
+  return neighbors;
+};
+
 cholaNode.prototype.setPred1 = function (pred1) {
   this.pred1 = pred1;
 };
@@ -2501,34 +2366,128 @@ cholaNode.prototype.getDirec = function (v, edgeLength) {
 module.exports = cholaNode;
 
 /***/ }),
-/* 9 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var Nbr = __webpack_require__(3);
-var Assignment = __webpack_require__(4);
-
-function Quad(num) {
-  //num is the quadrant number: 0, 1, 2, 3
-  this.num = num;
-  this.nbrs = [];
-  this.costs = [0, 0, 0, 0];
+function Nbr(id, dx, dy, degree, processed) {
+  this.id = id;
+  this.x = dx;
+  this.y = dy;
+  this.degree = degree;
+  this.processed = processed;
 }
 
-Quad.prototype.addNbr = function (neighbor) {
-  this.nbrs.push(neighbor);
+Nbr.prototype.octalCode = function () {
+  //Semi axes get octal codes 0,2,4,6; East:0; North:2; West:4; South:6
+  //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
+  var o = -1;
+  var x = this.x;
+  var y = this.y;
+  if (x > 0) {
+    if (y < 0) o = 7;else {
+      if (y === 0) o = 0;else o = 1;
+    }
+  } else if (x === 0) {
+    if (y < 0) o = 6;else o = 2;
+  } else {
+    if (y < 0) o = 5;else {
+      if (y === 0) o = 4;else o = 3;
+    }
+  }
+  return o;
 };
 
-Quad.prototype.size = function () {
-  return this.nbrs.length;
+Nbr.prototype.deflection = function () {
+  var x = this.x;
+  var y = this.y;
+  var xSquare = x * x;
+  var ySquare = y * y;
+  var lSquare = xSquare + ySquare;
+  var o = this.octalCode();
+  var arr = [0, 1, 4, 5];
+  var defl;
+  if (arr.includes(o)) defl = ySquare / lSquare;else defl = xSquare / lSquare;
+  return defl;
 };
 
-module.exports = Quad;
+Nbr.prototype.deflectionFromSemi = function (semi, o) {
+  var x = this.x;
+  var y = this.y;
+  var xSquare = x * x;
+  var ySquare = y * y;
+  var lSquare = xSquare + ySquare;
+  var defl = 0;
+
+  switch (semi) {
+    case 0:case 2:
+      defl = ySquare / lSquare;
+      break;
+    case 1:case 3:
+      defl = xSquare / lSquare;
+      break;
+    default:
+      break;
+
+  }
+
+  switch (semi) {
+    case 0:
+      switch (o) {
+        case 3:case 5:
+          defl = 2 - defl;
+          break;
+        case 4:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 1:
+      switch (o) {
+        case 5:case 7:
+          defl = 2 - defl;
+          break;
+        case 6:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 2:
+      switch (o) {
+        case 7:case 1:
+          defl = 2 - defl;
+          break;
+        case 0:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 3:
+      switch (o) {
+        case 1:case 3:
+          defl = 2 - defl;
+          break;
+        case 2:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    default:
+      break;
+  }
+  return defl;
+};
+
+module.exports = Nbr;
 
 /***/ }),
-/* 10 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2544,10 +2503,10 @@ module.exports = Quad;
  * A continuous layout is one that updates positions continuously, like a force-
  * directed / physics simulation layout.
  */
-module.exports = __webpack_require__(21);
+module.exports = __webpack_require__(20);
 
 /***/ }),
-/* 11 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2570,7 +2529,42 @@ module.exports = Object.assign != null ? Object.assign.bind(Object) : function (
 };
 
 /***/ }),
-/* 12 */
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+//a struct to represent an assignment of neighbors to semiaxes, and the cost of this assignment
+function Assignment(semis, cost) {
+  //semis is a list [a, b, c, d] of lists of neighbors to be assigned to the semiaxes s0, s1, s2, s3 respectively
+  this.semis = semis;
+  this.cost = cost;
+}
+
+Assignment.prototype.union = function (other) {
+  //returns a new assignment by taking a union of this assignment with another
+  var semis = [[], [], [], []];
+  for (var i = 0; i < this.semis.length; i++) {
+    var s = this.semis[i];
+    for (var j = 0; j < s.length; j++) {
+      semis[i].push(s[j]);
+    }
+
+    var o = other.semis[i];
+    for (var _j = 0; _j < o.length; _j++) {
+      semis[i].push(o[_j]);
+    }
+  }
+  var cost = this.cost + other.cost;
+  var asgn = new Assignment(semis, cost);
+  return asgn;
+};
+
+module.exports = Assignment;
+
+/***/ }),
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2621,7 +2615,7 @@ Perm.prototype.apply = function (a) {
 module.exports = Perm;
 
 /***/ }),
-/* 13 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2629,21 +2623,12 @@ module.exports = Perm;
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var Nbr = __webpack_require__(3);
-var Quad = __webpack_require__(9);
-var Perm = __webpack_require__(12);
-var Assignment = __webpack_require__(4);
+var Nbr = __webpack_require__(7);
+var Perm = __webpack_require__(11);
+var Assignment = __webpack_require__(10);
 
 function Arrangement(neighbors, degree, id, highIds) {
   this.div = 4;
-  // for (;;this.div*=2)
-  // {
-  //   if (neighbors.length <= this.div)
-  //     break;
-  //   else
-  //     continue;
-  // }
-
   this.semis = [];
   this.quads = [];
   this.nbrs = neighbors;
@@ -2653,9 +2638,9 @@ function Arrangement(neighbors, degree, id, highIds) {
 }
 
 Arrangement.prototype.getArrangement = function () {
-  this.quads = [new Quad(0), new Quad(1), new Quad(2), new Quad(3)];
   for (var i = 0; i < this.div; i++) {
     this.semis.push([]);
+    this.quads.push([]);
   }
 
   var quads = this.quads;
@@ -2666,12 +2651,10 @@ Arrangement.prototype.getArrangement = function () {
     var o = nbr.octalCode();
     if (o % 2 === 0) {
       var s = o / 2;
-      semis[s * (this.div / 4)].push(nbr);
+      semis[s].push(nbr);
     } else {
-      if (this.div == 4) {
-        var q = (o - 1) / 2;
-        quads[q].addNbr(nbr);
-      }
+      var q = (o - 1) / 2;
+      quads[q].push(nbr);
     }
   }
 };
@@ -2702,8 +2685,8 @@ Arrangement.prototype.getCyclicOrder = function () {
   var cyclicOrder = [];
 
   for (var i = 0; i < this.quads.length; i++) {
-    var semi = this.semis[i * (this.div / 4)];
-    var quad = this.quads[i].nbrs;
+    var semi = this.semis[i];
+    var quad = this.quads[i];
     var orderedNodes = [];
     if (semi != null) {
       if (Array.isArray(semi)) {
@@ -2717,7 +2700,6 @@ Arrangement.prototype.getCyclicOrder = function () {
       }
     }
     for (var _j = 0; _j < quad.length; _j++) {
-      //var arr = [quad[j].y, quad[j].x, quad[j].id];
       var arr = [quad[_j], null];
       orderedNodes.push(arr);
     }
@@ -2725,7 +2707,7 @@ Arrangement.prototype.getCyclicOrder = function () {
       var defl = [];
       for (var k = 0; k < orderedNodes.length; k++) {
         var node = orderedNodes[k][0];
-        orderedNodes[k][1] = node.deflectionFromSemi(i, node.octalCode);
+        orderedNodes[k][1] = node.deflectionFromSemi(i, node.octalCode());
       }
       orderedNodes.sort(function (a, b) {
         return a[1] - b[1];
@@ -2769,7 +2751,7 @@ Arrangement.prototype.factorial = function (num) {
 Arrangement.prototype.combination = function (array, k) {
   var combinations = [];
   var temp = [];
-  if (k == 0) return;else if (k > 3) k = 3;
+  if (k == 0) return;else if (k > array.length) k = array.length;
   function run(level, start, c) {
 
     for (var i = start; i < array.length - k + level + 1; i++) {
@@ -2869,6 +2851,10 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
     } else unAvailableSemis.push(_i4);
   }
 
+  //if no semis are available, then return
+
+  if (availableSemis.length == 0) return;
+
   //determine processed nodes which do not lie on a semi
   var quadNodes = [];
   if (processedNodes.length != unAvailableSemis.length) {
@@ -2909,10 +2895,6 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
   var startNode = unProcessedNodes[index % unProcessedNodes.length];
   var startCost = costArray[index];
 
-  if (typeof startNode == 'undefined') {
-    var mobi = 1;
-    mobi = 6 + 9;
-  }
   var overallCostArray = [];
   var combinationsArray = [];
   var individualCostArray = [];
@@ -2941,7 +2923,6 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
       individualCostArray.push(out[0]);
     }
   } else {
-
     for (var _j5 = 0; _j5 < availableSemis.length; _j5++) {
       var tempArray = JSON.parse(JSON.stringify(array));
       var _semiIndex3 = availableSemis[_j5];
@@ -2952,11 +2933,32 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
       firstPart.splice(0, 1);
       tempArray = firstPart.concat(secondPart);
 
+      // let comb = [];
+
+
+      // if (tempArray.length == 0)
+      // {
+
+      // }
+      //find the possible combinations based on available spaces and unprocessed nodes
       var combinations = this.combination(tempArray, unProcessedNodes.length - 1);
+
+      // if (combinations.length == 0)
+      // {
+      //   if (tempArray.length == 1)
+      //   {
+      //     for (let k = 0; k < unProcessedNodes.length; k++)
+      //     {
+      //       combinations.push(tempArray);
+      //     }
+      //   }
+      // }
 
       for (var k = 0; k < combinations.length; k++) {
         var _cost3 = 0;
         var _costArr = [];
+
+        //fix the startnode at the first available semi and find the cost
         var _o2 = startNode.octalCode();
         _cost3 += startNode.deflectionFromSemi(_semiIndex3, _o2);
 
@@ -2977,6 +2979,7 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
         }
         _comb2[_semiIndex3] = startNode;
         _costArr[_j5] = startCost;
+
         for (var _l3 = 0; _l3 < unAvailableSemis.length; _l3++) {
           var _index2 = unAvailableSemis[_l3];
           _comb2[_index2] = this.semis[_index2][0];
@@ -3432,19 +3435,16 @@ Arrangement.prototype.basicAssignment = function () {
 module.exports = Arrangement;
 
 /***/ }),
-/* 14 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var Nbr = __webpack_require__(3);
-var Arrangement = __webpack_require__(13);
-var quad = __webpack_require__(9);
+var Nbr = __webpack_require__(7);
+var Arrangement = __webpack_require__(12);
 
-function assign() {
-  //this.arr;
-}
+function assign() {}
 
 assign.prototype.getCyclicOrder = function (node) {
   var neighbors = [];
@@ -3489,7 +3489,7 @@ assign.prototype.getNeighborAssignments = function (node, cyclicIds, highIds, am
 module.exports = assign;
 
 /***/ }),
-/* 15 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3516,15 +3516,15 @@ bendSequence.prototype.repr = function () {
 module.exports = bendSequence;
 
 /***/ }),
-/* 16 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var compass = __webpack_require__(2);
-var LinkShape = __webpack_require__(18);
-var BendSequence = __webpack_require__(15);
+var LinkShape = __webpack_require__(17);
+var BendSequence = __webpack_require__(14);
 
 function chain(gm, nodes) {
     var cycle = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
@@ -4354,7 +4354,7 @@ chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
 module.exports = chain;
 
 /***/ }),
-/* 17 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4371,18 +4371,18 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(5);
-var cholaGraphManager = __webpack_require__(7);
-var cholaNode = __webpack_require__(8);
+var cholaConstants = __webpack_require__(3);
+var cholaGraphManager = __webpack_require__(5);
+var cholaNode = __webpack_require__(6);
 var cholaEdge = __webpack_require__(1);
-var cholaGraph = __webpack_require__(6);
+var cholaGraph = __webpack_require__(4);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
-var assign = __webpack_require__(14);
-var chain = __webpack_require__(16);
-var nodeBuckets = __webpack_require__(19);
+var assign = __webpack_require__(13);
+var chain = __webpack_require__(15);
+var nodeBuckets = __webpack_require__(18);
 var compass = __webpack_require__(2);
 
 // Constructor
@@ -4766,7 +4766,7 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) 
   var asgns = [];
   var highIds = [];
   for (var i = 0; i < highDegreeNodes.length; i++) {
-    var node = highDegreeNodes[i][0];
+    var node = highDegreeNodes[i];
     highIds.push(node.id);
     var asgn = new assign();
     cyclicIds.push(asgn.getCyclicOrder(node));
@@ -4774,7 +4774,7 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) 
   }
 
   for (var _i = 0; _i < highDegreeNodes.length; _i++) {
-    var _node = highDegreeNodes[_i][0];
+    var _node = highDegreeNodes[_i];
     var am = this.getAdjacencyMatrix(gm);
     var asgn = new assign();
     var asgns = asgn.getNeighborAssignments(_node, cyclicIds[_i], highIds, am);
@@ -4805,8 +4805,7 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) 
         }
       }
     }
-    console.log(cyclicIds[_i]);
-    // if (i==1)
+    // if (i==2)
     //   break;
   }
 };
@@ -5005,6 +5004,7 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
 
   var highDegreeNodes = [];
   var oneDegreeNodes = [];
+  var sortedList = [];
   for (var i = 0; i < allNodes.length; i++) {
     var node = allNodes[i];
     var degree = node.getDegree();
@@ -5017,8 +5017,6 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
       oneDegreeNodes.push(node);
     }
   }
-  highDegreeNodes.sort(compareSecondColumn);
-  highDegreeNodes.reverse();
 
   function compareSecondColumn(a, b) {
     if (a[1] === b[1]) {
@@ -5026,8 +5024,31 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
     } else {
       return a[1] < b[1] ? -1 : 1;
     }
+  };
+
+  highDegreeNodes.sort(compareSecondColumn);
+  highDegreeNodes.reverse();
+
+  if (highDegreeNodes.length > 0) {
+    var j = 0;
+    for (var k = 0; k < highDegreeNodes.length; k++) {
+      //choose highest degree node
+      var _node2 = highDegreeNodes[k][0];
+      if (sortedList.indexOf(_node2) < 0) sortedList.push(_node2);else continue;
+      for (j; j < sortedList.length; j++) {
+        //find its neighbors sorted in descending order of degree
+        var neighbors = sortedList[j].getNeighbors();
+        //add nodes with degree 3 or higher to the sortedList
+        for (var _i6 = 0; _i6 < neighbors.length; _i6++) {
+          var _degree = neighbors[_i6][1];
+          if (sortedList.indexOf(neighbors[_i6][0]) >= 0) continue;else if (_degree >= 3) sortedList.push(neighbors[_i6][0]);else break;
+        }
+      }
+      if (sortedList.length == highDegreeNodes.length) break;
+    }
   }
-  return [highDegreeNodes, oneDegreeNodes];
+
+  return [sortedList, oneDegreeNodes];
 };
 
 cholaLayout.prototype.findNeighbors = function (node) {
@@ -5044,7 +5065,7 @@ cholaLayout.prototype.findNeighbors = function (node) {
 module.exports = cholaLayout;
 
 /***/ }),
-/* 18 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5085,7 +5106,7 @@ linkShape.straight = [1, 4];
 module.exports = linkShape;
 
 /***/ }),
-/* 19 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5161,13 +5182,13 @@ module.exports = linkShape;
 
 
 /***/ }),
-/* 20 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var impl = __webpack_require__(10);
+var impl = __webpack_require__(8);
 
 // registers the extension on a cytoscape lib ref
 var register = function register(cytoscape) {
@@ -5186,7 +5207,7 @@ if (typeof cytoscape !== 'undefined') {
 module.exports = register;
 
 /***/ }),
-/* 21 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5205,18 +5226,18 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(5);
-var cholaGraphManager = __webpack_require__(7);
-var cholaNode = __webpack_require__(8);
-var cholaLayout = __webpack_require__(17);
+var cholaConstants = __webpack_require__(3);
+var cholaGraphManager = __webpack_require__(5);
+var cholaNode = __webpack_require__(6);
+var cholaLayout = __webpack_require__(16);
 var cholaEdge = __webpack_require__(1);
-var cholaGraph = __webpack_require__(6);
+var cholaGraph = __webpack_require__(4);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
 
-var assign = __webpack_require__(11);
+var assign = __webpack_require__(9);
 
 var defaults = Object.freeze((_Object$freeze = {
   quality: 'default',
@@ -5351,7 +5372,7 @@ var chola = function () {
 module.exports = chola;
 
 /***/ }),
-/* 22 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 (function webpackUniversalModuleDefinition(root, factory) {
