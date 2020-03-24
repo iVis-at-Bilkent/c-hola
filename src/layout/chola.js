@@ -164,13 +164,34 @@ class chola {
       layout.higherNodesConfiguration(this.cholaGm, highDegreeNodes);
 
       // // //orthogonal layout for lower degree nodes
-       layout.chainNodesConfiguration(this.cholaGm);
+      layout.chainNodesConfiguration(this.cholaGm);
       
       // // //orthogonal layout for one-degree nodes 
       //1 degree nodes attached to 2 degree nodes will be left unaligned after the previous step
-     // layout.oneDegreeNodesConfiguration(this.cholaGm, oneDegreeNodes);
+      layout.oneDegreeNodesConfiguration(this.cholaGm, oneDegreeNodes);
 
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+
+      var cholaEdges = this.cholaGm.getAllEdges();
+      for (let i = 0; i < cholaEdges.length; i++)
+      {
+          let cholaEdge = cholaEdges[i];
+          if (cholaEdge.bendpoints.length != 0)
+          {
+            for (let k = 0; k < this.cy.edges().length; k++)
+            {
+              let cyEdge = this.cy.edges()[k];
+              if (cholaEdge.id == cyEdge.id())
+              {
+                cyEdge.css("curve-style", "segments");
+                cyEdge.css("segment-weights", cholaEdge.weight);
+                cyEdge.css("segment-distances", cholaEdge.distance);
+                break;
+              }
+
+            }
+          }
+      }
 
   }
 }
