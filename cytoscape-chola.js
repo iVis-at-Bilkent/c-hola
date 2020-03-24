@@ -1527,7 +1527,8 @@ var IGeometry = __webpack_require__(0).layoutBase.IGeometry;
 
 function cholaEdge(source, target, vEdge) {
   LEdge.call(this, source, target, vEdge);
-  this.bendPoints = [];
+  this.weight = 0.5;
+  this.distance = 0;
 }
 
 cholaEdge.prototype = Object.create(LEdge.prototype);
@@ -1546,18 +1547,126 @@ cholaEdge.prototype.getOtherEnd = function (node) {
   }
 };
 
-cholaEdge.prototype.intersectionsCost = function (gm) {
-  var allEdges = gm.getAllEdges();
-  var p1 = this.source.getLocation().x;
-  var p2 = this.target.getLocation().y;
-  var cost = 0;
-  for (var i = 0; i < allEdges.length; i++) {
-    var edge = allEdges[i];
-    var p3 = edge.source.getLocation().x;
-    var p4 = edge.target.getLocation().y;
-    cost += IGeometry.doIntersect(p1, p2, p3, p4) ? 1 : 0;
+cholaEdge.prototype.createBendPoint = function (bendpoint) {
+  var relativeBendPosition = this.convertToRelativeBendPosition(bendpoint);
+  this.weight = relativeBendPosition.weight;
+  this.distance = relativeBendPosition.distance;
+  this.bendpoints.push(bendpoint);
+
+  return relativeBendPosition;
+};
+
+cholaEdge.prototype.convertToRelativeBendPosition = function (bendpoint) {
+  var srcTgtPointsAndTangents = this.getSrcTgtPointsAndTangents();
+  var intersectionPoint = this.getIntersection(bendpoint, srcTgtPointsAndTangents);
+  var intersectX = intersectionPoint.x;
+  var intersectY = intersectionPoint.y;
+
+  var srcPoint = srcTgtPointsAndTangents.srcPoint;
+  var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
+
+  var weight;
+
+  if (intersectX != srcPoint.x) {
+    weight = (intersectX - srcPoint.x) / (tgtPoint.x - srcPoint.x);
+  } else if (intersectY != srcPoint.y) {
+    weight = (intersectY - srcPoint.y) / (tgtPoint.y - srcPoint.y);
+  } else {
+    weight = 0;
   }
-  return cost;
+
+  var distance = Math.sqrt(Math.pow(intersectY - bendpoint.y, 2) + Math.pow(intersectX - bendpoint.x, 2));
+
+  //Get the direction of the line form source point to target point
+  var direction1 = this.getLineDirection(srcPoint, tgtPoint);
+  //Get the direction of the line from intesection point to bend point
+  var direction2 = this.getLineDirection(intersectionPoint, bendpoint);
+
+  //If the difference is not -2 and not 6 then the direction of the distance is negative
+  if (direction1 - direction2 != -2 && direction1 - direction2 != 6) {
+    if (distance != 0) distance = -1 * distance;
+  }
+
+  return {
+    weight: weight,
+    distance: distance
+  };
+};
+
+cholaEdge.prototype.getLineDirection = function (srcPoint, tgtPoint) {
+  if (srcPoint.y == tgtPoint.y && srcPoint.x < tgtPoint.x) {
+    return 1;
+  }
+  if (srcPoint.y < tgtPoint.y && srcPoint.x < tgtPoint.x) {
+    return 2;
+  }
+  if (srcPoint.y < tgtPoint.y && srcPoint.x == tgtPoint.x) {
+    return 3;
+  }
+  if (srcPoint.y < tgtPoint.y && srcPoint.x > tgtPoint.x) {
+    return 4;
+  }
+  if (srcPoint.y == tgtPoint.y && srcPoint.x > tgtPoint.x) {
+    return 5;
+  }
+  if (srcPoint.y > tgtPoint.y && srcPoint.x > tgtPoint.x) {
+    return 6;
+  }
+  if (srcPoint.y > tgtPoint.y && srcPoint.x == tgtPoint.x) {
+    return 7;
+  }
+  return 8; //if srcPoint.y > tgtPoint.y and srcPoint.x < tgtPoint.x
+};
+
+cholaEdge.prototype.getSrcTgtPointsAndTangents = function () {
+  var sourceNode = this.source;
+  var targetNode = this.target;
+
+  var srcPoint = sourceNode.getCenter();
+  var tgtPoint = targetNode.getCenter();
+
+  var m1 = (tgtPoint.y - srcPoint.y) / (tgtPoint.x - srcPoint.x);
+  var m2 = -1 / m1;
+
+  return {
+    m1: m1,
+    m2: m2,
+    srcPoint: srcPoint,
+    tgtPoint: tgtPoint
+  };
+};
+
+cholaEdge.prototype.getIntersection = function (point, srcTgtPointsAndTangents) {
+  var srcPoint = srcTgtPointsAndTangents.srcPoint;
+  var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
+  var m1 = srcTgtPointsAndTangents.m1;
+  var m2 = srcTgtPointsAndTangents.m2;
+
+  var intersectX;
+  var intersectY;
+
+  if (m1 == Infinity || m1 == -Infinity) {
+    intersectX = srcPoint.x;
+    intersectY = point.y;
+  } else if (m1 == 0) {
+    intersectX = point.x;
+    intersectY = srcPoint.y;
+  } else {
+    var a1 = srcPoint.y - m1 * srcPoint.x;
+    var a2 = point.y - m2 * point.x;
+
+    intersectX = (a2 - a1) / (m1 - m2);
+    intersectY = m1 * intersectX + a1;
+  }
+
+  //Intersection point is the intersection of the lines passing through the nodes and
+  //passing through the bend point and perpendicular to the other line
+  var intersectionPoint = {
+    x: intersectX,
+    y: intersectY
+  };
+
+  return intersectionPoint;
 };
 
 module.exports = cholaEdge;
@@ -2064,65 +2173,12 @@ for (var prop in LNode) {
   cholaNode[prop] = LNode[prop];
 }
 
-cholaNode.prototype.move = function () {
-  var layout = this.graphManager.getLayout();
-  this.displacementX = layout.coolingFactor * (this.springForceX + this.repulsionForceX + this.gravitationForceX) / this.noOfChildren;
-  this.displacementY = layout.coolingFactor * (this.springForceY + this.repulsionForceY + this.gravitationForceY) / this.noOfChildren;
-
-  if (Math.abs(this.displacementX) > layout.coolingFactor * layout.maxNodeDisplacement) {
-    this.displacementX = layout.coolingFactor * layout.maxNodeDisplacement * IMath.sign(this.displacementX);
-  }
-
-  if (Math.abs(this.displacementY) > layout.coolingFactor * layout.maxNodeDisplacement) {
-    this.displacementY = layout.coolingFactor * layout.maxNodeDisplacement * IMath.sign(this.displacementY);
-  }
-
-  // a simple node, just move it
-  if (this.child == null) {
-    this.moveBy(this.displacementX, this.displacementY);
-  }
-  // an empty compound node, again just move it
-  else if (this.child.getNodes().length == 0) {
-      this.moveBy(this.displacementX, this.displacementY);
-    }
-    // non-empty compound node, propogate movement to children as well
-    else {
-        this.propogateDisplacementToChildren(this.displacementX, this.displacementY);
-      }
-
-  layout.totalDisplacement += Math.abs(this.displacementX) + Math.abs(this.displacementY);
-
-  this.springForceX = 0;
-  this.springForceY = 0;
-  this.repulsionForceX = 0;
-  this.repulsionForceY = 0;
-  this.gravitationForceX = 0;
-  this.gravitationForceY = 0;
-  this.displacementX = 0;
-  this.displacementY = 0;
-};
-
-cholaNode.prototype.propogateDisplacementToChildren = function (dX, dY) {
-  var nodes = this.getChild().getNodes();
-  var node;
-  for (var i = 0; i < nodes.length; i++) {
-    node = nodes[i];
-    if (node.getChild() == null) {
-      node.moveBy(dX, dY);
-      node.displacementX += dX;
-      node.displacementY += dY;
-    } else {
-      node.propogateDisplacementToChildren(dX, dY);
-    }
-  }
-};
-
 cholaNode.prototype.octalCode = function () {
   //Semi axes get octal codes 0,2,4,6; East:0; North:2; West:4; South:6
   //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
   var thisLoc = this.getCenter();
   var o = -1;
-  var x = this.dX;
+  var x = this.dx;
   var y = this.dy;
   if (x > 0) {
     if (y < 0) o = 7;else {
@@ -2147,14 +2203,14 @@ cholaNode.prototype.getFreeSemiLocations = function (edgeLength) {
   for (var i = 0; i < edges.length; i++) {
     var direction = null;
     var edge = edges[i];
-    if (edge.bendPoints.length == 0) {
+    if (edge.bendpoints.length == 0) {
       nbr = edge.getOtherEnd(this);
       nbrLocX = nbr.getCenter().x;
       nbrLocY = nbr.getCenter().y;
     } else {
-      nbr = edge.bendPoints[0];
-      nbrLocX = nbr[0];
-      nbrLocY = nbr[1];
+      nbr = edge.bendpoints[0];
+      nbrLocX = nbr.x;
+      nbrLocY = nbr.y;
     }
 
     var nodeLoc = this.getCenter();
@@ -2295,6 +2351,22 @@ cholaNode.prototype.isCompound = function () {
   } else {
     return false;
   }
+};
+
+cholaNode.prototype.findEdgeBetween = function (node) {
+  //finds if an edge exists between the current node and node and returns it
+  var output = null;
+  for (var i = 0; i < this.edges.length; i++) {
+    var edge = this.edges[i];
+    if (edge.source == this && edge.target == node) {
+      output = edge;
+      break;
+    } else if (edge.source == node && edge.target == this) {
+      output = edge;
+      break;
+    }
+  }
+  return output;
 };
 
 cholaNode.prototype.getDegree = function () {
@@ -3855,6 +3927,7 @@ chain.prototype.bendCost = function (bendtype, i0) {
         // Normalise the cost.
         cost = Math.abs(_alpha / 90);
     }
+
     return cost;
 };
 
@@ -3878,7 +3951,8 @@ chain.prototype.nextLocalOptimalPoint = function (i0, bendtype) {
     var i1 = i0;
     var M = 2 * len - 1;
 
-    if (this.cycle) M = M + 1;
+    // if (this.cycle)
+    //     M = M + 1;
 
     M = M - remaining;
     var cost = bestCost;
@@ -3947,36 +4021,63 @@ chain.prototype.evaluateBendSeq = function (bendseq) {
      The "places" are indices 0, 1, 2, 3, ... which refer to the first node in the chain,
     then the first edge, next node, next edge, and so on, with even numbers meaning links
     */
-
-    var queue = JSON.parse(JSON.stringify(bendseq.bendtypes));
-    var i = 0;
-    var cost = 0;
     var bendpoints = [];
-    while (queue.length > 1) {
-        var bendtype = queue[0];
-        queue.shift();
-        var out = this.nextLocalOptimalPoint(i, bendtype, queue.length);
-        i = out[0];
-        var c = out[1];
-        if (i != null) {
+    var cost = 0;
+    var i = 0;
+    if (this.cycle) {
+        if (this.nodes.length == 3) {
+            //only this case will contain a bend
+            bendpoints = [0, 2, 4, 5];
+        } else {
+            //first node will be the first bendpoint
             bendpoints.push(i);
-            cost = cost + c;
-            i = i + 1;
-        }
-    }
-    if (queue.length == 1) {
-        var _bendtype = queue[0];
-        queue.shift();
-        var _out = this.globalOptimalPoint(_bendtype, i);
-        i = _out[0];
-        var _c = _out[1];
-        if (i != null) {
-            bendpoints.push(i);
-            cost = cost + _c;
-            i = i + 1;
-        }
-    }
 
+            //next bendpoints
+            var n = this.nodes.length;
+            var m = n;
+            if (n % 2 != 0) {
+                m = n + 1;
+            }
+
+            var width = parseInt(n / 4);
+            var length = parseInt((m - 2 * width) / 2);
+
+            for (var j = 1; j < bendseq.bendtypes.length; j++) {
+                if (j % 2 == 1) i = i + 2 * length;else i = i + 2 * width;
+                if (i <= 2 * this.nodes.length - 1) {
+                    bendpoints.push(i);
+                } else {
+                    bendpoints.push(i - 1);
+                }
+            }
+        }
+    } else {
+        var queue = JSON.parse(JSON.stringify(bendseq.bendtypes));
+        while (queue.length > 1) {
+            var bendtype = queue[0];
+            queue.shift();
+            var out = this.nextLocalOptimalPoint(i, bendtype, queue.length);
+            i = out[0];
+            var c = out[1];
+            if (i != null) {
+                bendpoints.push(i);
+                cost = cost + c;
+                i = i + 1;
+            }
+        }
+        if (queue.length == 1) {
+            var _bendtype = queue[0];
+            queue.shift();
+            var _out = this.globalOptimalPoint(_bendtype, i);
+            i = _out[0];
+            var _c = _out[1];
+            if (i != null) {
+                bendpoints.push(i);
+                cost = cost + _c;
+                i = i + 1;
+            }
+        }
+    }
     bendseq.bendpoints = bendpoints;
     bendseq.cost = cost;
     return bendseq;
@@ -4108,12 +4209,13 @@ chain.prototype.possibleBendSeqs = function (edgeLength) {
 
     var seqs = [];
     if (this.cycle) {
-        for (var i = 0; i < LinkShape.bent.length; i++) {
-            var bt = LinkShape.bent[i];
-            var ls = new LinkShape();
-            var bs = new BendSequence(ls.cwBendsFrom(bt));
-            seqs.push(bs);
-        }
+        //for (let i = 0; i < LinkShape.bent.length; i++)
+        //{
+        var bt = LinkShape.bent[0];
+        var ls = new LinkShape();
+        var bs = new BendSequence(ls.cwBendsFrom(bt));
+        seqs.push(bs);
+        //}
     } else {
         // Get incoming and outgoing directions:
         var A = this.anchorNodeLeft;
@@ -4137,8 +4239,8 @@ chain.prototype.possibleBendSeqs = function (edgeLength) {
         }
 
         // Now computing the sequences.
-        for (var _i3 = 0; _i3 < dIns.length; _i3++) {
-            var d0 = dIns[_i3];
+        for (var i = 0; i < dIns.length; i++) {
+            var d0 = dIns[i];
             for (var j = 0; j < dOuts.length; j++) {
                 var d1 = dOuts[j];
                 var bendSeqs = this.lookupMinimalBendSeqs(A, d0, Z, d1);
@@ -4286,7 +4388,7 @@ chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
             }
         }
         if (_min != currChainLength) {
-            changes.push([[nbr, node, pos]]);
+            changes.push([nbr, node, pos]);
         }
         return changes;
     }
@@ -4301,8 +4403,8 @@ chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
     // to be configured).
 
     var seqs = this.possibleBendSeqs(edgeLength);
-    for (var _i4 = 0; _i4 < seqs.length; _i4++) {
-        var bs = seqs[_i4];
+    for (var _i3 = 0; _i3 < seqs.length; _i3++) {
+        var bs = seqs[_i3];
         //find the cost for each bend sequence
         this.evaluateBendSeq(bs);
     }
@@ -4310,11 +4412,11 @@ chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
     //finding the index with smallest cost
     var min = seqs[0].cost;
     var index = 0;
-    for (var _i5 = 1; _i5 < seqs.length; _i5++) {
-        var _bs2 = seqs[_i5];
+    for (var _i4 = 1; _i4 < seqs.length; _i4++) {
+        var _bs2 = seqs[_i4];
         if (_bs2.cost < min) {
             min = _bs2.cost;
-            index = _i5;
+            index = _i4;
         }
     }
     var bestSeq = seqs[index];
@@ -4330,22 +4432,27 @@ chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
         var u = this.getNode(k - 1);
         var v = this.getNode(k + 1);
         if (conf.length == 1) {
-            changes.push([[u, v, conf[0]]]);
+            changes.push([u, v, conf[0]]);
             // In this case the edge is to be aligned in a compass direction.
         } else {
-            //assert(len(conf) == 2)
-            // In this case we are to create a bend point.
-            // First sever the edge and free any config on the links.
-            //this.gm.severEdge(edge)
-            //this.gm.nodeConf.free(u, v)
-            // Create a bend point, giving it a reasonable initial location
-            // midway between u and v. It is not yet aligned with either of
-            // them; that will wait until we project onto the new constraints.
-            var x = (u.getCenter().x + v.getCenter().x) / 2;
-            var y = (u.getCenter().y + v.getCenter().y) / 2;
-            var bendpoint = [x, y];
+            if (u.getCenter().x == v.getCenter().x || u.getCenter().y == v.getCenter().y) continue;
 
-            changes.push([[u, bendpoint, conf[0]], [bendpoint, v, conf[1]]]);
+            // In this case we are to create a bend point.
+            // Create a bend point
+            var bendpoint = {
+                x: null,
+                y: null
+            };
+            if (conf[0] == 0 || conf[0] == 2) {
+                bendpoint.x = v.getCenter().x;
+                bendpoint.y = u.getCenter().y;
+            } else if (conf[0] == 1 || conf[0] == 3) {
+                bendpoint.x = u.getCenter().x;
+                bendpoint.y = v.getCenter().y;
+            }
+
+            //changes.push([u, v, bendpoint, conf[0]],[bendpoint, v, conf[1]]]);
+            changes.push([u, v, bendpoint, conf[0], conf[1]]);
         }
     }
     return changes;
@@ -4359,6 +4466,8 @@ module.exports = chain;
 
 "use strict";
 
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
@@ -4789,9 +4898,8 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) 
     for (var _j = 0; _j < degree; _j++) {
       var edge = _node.edges[_j];
       var nbr = edge.getOtherEnd(_node);
-      var nodeLoc = _node.getCenter();
       var newNbrLoc = ids.indexOf(nbr.id);
-      this.setNeighborPosition(gm, nodeLoc, nbr, newNbrLoc);
+      this.setNeighborPosition(gm, _node, nbr, newNbrLoc);
     }
 
     _node.processed = true;
@@ -4810,8 +4918,9 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) 
   }
 };
 
-cholaLayout.prototype.setNeighborPosition = function (gm, nodeLoc, nbr, newNbrLoc) {
+cholaLayout.prototype.setNeighborPosition = function (gm, node, nbr, newNbrLoc) {
   //ideal edge length based on the highest width node
+  var nodeLoc = node.getCenter();
   var edgeLength = this.getMaxNodeWidth(gm) / 2 + 100;
 
   if (newNbrLoc == 0) {
@@ -4860,8 +4969,6 @@ cholaLayout.prototype.chainNodesConfiguration = function (gm) {
   for (var i = 0; i < output[0].length; i++) {
     //if the chain consists of only one node, then it will already be aligned
     //so that node is ignored
-    // if (output[0][i].length == 1)
-    //   continue;
     var _c = new chain(gm, output[0][i]);
     chains.push(_c);
   }
@@ -4870,26 +4977,66 @@ cholaLayout.prototype.chainNodesConfiguration = function (gm) {
     chains.push(cycle);
   }
 
-  //let changes = []; 
   for (var _i4 = 0; _i4 < chains.length; _i4++) {
     var c = chains[_i4];
     var changes = c.takeShapeBasedConfiguration(edgeLength);
+    if (c.cycle) {
+      var k = 0;
+      for (k; k < changes.length; k++) {
+        var conf = changes[k];
+        if (_typeof(conf[2]) === 'object') break;
+      }
+      var b = changes.splice(k + 1);
+      changes = b.concat(changes);
+    }
+
+    var prevDirection = void 0;
+    if (changes.length != 0) {
+      if (!(_typeof(changes[0][2]) === 'object')) prevDirection == changes[0][2];else prevDirection == changes[0][4];
+    }
+
     for (var j = 0; j < changes.length; j++) {
-      var conf = changes[j];
-      for (var k = 0; k < conf.length; k++) {
-        var temp = conf[k];
-        var startNode = null;
-        var endNode = null;
-        var direction = null;
-        if (conf.length == 1) {
-          startNode = temp[0];
-          endNode = temp[1];
-          direction = temp[2];
-          var nodeLoc = startNode.getCenter();
-          this.setNeighborPosition(gm, nodeLoc, endNode, direction);
-        } else if (conf.length == 2) {
-          //create bendpoint in an edge
+      var _conf = changes[j];
+      var startNode = _conf[0];
+      var endNode = _conf[1];
+      if (!(_typeof(_conf[2]) === 'object')) {
+        if (c.cycle) {
+          var direction = _conf[2];
+          this.setNeighborPosition(gm, startNode, endNode, direction);
+        } else {
+          //no bendpoint in edge
+          var _direction = _conf[2];
+          if (_direction == prevDirection) {
+            this.setNeighborPosition(gm, startNode, endNode, _direction);
+          } else {
+            var edge = startNode.findEdgeBetween(endNode);
+            var nbrs = endNode.getNeighbors();
+            var otherNode = nbrs[0] == startNode ? nbrs[1] : nbrs[0];
+            var locx = void 0,
+                locy = void 0;
+            if (_direction == 0 || _direction == 2) {
+              locx = endNode.getCenterX();
+              locy = startNode.getCenterY();
+            } else if (_direction == 1 || _direction == 3) {
+              locx = startNode.getCenterX();
+              locy = endNode.getCenterY();
+            }
+            endNode.setCenter(locx, locy);
+          }
         }
+      } else {
+        //create bendpoint in an edge
+        var bendpoint = _conf[2];
+        if (_conf[3] == 0 || _conf[3] == 2) {
+          bendpoint.x = endNode.getCenterX();
+          bendpoint.y = startNode.getCenterY();
+        } else if (_conf[3] == 1 || _conf[3] == 3) {
+          bendpoint.x = startNode.getCenterX();
+          bendpoint.y = endNode.getCenterY();
+        }
+        var _edge = startNode.findEdgeBetween(endNode);
+        var _output = _edge.createBendPoint(bendpoint);
+        //edge.bendpoints = output;
       }
     }
   }
@@ -4911,12 +5058,12 @@ cholaLayout.prototype.oneDegreeNodesConfiguration = function (gm, nodes) {
     }
 
     var nbrDegree = nbr.getDegree();
-    var loc = nbr.getCenter();
+    var nbrLoc = nbr.getCenter();
     //if nbr is not a 1 or 2-degree node, we go to the next one degree node
     if (nbrDegree > 2) continue;else {
       if (nbrDegree == 1) {
         //assign the node to its right
-        node.setCenter(loc.x + edgeLength, loc.y);
+        node.setCenter(nbrLoc.x + edgeLength, nbrLoc.y);
       }
       //when nbr is a 2 degree node
       else {
@@ -4924,12 +5071,15 @@ cholaLayout.prototype.oneDegreeNodesConfiguration = function (gm, nodes) {
           var availableSemis = nbr.getFreeSemiLocations(edgeLength);
 
           //finding the least cost position
+          var nodeLoc = node.getCenter();
+          node.dx = nodeLoc.x - nbrLoc.x;
+          node.dy = nodeLoc.y - nbrLoc.y;
           var o = node.octalCode();
           var cost = [];
           for (var j = 0; j < availableSemis.length; j++) {
             cost.push(node.deflectionFromSemi(availableSemis[j], o));
           }
-          var direction = cost.indexOf(Math.min.apply(Math, cost));
+          var direction = availableSemis[cost.indexOf(Math.min.apply(Math, cost))];
           this.setNeighborPosition(gm, nbr, node, direction);
         }
     }
@@ -5360,9 +5510,25 @@ var chola = function () {
 
       // // //orthogonal layout for one-degree nodes 
       //1 degree nodes attached to 2 degree nodes will be left unaligned after the previous step
-      // layout.oneDegreeNodesConfiguration(this.cholaGm, oneDegreeNodes);
+      layout.oneDegreeNodesConfiguration(this.cholaGm, oneDegreeNodes);
 
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+
+      var cholaEdges = this.cholaGm.getAllEdges();
+      for (var _i = 0; _i < cholaEdges.length; _i++) {
+        var _cholaEdge = cholaEdges[_i];
+        if (_cholaEdge.bendpoints.length != 0) {
+          for (var k = 0; k < this.cy.edges().length; k++) {
+            var cyEdge = this.cy.edges()[k];
+            if (_cholaEdge.id == cyEdge.id()) {
+              cyEdge.css("curve-style", "segments");
+              cyEdge.css("segment-weights", _cholaEdge.weight);
+              cyEdge.css("segment-distances", _cholaEdge.distance);
+              break;
+            }
+          }
+        }
+      }
     }
   }]);
 
@@ -8525,6 +8691,7 @@ module.exports = Layout;
 
 
 function RandomSeed() {}
+// adapted from: https://stackoverflow.com/a/19303725
 RandomSeed.seed = 1;
 RandomSeed.x = 0;
 
@@ -8867,6 +9034,8 @@ FDLayout.prototype.calcSpringForce = function (edge, idealLength) {
   }
 
   length = edge.getLength();
+
+  if (length == 0) return;
 
   // Calculate spring forces
   springForce = this.springConstant * (length - idealLength);
