@@ -1522,162 +1522,6 @@ module.exports = coseBase;
 "use strict";
 
 
-var LEdge = __webpack_require__(0).layoutBase.LEdge;
-var IGeometry = __webpack_require__(0).layoutBase.IGeometry;
-
-function cholaEdge(source, target, vEdge) {
-  LEdge.call(this, source, target, vEdge);
-  this.weight = 0.5;
-  this.distance = 0;
-}
-
-cholaEdge.prototype = Object.create(LEdge.prototype);
-for (var prop in LEdge) {
-  cholaEdge[prop] = LEdge[prop];
-}
-
-/*Get the other end to which an edge is connected with*/
-cholaEdge.prototype.getOtherEnd = function (node) {
-  if (node === this.source && node === this.target) {
-    return null;
-  } else if (node === this.source) {
-    return this.target;
-  } else if (node === this.target) {
-    return this.source;
-  }
-};
-
-cholaEdge.prototype.createBendPoint = function (bendpoint) {
-  var relativeBendPosition = this.convertToRelativeBendPosition(bendpoint);
-  this.weight = relativeBendPosition.weight;
-  this.distance = relativeBendPosition.distance;
-  this.bendpoints.push(bendpoint);
-
-  return relativeBendPosition;
-};
-
-cholaEdge.prototype.convertToRelativeBendPosition = function (bendpoint) {
-  var srcTgtPointsAndTangents = this.getSrcTgtPointsAndTangents();
-  var intersectionPoint = this.getIntersection(bendpoint, srcTgtPointsAndTangents);
-  var intersectX = intersectionPoint.x;
-  var intersectY = intersectionPoint.y;
-
-  var srcPoint = srcTgtPointsAndTangents.srcPoint;
-  var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
-
-  var weight;
-
-  if (intersectX != srcPoint.x) {
-    weight = (intersectX - srcPoint.x) / (tgtPoint.x - srcPoint.x);
-  } else if (intersectY != srcPoint.y) {
-    weight = (intersectY - srcPoint.y) / (tgtPoint.y - srcPoint.y);
-  } else {
-    weight = 0;
-  }
-
-  var distance = Math.sqrt(Math.pow(intersectY - bendpoint.y, 2) + Math.pow(intersectX - bendpoint.x, 2));
-
-  //Get the direction of the line form source point to target point
-  var direction1 = this.getLineDirection(srcPoint, tgtPoint);
-  //Get the direction of the line from intesection point to bend point
-  var direction2 = this.getLineDirection(intersectionPoint, bendpoint);
-
-  //If the difference is not -2 and not 6 then the direction of the distance is negative
-  if (direction1 - direction2 != -2 && direction1 - direction2 != 6) {
-    if (distance != 0) distance = -1 * distance;
-  }
-
-  return {
-    weight: weight,
-    distance: distance
-  };
-};
-
-cholaEdge.prototype.getLineDirection = function (srcPoint, tgtPoint) {
-  if (srcPoint.y == tgtPoint.y && srcPoint.x < tgtPoint.x) {
-    return 1;
-  }
-  if (srcPoint.y < tgtPoint.y && srcPoint.x < tgtPoint.x) {
-    return 2;
-  }
-  if (srcPoint.y < tgtPoint.y && srcPoint.x == tgtPoint.x) {
-    return 3;
-  }
-  if (srcPoint.y < tgtPoint.y && srcPoint.x > tgtPoint.x) {
-    return 4;
-  }
-  if (srcPoint.y == tgtPoint.y && srcPoint.x > tgtPoint.x) {
-    return 5;
-  }
-  if (srcPoint.y > tgtPoint.y && srcPoint.x > tgtPoint.x) {
-    return 6;
-  }
-  if (srcPoint.y > tgtPoint.y && srcPoint.x == tgtPoint.x) {
-    return 7;
-  }
-  return 8; //if srcPoint.y > tgtPoint.y and srcPoint.x < tgtPoint.x
-};
-
-cholaEdge.prototype.getSrcTgtPointsAndTangents = function () {
-  var sourceNode = this.source;
-  var targetNode = this.target;
-
-  var srcPoint = sourceNode.getCenter();
-  var tgtPoint = targetNode.getCenter();
-
-  var m1 = (tgtPoint.y - srcPoint.y) / (tgtPoint.x - srcPoint.x);
-  var m2 = -1 / m1;
-
-  return {
-    m1: m1,
-    m2: m2,
-    srcPoint: srcPoint,
-    tgtPoint: tgtPoint
-  };
-};
-
-cholaEdge.prototype.getIntersection = function (point, srcTgtPointsAndTangents) {
-  var srcPoint = srcTgtPointsAndTangents.srcPoint;
-  var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
-  var m1 = srcTgtPointsAndTangents.m1;
-  var m2 = srcTgtPointsAndTangents.m2;
-
-  var intersectX;
-  var intersectY;
-
-  if (m1 == Infinity || m1 == -Infinity) {
-    intersectX = srcPoint.x;
-    intersectY = point.y;
-  } else if (m1 == 0) {
-    intersectX = point.x;
-    intersectY = srcPoint.y;
-  } else {
-    var a1 = srcPoint.y - m1 * srcPoint.x;
-    var a2 = point.y - m2 * point.x;
-
-    intersectX = (a2 - a1) / (m1 - m2);
-    intersectY = m1 * intersectX + a1;
-  }
-
-  //Intersection point is the intersection of the lines passing through the nodes and
-  //passing through the bend point and perpendicular to the other line
-  var intersectionPoint = {
-    x: intersectX,
-    y: intersectY
-  };
-
-  return intersectionPoint;
-};
-
-module.exports = cholaEdge;
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
 function compass() {
     this.EAST = 0;
     this.SOUTH = 1;
@@ -1901,544 +1745,163 @@ compass.prototype.possibleCardinalDirections = function (node1, node2) {
 module.exports = compass;
 
 /***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var LEdge = __webpack_require__(0).layoutBase.LEdge;
+var IGeometry = __webpack_require__(0).layoutBase.IGeometry;
+
+function cholaEdge(source, target, vEdge) {
+  LEdge.call(this, source, target, vEdge);
+  this.weight = 0.5;
+  this.distance = 0;
+}
+
+cholaEdge.prototype = Object.create(LEdge.prototype);
+for (var prop in LEdge) {
+  cholaEdge[prop] = LEdge[prop];
+}
+
+/*Get the other end to which an edge is connected with*/
+cholaEdge.prototype.getOtherEnd = function (node) {
+  if (node === this.source && node === this.target) {
+    return null;
+  } else if (node === this.source) {
+    return this.target;
+  } else if (node === this.target) {
+    return this.source;
+  }
+};
+
+cholaEdge.prototype.createBendPoint = function (bendpoint) {
+  var relativeBendPosition = this.convertToRelativeBendPosition(bendpoint);
+  this.weight = relativeBendPosition.weight;
+  this.distance = relativeBendPosition.distance;
+  this.bendpoints.push(bendpoint);
+
+  return relativeBendPosition;
+};
+
+cholaEdge.prototype.convertToRelativeBendPosition = function (bendpoint) {
+  var srcTgtPointsAndTangents = this.getSrcTgtPointsAndTangents();
+  var intersectionPoint = this.getIntersection(bendpoint, srcTgtPointsAndTangents);
+  var intersectX = intersectionPoint.x;
+  var intersectY = intersectionPoint.y;
+
+  var srcPoint = srcTgtPointsAndTangents.srcPoint;
+  var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
+
+  var weight;
+
+  if (intersectX != srcPoint.x) {
+    weight = (intersectX - srcPoint.x) / (tgtPoint.x - srcPoint.x);
+  } else if (intersectY != srcPoint.y) {
+    weight = (intersectY - srcPoint.y) / (tgtPoint.y - srcPoint.y);
+  } else {
+    weight = 0;
+  }
+
+  var distance = Math.sqrt(Math.pow(intersectY - bendpoint.y, 2) + Math.pow(intersectX - bendpoint.x, 2));
+
+  //Get the direction of the line form source point to target point
+  var direction1 = this.getLineDirection(srcPoint, tgtPoint);
+  //Get the direction of the line from intesection point to bend point
+  var direction2 = this.getLineDirection(intersectionPoint, bendpoint);
+
+  //If the difference is not -2 and not 6 then the direction of the distance is negative
+  if (direction1 - direction2 != -2 && direction1 - direction2 != 6) {
+    if (distance != 0) distance = -1 * distance;
+  }
+
+  return {
+    weight: weight,
+    distance: distance
+  };
+};
+
+cholaEdge.prototype.getLineDirection = function (srcPoint, tgtPoint) {
+  if (srcPoint.y == tgtPoint.y && srcPoint.x < tgtPoint.x) {
+    return 1;
+  }
+  if (srcPoint.y < tgtPoint.y && srcPoint.x < tgtPoint.x) {
+    return 2;
+  }
+  if (srcPoint.y < tgtPoint.y && srcPoint.x == tgtPoint.x) {
+    return 3;
+  }
+  if (srcPoint.y < tgtPoint.y && srcPoint.x > tgtPoint.x) {
+    return 4;
+  }
+  if (srcPoint.y == tgtPoint.y && srcPoint.x > tgtPoint.x) {
+    return 5;
+  }
+  if (srcPoint.y > tgtPoint.y && srcPoint.x > tgtPoint.x) {
+    return 6;
+  }
+  if (srcPoint.y > tgtPoint.y && srcPoint.x == tgtPoint.x) {
+    return 7;
+  }
+  return 8; //if srcPoint.y > tgtPoint.y and srcPoint.x < tgtPoint.x
+};
+
+cholaEdge.prototype.getSrcTgtPointsAndTangents = function () {
+  var sourceNode = this.source;
+  var targetNode = this.target;
+
+  var srcPoint = sourceNode.getCenter();
+  var tgtPoint = targetNode.getCenter();
+
+  var m1 = (tgtPoint.y - srcPoint.y) / (tgtPoint.x - srcPoint.x);
+  var m2 = -1 / m1;
+
+  return {
+    m1: m1,
+    m2: m2,
+    srcPoint: srcPoint,
+    tgtPoint: tgtPoint
+  };
+};
+
+cholaEdge.prototype.getIntersection = function (point, srcTgtPointsAndTangents) {
+  var srcPoint = srcTgtPointsAndTangents.srcPoint;
+  var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
+  var m1 = srcTgtPointsAndTangents.m1;
+  var m2 = srcTgtPointsAndTangents.m2;
+
+  var intersectX;
+  var intersectY;
+
+  if (m1 == Infinity || m1 == -Infinity) {
+    intersectX = srcPoint.x;
+    intersectY = point.y;
+  } else if (m1 == 0) {
+    intersectX = point.x;
+    intersectY = srcPoint.y;
+  } else {
+    var a1 = srcPoint.y - m1 * srcPoint.x;
+    var a2 = point.y - m2 * point.x;
+
+    intersectX = (a2 - a1) / (m1 - m2);
+    intersectY = m1 * intersectX + a1;
+  }
+
+  //Intersection point is the intersection of the lines passing through the nodes and
+  //passing through the bend point and perpendicular to the other line
+  var intersectionPoint = {
+    x: intersectX,
+    y: intersectY
+  };
+
+  return intersectionPoint;
+};
+
+module.exports = cholaEdge;
+
+/***/ }),
 /* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
-var compass = __webpack_require__(2);
-
-function cholaConstants() {}
-
-//cholaConstants inherits static props in FDLayoutConstants
-for (var prop in LayoutConstants) {
-    cholaConstants[prop] = LayoutConstants[prop];
-}
-
-cholaConstants.DEFAULT_USE_MULTI_LEVEL_SCALING = false;;
-cholaConstants.DEFAULT_RADIAL_SEPARATION = LayoutConstants.DEFAULT_MIN_LENGTH;
-cholaConstants.DEFAULT_COMPONENT_SEPERATION = 60;
-cholaConstants.TILE = true;
-cholaConstants.TILING_PADDING_VERTICAL = 10;
-cholaConstants.TILING_PADDING_HORIZONTAL = 10;
-
-cholaConstants.DEFAULT_TREE_DIREC = compass.SOUTH;
-/*
-Ideal edge length will be a multiple of the average node dimension.
-Set the multiplier here.
-
-Should be at least two, or else the shape buffer multiplier should not be used.
-*/
-cholaConstants.IEL_MULTIPLIER = 2;
-cholaConstants.ROTATE_FOR_WIDE_ASPECT_RATIO = true;
-cholaConstants.CLASSIC_ACA_FOR_CHAINS = true;
-
-//Set the kinds of placements that are favoured for trees.
-
-cholaConstants.TREE_PLACEMENT_FAVOUR_CARDINAL = true;
-cholaConstants.TREE_PLACEMENT_FAVOUR_EXTERNAL = true;
-cholaConstants.TREE_PLACEMENT_FAVOUR_ISOLATION = true;
-
-//We pad the nodes to keep gaps between them.
-
-cholaConstants.NODE_PADDING_IEL_SCALAR = 0.25;
-
-//For neighbour stress we scale the ideal edge length.
-
-cholaConstants.NBR_STRESS_IEL_SCALAR = 1 / 20;
-
-//Options and parameters for the "near alignments" pass:
-
-cholaConstants.DO_NEAR_ALIGNMENTS = true;
-cholaConstants.ALIGN_AND_SHAKE_REPS = 2;
-cholaConstants.KINK_WIDTH_SCALAR = 0.5;
-cholaConstants.ALIGNMENT_SCOPE_SCALAR = 2;
-
-//Options for symmetric tree layout:
-
-cholaConstants.RIGID_RANK_SEP = true;
-cholaConstants.TRY_MIRROR_TRIPLES = false;
-
-//Logging levels for various stages of the process:
-
-// cholaConstants.LOG_LEVEL_GENERAL = LogLevel.TIMING;
-// cholaConstants.LOG_LEVEL_TREE_PLACEMENT = LogLevel.TIMING;
-
-
-//Do you want node IDs to be labels on the nodes in the final layout?
-
-cholaConstants.NODE_IDS_AS_LABELS = false;
-
-//Do a final stress reduction with neighbour stress?
-
-cholaConstants.DO_FINAL_NEIGHBOUR_STRESS_SHAKE = true;
-
-/*
-If three nodes u, v, w in a graph form a triangle -- i.e. a subgraph isomorphic
-to K3 -- then during node configuration we may wish to prevent the "flattening"
-of this triangle, i.e. the configuration of any one of the three nodes in such
-a way that the other two are assigned to opposite compass directions, e.g. assigning
-u and w to be north and south, resp., of v. To prevent this, set this option to
-true.
-
-One reason to leave this option set to false; is e.g. that K4 gets a better (planar)
-layout.
-*/
-cholaConstants.NODE_CONFIG_NO_FLAT_TRIANGLES = false;
-
-/*
-To get a dictionary of routing options to be passed to a RoutingRig object,
-call the getRoutingOpts function.
-
-In many cases it makes sense to think of router parameters as scalar multiples
-of the ideal edge length of the graph. In such cases, you may set the scalars
-in the following dictionary, and you must pass the ideal edge length as iel
-to the getRoutingOpts function.
-
-If you want to switch some of these off, while
-continuing to use others, simply set their value to None. Where scalars are
-not used we fall back on the defaults dictionary below.
-*/
-cholaConstants.ROUTING_OPT_IEL_SCALARS = [['crossingPenalty', 2],
-// DEPRECATED: Nodes are padded throughout, so no need for this:
-['shapeBufferDistance', 0], ['segmentPenalty', 0.5]];
-cholaConstants.ROUTING_OPT_DEFAULTS = [['crossingPenalty', 0],
-// DEPRECATED: Nodes are padded throughout, so no need for this:
-['shapeBufferDistance', 0],
-//
-['segmentPenalty', 50]];
-/*
-In, for example, a NORTH-growing tree, an edge between ranks i and i + 1
-will always be allowed to connect only to the south (S) port of a node in
-rank i + 1.
-
-This setting controls the directions allowed for connection to nodes in
-rank i, as follows:
-
-0:  only N is allowed
-1:  N, E, W are allowed for the root node if it has exactly one child and
-    it is an ordinal placement, otherwise only N
-2:  N, E, W are allowed for all nodes on rank i
-
-The "CORE" version controls trees attached to a core graph.
-The "PURE" version controls graphs which are themselves trees.
-*/
-cholaConstants.PERMISSIVE_CORE_TREE_ROUTING = 1;
-cholaConstants.PERMISSIVE_PURE_TREE_ROUTING = 2;
-
-/*
-How to react if we get a positive water level route with no bends?
-This is indicative of some systematic error, but we may nevertheless
-want to skip over it, and simply mark the path as unusable.
-OR we can even throw all caution to the wind and try to use the path
-anyway.
-
-The settings are as follows:
-
-0:  Do not tolerate. Raise an exception and quit immediately.
-1:  Raise an UnusableWaterPath exception, and print a warning.
-    This type of exception is caught by a higher level control loop.
-2:  Do not raise any exception, but do print a warning.
-3:  Do not raise any exception, do not print any warning.
-*/
-cholaConstants.ON_POSITIVE_WATER_LEVEL_ROUTE_WITHOUT_BENDS = 1;
-
-/*
-Default operation is to evaluate all tree placement options exactly
-by actually carrying out each potential projection sequence, evaluating
-the stress change, and backtracking.
-If speed is favoured over quality, we can instead merely estimate the
-cost of each tree placement. Set this to true if that is desired.
-*/
-cholaConstants.ESTIMATE_TREE_PLACEMENT_COSTS = false;
-/*
-Legacy option. Heuristic for estimating face expansion costs was discovered
-to be faulty, and was updated 25 Jul 2018. Set this option to true if you
-want the old behaviour.
-*/
-cholaConstants.USE_OLD_COST_ESTIMATE_HEURISTIC = false;
-/*
-We can also speed up tree placement by using an estimate of the stress
-costs, in order to choose the primary expansion dimension.
-*/
-cholaConstants.HEURISTIC_CHOICE_FOR_PRIMARY_EXPANSION_DIMENSION = false;
-/*
-When making heuristic choice of primary expansion dimension, do you want
-to work in the costlier dimension first? (The hope is that the bigger change
-that this represents will already be enough to make room for the tree, and
-you will not have to work in the other dimension at all.)
-*/
-cholaConstants.HCPED_COSTLIER_DIMENSION_FIRST = true;
-
-/*
-Ignore all but level zero? Doing so may miss some alternative ways to
-expand a face, but will be faster.
-*/
-cholaConstants.WATER_LEVEL_ZERO_ONLY = false;
-
-/*
-Should we use scaling when using stress majorization for neighbour stress layout?
-Recent tests have shown it is faster if we do _not_ use it.
-*/
-cholaConstants.USE_SCALING_IN_MAJORIZATION = false;
-
-module.exports = cholaConstants;
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var LGraph = __webpack_require__(0).layoutBase.LGraph;
-
-function cholaGraph(parent, graphMgr, vGraph) {
-  LGraph.call(this, parent, graphMgr, vGraph);
-}
-
-cholaGraph.prototype = Object.create(LGraph.prototype);
-for (var prop in LGraph) {
-  cholaGraph[prop] = LGraph[prop];
-}
-
-module.exports = cholaGraph;
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var LGraphManager = __webpack_require__(0).layoutBase.LGraphManager;
-
-function cholaGraphManager(layout) {
-	LGraphManager.call(this, layout);
-}
-
-cholaGraphManager.prototype = Object.create(LGraphManager.prototype);
-for (var prop in LGraphManager) {
-	cholaGraphManager[prop] = LGraphManager[prop];
-}
-
-cholaGraphManager.prototype.getMaxDegree = function () {
-	var allNodes = this.getAllNodes();
-	var maxDegree = -1;
-
-	for (var i = 0; i < allNodes.length; i++) {
-		var node = allNodes[i];
-		var degree = node.getDegree();
-		if (degree > maxDegree) maxDegree = degree;
-	}
-
-	return maxDegree;
-};
-
-cholaGraphManager.prototype.getNode = function (node) {
-	var allNodes = this.getAllNodes();
-	for (var i = 0; i < allNodes.length; i++) {
-		var n = allNodes[i];
-		if (n == node) return true;
-	}
-	return false;
-};
-
-module.exports = cholaGraphManager;
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var LNode = __webpack_require__(0).layoutBase.LNode;
-var IMath = __webpack_require__(0).layoutBase.IMath;
-
-var cholaEdge = __webpack_require__(1);
-
-function cholaNode(gm, loc, size, vNode) {
-  LNode.call(this, gm, loc, size, vNode);
-  this.processed = false;
-  this.treeSerialNo = -1;
-  this.dx = null;
-  this.dy = null;
-}
-
-cholaNode.prototype = Object.create(LNode.prototype);
-for (var prop in LNode) {
-  cholaNode[prop] = LNode[prop];
-}
-
-cholaNode.prototype.octalCode = function () {
-  //Semi axes get octal codes 0,2,4,6; East:0; North:2; West:4; South:6
-  //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
-  var thisLoc = this.getCenter();
-  var o = -1;
-  var x = this.dx;
-  var y = this.dy;
-  if (x > 0) {
-    if (y < 0) o = 7;else {
-      if (y === 0) o = 0;else o = 1;
-    }
-  } else if (x === 0) {
-    if (y < 0) o = 6;else o = 2;
-  } else {
-    if (y < 0) o = 5;else {
-      if (y === 0) o = 4;else o = 3;
-    }
-  }
-  return o;
-};
-
-cholaNode.prototype.getFreeSemiLocations = function (edgeLength) {
-  var edges = this.edges;
-  var nbr = null;
-  var availableSemis = [0, 1, 2, 3];
-  var nbrLocX = null;
-  var nbrLocY = null;
-  for (var i = 0; i < edges.length; i++) {
-    var direction = null;
-    var edge = edges[i];
-    if (edge.bendpoints.length == 0) {
-      nbr = edge.getOtherEnd(this);
-      nbrLocX = nbr.getCenter().x;
-      nbrLocY = nbr.getCenter().y;
-    } else {
-      nbr = edge.bendpoints[0];
-      nbrLocX = nbr.x;
-      nbrLocY = nbr.y;
-    }
-
-    var nodeLoc = this.getCenter();
-    if (nodeLoc.x == nbrLocX) {
-      if (nbrLocY == nodeLoc.y + edgeLength) direction = 1;else if (nbrLocY == nodeLoc.y - edgeLength) direction = 3;
-    } else if (nodeLoc.y == nbrLocY) {
-      if (nbrLocX == nodeLoc.x + edgeLength) direction = 0;else if (nbrLocX == nodeLoc.x - edgeLength) direction = 2;
-    }
-
-    if (direction != null) {
-      var index = availableSemis.indexOf(direction);
-      availableSemis.splice(index, 1);
-    }
-  }
-  return availableSemis;
-};
-
-cholaNode.prototype.deflectionFromSemi = function (semi, o) {
-  var x = this.getCenter().x;
-  var y = this.getCenter().y;
-  var xSquare = x * x;
-  var ySquare = y * y;
-  var lSquare = xSquare + ySquare;
-  var defl = 0;
-
-  switch (semi) {
-    case 0:case 2:
-      defl = ySquare / lSquare;
-      break;
-    case 1:case 3:
-      defl = xSquare / lSquare;
-      break;
-    default:
-      break;
-
-  }
-
-  switch (semi) {
-    case 0:
-      switch (o) {
-        case 3:case 5:
-          defl = 2 - defl;
-          break;
-        case 4:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    case 1:
-      switch (o) {
-        case 5:case 7:
-          defl = 2 - defl;
-          break;
-        case 6:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    case 2:
-      switch (o) {
-        case 7:case 1:
-          defl = 2 - defl;
-          break;
-        case 0:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    case 3:
-      switch (o) {
-        case 1:case 3:
-          defl = 2 - defl;
-          break;
-        case 2:
-          defl = 2;
-          break;
-        default:
-      }
-      break;
-    default:
-      break;
-  }
-  return defl;
-};
-
-cholaNode.prototype.getNeighbors = function () {
-  //returns a list of neighbors sorted in descending order of degree
-  var neighbors = [];
-  for (var i = 0; i < this.edges.length; i++) {
-    var nbr = this.edges[i].getOtherEnd(this);
-    neighbors.push([nbr, nbr.getDegree()]);
-  }
-  neighbors.sort(function compareSecondColumn(a, b) {
-    if (a[1] === b[1]) {
-      return 0;
-    } else {
-      return a[1] < b[1] ? -1 : 1;
-    }
-  });
-  neighbors.reverse();
-  return neighbors;
-};
-
-cholaNode.prototype.setPred1 = function (pred1) {
-  this.pred1 = pred1;
-};
-
-cholaNode.prototype.getPred1 = function () {
-  return pred1;
-};
-
-cholaNode.prototype.getPred2 = function () {
-  return pred2;
-};
-
-cholaNode.prototype.setNext = function (next) {
-  this.next = next;
-};
-
-cholaNode.prototype.getNext = function () {
-  return next;
-};
-
-cholaNode.prototype.setProcessed = function (processed) {
-  this.processed = processed;
-};
-
-cholaNode.prototype.isProcessed = function () {
-  return processed;
-};
-
-cholaNode.prototype.isCompound = function () {
-  if (this.withChildren().size > 1) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-cholaNode.prototype.findEdgeBetween = function (node) {
-  //finds if an edge exists between the current node and node and returns it
-  var output = null;
-  for (var i = 0; i < this.edges.length; i++) {
-    var edge = this.edges[i];
-    if (edge.source == this && edge.target == node) {
-      output = edge;
-      break;
-    } else if (edge.source == node && edge.target == this) {
-      output = edge;
-      break;
-    }
-  }
-  return output;
-};
-
-cholaNode.prototype.getDegree = function () {
-  var edges = this.getEdges();
-  var degree = 0;
-
-  // For the edges connected
-  for (var i = 0; i < edges.length; i++) {
-    var edge = edges[i];
-    if (edge.getSource().id !== edge.getTarget().id) {
-      degree = degree + 1;
-    }
-  }
-  return degree;
-};
-
-cholaNode.prototype.findDistance = function (node) {
-  var nodeLoc = null;
-  var nodeLocX = null;
-  var nodeLocY = null;
-
-  if (Array.isArray(node)) {
-    nodeLocX = node[0];
-    nodeLocY = node[1];
-  } else {
-    nodeLocX = node.getCenter().x;
-    nodeLocY = node.getCenter().y;
-  }
-
-  var thisLoc = this.getCenter();
-  var distance = Math.sqrt(Math.pow((thisLoc.x - nodeLocX).toFixed(10), 2) + Math.pow((thisLoc.y - nodeLocY).toFixed(10), 2));
-  return distance;
-};
-
-cholaNode.prototype.addPadding = function (xPad, yPad) {
-  this.setWidth(this.getWidth() + xPad);
-  this.setHeight(this.getHeight() + yPad);
-};
-
-cholaNode.prototype.getDirec = function (v, edgeLength) {
-  /*
-  :param v: a Node object
-  :return: the configured Compass direction from current node to v if any, else None
-  */
-  var thisLoc = this.getCenter();
-  var vLoc = v.getCenter();
-  var x1 = thisLoc.x;
-  var y1 = thisLoc.y;
-  var x2 = vLoc.x;
-  var y2 = vLoc.y;
-
-  var d = null;
-
-  //checking if the nodes are already configured
-  if (x1 == x2 || y1 == y2) {
-    //checking if node v is aligned to north or south of node
-    if (x1 == x2) {
-      if (y2 == y1 + edgeLength) d = 1; //south
-      else if (y2 == y1 - edgeLength) d = 3; //north  
-    }
-    //checking if node v is aligned to east or west of node
-    else if (y1 == y2) {
-        if (x2 == x1 + edgeLength) d = 0; //east
-        else if (x2 == x1 - edgeLength) d = 2; //west
-      }
-  }
-  return d;
-};
-module.exports = cholaNode;
-
-/***/ }),
-/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2559,7 +2022,7 @@ Nbr.prototype.deflectionFromSemi = function (semi, o) {
 module.exports = Nbr;
 
 /***/ }),
-/* 8 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2578,7 +2041,7 @@ module.exports = Nbr;
 module.exports = __webpack_require__(20);
 
 /***/ }),
-/* 9 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2601,7 +2064,7 @@ module.exports = Object.assign != null ? Object.assign.bind(Object) : function (
 };
 
 /***/ }),
-/* 10 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2636,7 +2099,7 @@ Assignment.prototype.union = function (other) {
 module.exports = Assignment;
 
 /***/ }),
-/* 11 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2687,7 +2150,7 @@ Perm.prototype.apply = function (a) {
 module.exports = Perm;
 
 /***/ }),
-/* 12 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2695,9 +2158,9 @@ module.exports = Perm;
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var Nbr = __webpack_require__(7);
-var Perm = __webpack_require__(11);
-var Assignment = __webpack_require__(10);
+var Nbr = __webpack_require__(3);
+var Perm = __webpack_require__(7);
+var Assignment = __webpack_require__(6);
 
 function Arrangement(neighbors, degree, id, highIds) {
   this.div = 4;
@@ -3507,14 +2970,14 @@ Arrangement.prototype.basicAssignment = function () {
 module.exports = Arrangement;
 
 /***/ }),
-/* 13 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var Nbr = __webpack_require__(7);
-var Arrangement = __webpack_require__(12);
+var Nbr = __webpack_require__(3);
+var Arrangement = __webpack_require__(8);
 
 function assign() {}
 
@@ -3561,7 +3024,7 @@ assign.prototype.getNeighborAssignments = function (node, cyclicIds, highIds, am
 module.exports = assign;
 
 /***/ }),
-/* 14 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3588,15 +3051,15 @@ bendSequence.prototype.repr = function () {
 module.exports = bendSequence;
 
 /***/ }),
-/* 15 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var compass = __webpack_require__(2);
+var compass = __webpack_require__(1);
 var LinkShape = __webpack_require__(17);
-var BendSequence = __webpack_require__(14);
+var BendSequence = __webpack_require__(10);
 
 function chain(gm, nodes) {
     var cycle = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
@@ -3960,6 +3423,7 @@ chain.prototype.nextLocalOptimalPoint = function (i0, bendtype) {
     var check = false;
     for (var i = i0; i < M; i++) {
         cost = this.bendCost(bendtype, i);
+        if (i % 0 == 1) cost = cost + 3;
         if (candidate != null && cost > bestCost) {
             i1 = candidate;
             cost = bestCost;
@@ -4002,6 +3466,7 @@ chain.prototype.globalOptimalPoint = function (bendtype) {
 
     for (var i = beginAt; i < M; i++) {
         var c = this.bendCost(bendtype, i);
+        if (i % 0 == 1) cost = cost + 3;
         if (c < cost) {
             i0 = i;
             cost = c;
@@ -4209,13 +3674,11 @@ chain.prototype.possibleBendSeqs = function (edgeLength) {
 
     var seqs = [];
     if (this.cycle) {
-        //for (let i = 0; i < LinkShape.bent.length; i++)
-        //{
-        var bt = LinkShape.bent[0];
+        var index = Math.floor(Math.random() * 3 + 0);
+        var bt = LinkShape.bent[index];
         var ls = new LinkShape();
         var bs = new BendSequence(ls.cwBendsFrom(bt));
         seqs.push(bs);
-        //}
     } else {
         // Get incoming and outgoing directions:
         var A = this.anchorNodeLeft;
@@ -4390,6 +3853,52 @@ chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
         if (_min != currChainLength) {
             changes.push([nbr, node, pos]);
         }
+        // else
+        // {
+
+        //     //creating an edge bend (if needed)for a chain with single needed
+
+        //     //check if the node if aligned with both of its neighbors
+        //     let nbrs = node.getNeighbors();
+        //     let nbr0Check = false;
+        //     let nbr1Check = false;
+        //     if (node.getCenterX() == nbrs[0].getCenterX() || node.getCenterY() == nbrs[0].getCenterY())
+        //         nbr0Check = true;
+        //     if (node.getCenterX() == nbrs[1].getCenterX() || node.getCenterY() == nbrs[1].getCenterY())
+        //         nbr1Check = true;
+        //     if (nbr0Check && nbr1Check)
+        //     {}
+        //     else if (!nbr0Check)
+        //     {
+        //         let direction = nbrs[1].getDirec(node, edgeLength);
+        //       let dir1 = nbrs[1].getDirec(nbrs[0], edgeLength);
+        //       let dir2;
+        //       if (direction == 0)
+        //         dir2 = 2;
+        //       else if (direction == 1)
+        //         dir2 = 3;
+        //       else if (direction == 2)
+        //         dir2 = 0;
+        //       else if (direction == 3)
+        //         dir2 = 1;
+        //       changes.push([node, nbrs[0], {x:0,y:0}, dir1, dir2]);
+        //     }
+        //     else if (!nbr1Check)
+        //     {
+        //         let direction = nbrs[0].getDirec(node, edgeLength);
+        //       let dir1 = nbrs[0].getDirec(nbrs[1], edgeLength);
+        //       let dir2;
+        //       if (direction == 0)
+        //         dir2 = 2;
+        //       else if (direction == 1)
+        //         dir2 = 3;
+        //       else if (direction == 2)
+        //         dir2 = 0;
+        //       else if (direction == 3)
+        //         dir2 = 1;
+        //       changes.push([node, nbrs[1], {x:0,y:0}, dir1, dir2]);
+        //     }
+        // }
         return changes;
     }
 
@@ -4461,7 +3970,255 @@ chain.prototype.takeShapeBasedConfiguration = function (edgeLength) {
 module.exports = chain;
 
 /***/ }),
-/* 16 */
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
+var compass = __webpack_require__(1);
+
+function cholaConstants() {}
+
+//cholaConstants inherits static props in FDLayoutConstants
+for (var prop in LayoutConstants) {
+    cholaConstants[prop] = LayoutConstants[prop];
+}
+
+cholaConstants.DEFAULT_USE_MULTI_LEVEL_SCALING = false;;
+cholaConstants.DEFAULT_RADIAL_SEPARATION = LayoutConstants.DEFAULT_MIN_LENGTH;
+cholaConstants.DEFAULT_COMPONENT_SEPERATION = 60;
+cholaConstants.TILE = true;
+cholaConstants.TILING_PADDING_VERTICAL = 10;
+cholaConstants.TILING_PADDING_HORIZONTAL = 10;
+
+cholaConstants.DEFAULT_TREE_DIREC = compass.SOUTH;
+/*
+Ideal edge length will be a multiple of the average node dimension.
+Set the multiplier here.
+
+Should be at least two, or else the shape buffer multiplier should not be used.
+*/
+cholaConstants.IEL_MULTIPLIER = 2;
+cholaConstants.ROTATE_FOR_WIDE_ASPECT_RATIO = true;
+cholaConstants.CLASSIC_ACA_FOR_CHAINS = true;
+
+//Set the kinds of placements that are favoured for trees.
+
+cholaConstants.TREE_PLACEMENT_FAVOUR_CARDINAL = true;
+cholaConstants.TREE_PLACEMENT_FAVOUR_EXTERNAL = true;
+cholaConstants.TREE_PLACEMENT_FAVOUR_ISOLATION = true;
+
+//We pad the nodes to keep gaps between them.
+
+cholaConstants.NODE_PADDING_IEL_SCALAR = 0.25;
+
+//For neighbour stress we scale the ideal edge length.
+
+cholaConstants.NBR_STRESS_IEL_SCALAR = 1 / 20;
+
+//Options and parameters for the "near alignments" pass:
+
+cholaConstants.DO_NEAR_ALIGNMENTS = true;
+cholaConstants.ALIGN_AND_SHAKE_REPS = 2;
+cholaConstants.KINK_WIDTH_SCALAR = 0.5;
+cholaConstants.ALIGNMENT_SCOPE_SCALAR = 2;
+
+//Options for symmetric tree layout:
+
+cholaConstants.RIGID_RANK_SEP = true;
+cholaConstants.TRY_MIRROR_TRIPLES = false;
+
+//Logging levels for various stages of the process:
+
+// cholaConstants.LOG_LEVEL_GENERAL = LogLevel.TIMING;
+// cholaConstants.LOG_LEVEL_TREE_PLACEMENT = LogLevel.TIMING;
+
+
+//Do you want node IDs to be labels on the nodes in the final layout?
+
+cholaConstants.NODE_IDS_AS_LABELS = false;
+
+//Do a final stress reduction with neighbour stress?
+
+cholaConstants.DO_FINAL_NEIGHBOUR_STRESS_SHAKE = true;
+
+/*
+If three nodes u, v, w in a graph form a triangle -- i.e. a subgraph isomorphic
+to K3 -- then during node configuration we may wish to prevent the "flattening"
+of this triangle, i.e. the configuration of any one of the three nodes in such
+a way that the other two are assigned to opposite compass directions, e.g. assigning
+u and w to be north and south, resp., of v. To prevent this, set this option to
+true.
+
+One reason to leave this option set to false; is e.g. that K4 gets a better (planar)
+layout.
+*/
+cholaConstants.NODE_CONFIG_NO_FLAT_TRIANGLES = false;
+
+/*
+To get a dictionary of routing options to be passed to a RoutingRig object,
+call the getRoutingOpts function.
+
+In many cases it makes sense to think of router parameters as scalar multiples
+of the ideal edge length of the graph. In such cases, you may set the scalars
+in the following dictionary, and you must pass the ideal edge length as iel
+to the getRoutingOpts function.
+
+If you want to switch some of these off, while
+continuing to use others, simply set their value to None. Where scalars are
+not used we fall back on the defaults dictionary below.
+*/
+cholaConstants.ROUTING_OPT_IEL_SCALARS = [['crossingPenalty', 2],
+// DEPRECATED: Nodes are padded throughout, so no need for this:
+['shapeBufferDistance', 0], ['segmentPenalty', 0.5]];
+cholaConstants.ROUTING_OPT_DEFAULTS = [['crossingPenalty', 0],
+// DEPRECATED: Nodes are padded throughout, so no need for this:
+['shapeBufferDistance', 0],
+//
+['segmentPenalty', 50]];
+/*
+In, for example, a NORTH-growing tree, an edge between ranks i and i + 1
+will always be allowed to connect only to the south (S) port of a node in
+rank i + 1.
+
+This setting controls the directions allowed for connection to nodes in
+rank i, as follows:
+
+0:  only N is allowed
+1:  N, E, W are allowed for the root node if it has exactly one child and
+    it is an ordinal placement, otherwise only N
+2:  N, E, W are allowed for all nodes on rank i
+
+The "CORE" version controls trees attached to a core graph.
+The "PURE" version controls graphs which are themselves trees.
+*/
+cholaConstants.PERMISSIVE_CORE_TREE_ROUTING = 1;
+cholaConstants.PERMISSIVE_PURE_TREE_ROUTING = 2;
+
+/*
+How to react if we get a positive water level route with no bends?
+This is indicative of some systematic error, but we may nevertheless
+want to skip over it, and simply mark the path as unusable.
+OR we can even throw all caution to the wind and try to use the path
+anyway.
+
+The settings are as follows:
+
+0:  Do not tolerate. Raise an exception and quit immediately.
+1:  Raise an UnusableWaterPath exception, and print a warning.
+    This type of exception is caught by a higher level control loop.
+2:  Do not raise any exception, but do print a warning.
+3:  Do not raise any exception, do not print any warning.
+*/
+cholaConstants.ON_POSITIVE_WATER_LEVEL_ROUTE_WITHOUT_BENDS = 1;
+
+/*
+Default operation is to evaluate all tree placement options exactly
+by actually carrying out each potential projection sequence, evaluating
+the stress change, and backtracking.
+If speed is favoured over quality, we can instead merely estimate the
+cost of each tree placement. Set this to true if that is desired.
+*/
+cholaConstants.ESTIMATE_TREE_PLACEMENT_COSTS = false;
+/*
+Legacy option. Heuristic for estimating face expansion costs was discovered
+to be faulty, and was updated 25 Jul 2018. Set this option to true if you
+want the old behaviour.
+*/
+cholaConstants.USE_OLD_COST_ESTIMATE_HEURISTIC = false;
+/*
+We can also speed up tree placement by using an estimate of the stress
+costs, in order to choose the primary expansion dimension.
+*/
+cholaConstants.HEURISTIC_CHOICE_FOR_PRIMARY_EXPANSION_DIMENSION = false;
+/*
+When making heuristic choice of primary expansion dimension, do you want
+to work in the costlier dimension first? (The hope is that the bigger change
+that this represents will already be enough to make room for the tree, and
+you will not have to work in the other dimension at all.)
+*/
+cholaConstants.HCPED_COSTLIER_DIMENSION_FIRST = true;
+
+/*
+Ignore all but level zero? Doing so may miss some alternative ways to
+expand a face, but will be faster.
+*/
+cholaConstants.WATER_LEVEL_ZERO_ONLY = false;
+
+/*
+Should we use scaling when using stress majorization for neighbour stress layout?
+Recent tests have shown it is faster if we do _not_ use it.
+*/
+cholaConstants.USE_SCALING_IN_MAJORIZATION = false;
+
+module.exports = cholaConstants;
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var LGraph = __webpack_require__(0).layoutBase.LGraph;
+
+function cholaGraph(parent, graphMgr, vGraph) {
+  LGraph.call(this, parent, graphMgr, vGraph);
+}
+
+cholaGraph.prototype = Object.create(LGraph.prototype);
+for (var prop in LGraph) {
+  cholaGraph[prop] = LGraph[prop];
+}
+
+module.exports = cholaGraph;
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var LGraphManager = __webpack_require__(0).layoutBase.LGraphManager;
+
+function cholaGraphManager(layout) {
+	LGraphManager.call(this, layout);
+}
+
+cholaGraphManager.prototype = Object.create(LGraphManager.prototype);
+for (var prop in LGraphManager) {
+	cholaGraphManager[prop] = LGraphManager[prop];
+}
+
+cholaGraphManager.prototype.getMaxDegree = function () {
+	var allNodes = this.getAllNodes();
+	var maxDegree = -1;
+
+	for (var i = 0; i < allNodes.length; i++) {
+		var node = allNodes[i];
+		var degree = node.getDegree();
+		if (degree > maxDegree) maxDegree = degree;
+	}
+
+	return maxDegree;
+};
+
+cholaGraphManager.prototype.getNode = function (node) {
+	var allNodes = this.getAllNodes();
+	for (var i = 0; i < allNodes.length; i++) {
+		var n = allNodes[i];
+		if (n == node) return true;
+	}
+	return false;
+};
+
+module.exports = cholaGraphManager;
+
+/***/ }),
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4480,19 +4237,19 @@ var CoSEConstants = __webpack_require__(0).CoSEConstants;
 var CoSENode = __webpack_require__(0).CoSENode;
 var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(3);
-var cholaGraphManager = __webpack_require__(5);
-var cholaNode = __webpack_require__(6);
-var cholaEdge = __webpack_require__(1);
-var cholaGraph = __webpack_require__(4);
+var cholaConstants = __webpack_require__(12);
+var cholaGraphManager = __webpack_require__(14);
+var cholaNode = __webpack_require__(16);
+var cholaEdge = __webpack_require__(2);
+var cholaGraph = __webpack_require__(13);
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var Layout = __webpack_require__(0).layoutBase.Layout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
-var assign = __webpack_require__(13);
-var chain = __webpack_require__(15);
+var assign = __webpack_require__(9);
+var chain = __webpack_require__(11);
 var nodeBuckets = __webpack_require__(18);
-var compass = __webpack_require__(2);
+var compass = __webpack_require__(1);
 
 // Constructor
 function cholaLayout() {
@@ -4862,14 +4619,6 @@ cholaLayout.prototype.getMaxNodeWidth = function (gm) {
   return max;
 };
 
-cholaLayout.prototype.addPaddingToNodes = function (gm, padding) {
-  var allNodes = gm.getAllNodes();
-  for (var i = 0; i < allNodes.length; i++) {
-    var node = allNodes[i];
-    node.addPadding(padding, padding);
-  }
-};
-
 cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes) {
   var cyclicIds = [];
   var asgns = [];
@@ -5023,6 +4772,7 @@ cholaLayout.prototype.chainNodesConfiguration = function (gm) {
             }
             endNode.setCenter(locx, locy);
           }
+          prevDirection = _direction;
         }
       } else {
         //create bendpoint in an edge
@@ -5037,6 +4787,7 @@ cholaLayout.prototype.chainNodesConfiguration = function (gm) {
         var _edge = startNode.findEdgeBetween(endNode);
         var _output = _edge.createBendPoint(bendpoint);
         //edge.bendpoints = output;
+        prevDirection = _conf[4];
       }
     }
   }
@@ -5187,7 +4938,7 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
       if (sortedList.indexOf(_node2) < 0) sortedList.push(_node2);else continue;
       for (j; j < sortedList.length; j++) {
         //find its neighbors sorted in descending order of degree
-        var neighbors = sortedList[j].getNeighbors();
+        var neighbors = sortedList[j].getNeighborsWithDegree();
         //add nodes with degree 3 or higher to the sortedList
         for (var _i6 = 0; _i6 < neighbors.length; _i6++) {
           var _degree = neighbors[_i6][1];
@@ -5213,6 +4964,278 @@ cholaLayout.prototype.findNeighbors = function (node) {
 };
 
 module.exports = cholaLayout;
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var LNode = __webpack_require__(0).layoutBase.LNode;
+var IMath = __webpack_require__(0).layoutBase.IMath;
+
+var cholaEdge = __webpack_require__(2);
+
+function cholaNode(gm, loc, size, vNode) {
+  LNode.call(this, gm, loc, size, vNode);
+  this.processed = false;
+  this.dx = null;
+  this.dy = null;
+}
+
+cholaNode.prototype = Object.create(LNode.prototype);
+for (var prop in LNode) {
+  cholaNode[prop] = LNode[prop];
+}
+
+cholaNode.prototype.octalCode = function () {
+  //Semi axes get octal codes 0,2,4,6; East:0; North:2; West:4; South:6
+  //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
+  var thisLoc = this.getCenter();
+  var o = -1;
+  var x = this.dx;
+  var y = this.dy;
+  if (x > 0) {
+    if (y < 0) o = 7;else {
+      if (y === 0) o = 0;else o = 1;
+    }
+  } else if (x === 0) {
+    if (y < 0) o = 6;else o = 2;
+  } else {
+    if (y < 0) o = 5;else {
+      if (y === 0) o = 4;else o = 3;
+    }
+  }
+  return o;
+};
+
+cholaNode.prototype.getFreeSemiLocations = function (edgeLength) {
+  var edges = this.edges;
+  var nbr = null;
+  var availableSemis = [0, 1, 2, 3];
+  var nbrLocX = null;
+  var nbrLocY = null;
+  for (var i = 0; i < edges.length; i++) {
+    var direction = null;
+    var edge = edges[i];
+    if (edge.bendpoints.length == 0) {
+      nbr = edge.getOtherEnd(this);
+      nbrLocX = nbr.getCenter().x;
+      nbrLocY = nbr.getCenter().y;
+    } else {
+      nbr = edge.bendpoints[0];
+      nbrLocX = nbr.x;
+      nbrLocY = nbr.y;
+    }
+
+    var nodeLoc = this.getCenter();
+    if (nodeLoc.x == nbrLocX) {
+      if (nbrLocY == nodeLoc.y + edgeLength) direction = 1;else if (nbrLocY == nodeLoc.y - edgeLength) direction = 3;
+    } else if (nodeLoc.y == nbrLocY) {
+      if (nbrLocX == nodeLoc.x + edgeLength) direction = 0;else if (nbrLocX == nodeLoc.x - edgeLength) direction = 2;
+    }
+
+    if (direction != null) {
+      var index = availableSemis.indexOf(direction);
+      availableSemis.splice(index, 1);
+    }
+  }
+  return availableSemis;
+};
+
+cholaNode.prototype.deflectionFromSemi = function (semi, o) {
+  var x = this.getCenter().x;
+  var y = this.getCenter().y;
+  var xSquare = x * x;
+  var ySquare = y * y;
+  var lSquare = xSquare + ySquare;
+  var defl = 0;
+
+  switch (semi) {
+    case 0:case 2:
+      defl = ySquare / lSquare;
+      break;
+    case 1:case 3:
+      defl = xSquare / lSquare;
+      break;
+    default:
+      break;
+  }
+
+  switch (semi) {
+    case 0:
+      switch (o) {
+        case 3:case 5:
+          defl = 2 - defl;
+          break;
+        case 4:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 1:
+      switch (o) {
+        case 5:case 7:
+          defl = 2 - defl;
+          break;
+        case 6:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 2:
+      switch (o) {
+        case 7:case 1:
+          defl = 2 - defl;
+          break;
+        case 0:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    case 3:
+      switch (o) {
+        case 1:case 3:
+          defl = 2 - defl;
+          break;
+        case 2:
+          defl = 2;
+          break;
+        default:
+      }
+      break;
+    default:
+      break;
+  }
+  return defl;
+};
+
+cholaNode.prototype.getNeighborsWithDegree = function () {
+  //returns a list of neighbors sorted in descending order of degree
+  var neighbors = [];
+  for (var i = 0; i < this.edges.length; i++) {
+    var nbr = this.edges[i].getOtherEnd(this);
+    neighbors.push([nbr, nbr.getDegree()]);
+  }
+  neighbors.sort(function compareSecondColumn(a, b) {
+    if (a[1] === b[1]) {
+      return 0;
+    } else {
+      return a[1] < b[1] ? -1 : 1;
+    }
+  });
+  neighbors.reverse();
+  return neighbors;
+};
+
+cholaNode.prototype.getNeighbors = function () {
+  var neighbors = [];
+  for (var i = 0; i < this.edges.length; i++) {
+    var nbr = this.edges[i].getOtherEnd(this);
+    neighbors.push(nbr);
+  }
+  return neighbors;
+};
+
+cholaNode.prototype.setProcessed = function (processed) {
+  this.processed = processed;
+};
+
+cholaNode.prototype.isProcessed = function () {
+  return processed;
+};
+
+cholaNode.prototype.isCompound = function () {
+  if (this.withChildren().size > 1) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+cholaNode.prototype.findEdgeBetween = function (node) {
+  //finds if an edge exists between the current node and node and returns it
+  var output = null;
+  for (var i = 0; i < this.edges.length; i++) {
+    var edge = this.edges[i];
+    if (edge.source == this && edge.target == node) {
+      output = edge;
+      break;
+    } else if (edge.source == node && edge.target == this) {
+      output = edge;
+      break;
+    }
+  }
+  return output;
+};
+
+cholaNode.prototype.getDegree = function () {
+  var edges = this.getEdges();
+  var degree = 0;
+
+  // For the edges connected
+  for (var i = 0; i < edges.length; i++) {
+    var edge = edges[i];
+    if (edge.getSource().id !== edge.getTarget().id) {
+      degree = degree + 1;
+    }
+  }
+  return degree;
+};
+
+cholaNode.prototype.findDistance = function (node) {
+  var nodeLoc = null;
+  var nodeLocX = null;
+  var nodeLocY = null;
+
+  if (Array.isArray(node)) {
+    nodeLocX = node[0];
+    nodeLocY = node[1];
+  } else {
+    nodeLocX = node.getCenter().x;
+    nodeLocY = node.getCenter().y;
+  }
+
+  var thisLoc = this.getCenter();
+  var distance = Math.sqrt(Math.pow((thisLoc.x - nodeLocX).toFixed(10), 2) + Math.pow((thisLoc.y - nodeLocY).toFixed(10), 2));
+  return distance;
+};
+
+cholaNode.prototype.getDirec = function (v, edgeLength) {
+  /*
+  :param v: a Node object
+  :return: the configured Compass direction from current node to v if any, else None
+  */
+  var thisLoc = this.getCenter();
+  var vLoc = v.getCenter();
+  var x1 = thisLoc.x;
+  var y1 = thisLoc.y;
+  var x2 = vLoc.x;
+  var y2 = vLoc.y;
+
+  var d = null;
+
+  //checking if the nodes are already configured
+  if (x1 == x2 || y1 == y2) {
+    //checking if node v is aligned to north or south of node
+    if (x1 == x2) {
+      if (y2 == y1 + edgeLength) d = 1; //south
+      else if (y2 == y1 - edgeLength) d = 3; //north  
+    }
+    //checking if node v is aligned to east or west of node
+    else if (y1 == y2) {
+        if (x2 == x1 + edgeLength) d = 0; //east
+        else if (x2 == x1 - edgeLength) d = 2; //west
+      }
+  }
+  return d;
+};
+
+module.exports = cholaNode;
 
 /***/ }),
 /* 17 */
@@ -5338,7 +5361,7 @@ module.exports = linkShape;
 "use strict";
 
 
-var impl = __webpack_require__(8);
+var impl = __webpack_require__(4);
 
 // registers the extension on a cytoscape lib ref
 var register = function register(cytoscape) {
@@ -5371,23 +5394,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-var CoSELayout = __webpack_require__(0).CoSELayout;
-var CoSEConstants = __webpack_require__(0).CoSEConstants;
-var CoSENode = __webpack_require__(0).CoSENode;
-var LayoutConstants = __webpack_require__(0).layoutBase.LayoutConstants;
-var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var cholaConstants = __webpack_require__(3);
-var cholaGraphManager = __webpack_require__(5);
-var cholaNode = __webpack_require__(6);
-var cholaLayout = __webpack_require__(16);
-var cholaEdge = __webpack_require__(1);
-var cholaGraph = __webpack_require__(4);
-var PointD = __webpack_require__(0).layoutBase.PointD;
-var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
-var Layout = __webpack_require__(0).layoutBase.Layout;
+var cholaLayout = __webpack_require__(15);
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
-
-var assign = __webpack_require__(9);
+var assign = __webpack_require__(5);
 
 var defaults = Object.freeze((_Object$freeze = {
   quality: 'default',
@@ -5406,7 +5415,6 @@ var defaults = Object.freeze((_Object$freeze = {
   nodeDimensionsIncludeLabels: false,
 
   /* spectral layout options */
-
   // false for random, true for greedy
   samplingType: true,
   // sample size to construct distance matrix
@@ -5415,7 +5423,6 @@ var defaults = Object.freeze((_Object$freeze = {
   nodeSeparation: 75,
   // power iteration tolerance
   piTol: 0.0000001,
-
   // number of ticks per frame; higher is faster but more jerky
   refresh: 30,
   // Padding on fit
@@ -5428,10 +5435,8 @@ var chola = function () {
   function chola(options) {
     _classCallCheck(this, chola);
 
-    //Layout.call(this);
     this.options = assign({}, defaults, options);
     this.cholaGm;
-    this.coseGm;
     this.idList = [];
     this.cholaNodeToCoseNode = new HashMap();
     this.cholaNodesMap = new HashMap();
@@ -5441,7 +5446,6 @@ var chola = function () {
   _createClass(chola, [{
     key: 'run',
     value: function run() {
-      var ready;
       var frameId;
       var cholaIdToLNode = this.cholaIdToLNode = {};
       var coseIdToLNode = this.coseIdToLNode = {};
@@ -5450,11 +5454,8 @@ var chola = function () {
 
       var layout = this.layout = new cholaLayout();
       var self = this;
-      var cyNodes;
-      self.stopped = false;
 
       this.cy = this.options.cy;
-
       this.cy.trigger({ type: 'layoutstart', layout: this });
 
       var gm = layout.newGraphManager();
@@ -5470,19 +5471,21 @@ var chola = function () {
 
       //finds and saves the compound nodes
       var compoundNodes = layout.findCompoundNodes(this.cholaGm);
+
       //removes the leaf nodes
       layout.removeLeafNodes(this.cholaGm, compoundNodes, this.idList);
       layout.deleteLeafNodes(this.cy, this.idList);
+
       //applies cose on the core
       layout.coseOnCore(options, coseIdToLNode, cholaNodesMap, this.cholaNodeToCoseNode);
 
       // Reflect changes back to chola nodes
       var cholaNodes = this.cholaGm.getAllNodes();
       for (var i = 0; i < cholaNodes.length; i++) {
-        var _cholaNode = cholaNodes[i];
-        var coseNode = this.cholaNodeToCoseNode.get(_cholaNode);
+        var cholaNode = cholaNodes[i];
+        var coseNode = this.cholaNodeToCoseNode.get(cholaNode);
         var loc = coseNode.getCenter();
-        _cholaNode.setCenter(loc.x, loc.y);
+        cholaNode.setCenter(loc.x, loc.y);
       }
 
       //visualizes the layout in cytoscape map
@@ -5505,25 +5508,25 @@ var chola = function () {
       //creating orthogonal layout for higher degree nodes
       layout.higherNodesConfiguration(this.cholaGm, highDegreeNodes);
 
-      // // //orthogonal layout for lower degree nodes
+      // orthogonal layout for lower degree nodes
       layout.chainNodesConfiguration(this.cholaGm);
 
-      // // //orthogonal layout for one-degree nodes 
-      //1 degree nodes attached to 2 degree nodes will be left unaligned after the previous step
+      // orthogonal layout for one-degree nodes 
+      // 1 degree nodes attached to 2 degree nodes will be left unaligned after the previous step
       layout.oneDegreeNodesConfiguration(this.cholaGm, oneDegreeNodes);
 
       this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
       var cholaEdges = this.cholaGm.getAllEdges();
       for (var _i = 0; _i < cholaEdges.length; _i++) {
-        var _cholaEdge = cholaEdges[_i];
-        if (_cholaEdge.bendpoints.length != 0) {
+        var cholaEdge = cholaEdges[_i];
+        if (cholaEdge.bendpoints.length != 0) {
           for (var k = 0; k < this.cy.edges().length; k++) {
             var cyEdge = this.cy.edges()[k];
-            if (_cholaEdge.id == cyEdge.id()) {
+            if (cholaEdge.id == cyEdge.id()) {
               cyEdge.css("curve-style", "segments");
-              cyEdge.css("segment-weights", _cholaEdge.weight);
-              cyEdge.css("segment-distances", _cholaEdge.distance);
+              cyEdge.css("segment-weights", cholaEdge.weight);
+              cyEdge.css("segment-distances", cholaEdge.distance);
               break;
             }
           }
