@@ -1039,8 +1039,7 @@
     {
       "selector": "node",
       "style": {
-        "background-color": "rgb(173,26,102)",
-        //"label": "data(id)"
+        "background-color": "rgb(173,26,102)"
       }
     },
     {
