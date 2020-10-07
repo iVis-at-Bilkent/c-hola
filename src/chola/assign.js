@@ -1,9 +1,7 @@
 const Nbr = require('../chola/nbr');
 const Arrangement = require('../chola/arrangement');
-const quad = require('../chola/quad');
 
 function assign() {
-  //this.arr;
 }
 
 assign.prototype.getCyclicOrder = function (node)

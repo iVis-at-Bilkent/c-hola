@@ -17,19 +17,20 @@ let config = {
     library: camelcase( pkg.name ),
     libraryTarget: 'umd'
   },
+    mode: 'none',
   module: {
     rules: [
       { test: /\.js$/, exclude: /node_modules/, use: 'babel-loader' }
     ]
   },
-  // externals: PROD ? {
-  //     'cose-base': {
-  //         commonjs2: 'cose-base',
-  //         commonjs: 'cose-base',
-  //         amd: 'cose-base',
-  //         root: 'coseBase'
-  //     }
-  // } : {},
+  externals: PROD ? {
+      'cose-base': {
+          commonjs2: 'cose-base',
+          commonjs: 'cose-base',
+          amd: 'cose-base',
+          root: 'coseBase'
+      }
+  } : {},
   plugins: MIN ? [
     new webpack.optimize.UglifyJsPlugin({
       compress: {

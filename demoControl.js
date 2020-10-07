@@ -17,7 +17,7 @@ var cy = window.cy = cytoscape({
               selector: 'node',
               style: {
                 'background-color': '#ad1a66',
-                //'label': 'data(id)'
+                'label': 'data(id)'
               }
             },
             {
@@ -39,15 +39,24 @@ var cy = window.cy = cytoscape({
               style: {
                 'width': 3,
                 'line-color': '#ad1a66',
+                'edge-distances': 'node-position'
+              }
+            },
+            {
+              selector: 'edge:selected',
+              style: {
+                'width': 3,
+                'line-color': 'black',
+                'edge-distances': 'node-position'
               }
             }
           ],
           elements: {
               nodes: [
                   { data: { id: 'n1', name: 'n1' } },
-                  { data: { id: 'n2', name: 'n2', parent: "n1"} },
+                  // { data: { id: 'n2', name: 'n2', parent: "n1"} },
                   { data: { id: 'n3', name: 'n3', parent: "n1" } },
-                  { data: { id: 'n4', name: 'n4', parent: "n1" } },
+                  // { data: { id: 'n4', name: 'n4', parent: "n1" } },
                   { data: { id: 'n5', name: 'n5' } },
                   { data: { id: 'n6', name: 'n6' } },
                   { data: { id: 'n7', name: 'n7' } },
@@ -56,29 +65,29 @@ var cy = window.cy = cytoscape({
                   { data: { id: 'n10', name: 'n10' } },
                   { data: { id: 'n11', name: 'n11' } },
                   { data: { id: 'n12', name: 'n12', parent: "n22"  } },
-                  { data: { id: 'n13', name: 'n13', parent: "n22"  } },
-                  { data: { id: 'n14', name: 'n14', parent: "n22"  } },
+                  // { data: { id: 'n13', name: 'n13', parent: "n22"  } },
+                  // { data: { id: 'n14', name: 'n14', parent: "n22"  } },
                   { data: { id: 'n15', name: 'n15', parent: "n23" } },
                   { data: { id: 'n16', name: 'n16', parent: "n22"  } },
                   { data: { id: 'n17', name: 'n17', parent: "n22"  } },
                   { data: { id: 'n18', name: 'n18', parent: "n22"  } },
                   { data: { id: 'n19', name: 'n19' } },
                   { data: { id: 'n20', name: 'n20' } },
-                  { data: { id: 'n21', name: 'n21' } },
+                  // { data: { id: 'n21', name: 'n21' } },
                   { data: { id: 'n22', name: 'n22' } },
                   { data: { id: 'n23', name: 'n23', parent: "n22" } },
-                  { data: { id: 'n24', name: 'n24', parent: "n25" } },
-                  { data: { id: 'n25', name: 'n25', parent: "n23" } },
-                  { data: { id: 'n26', name: 'n26', parent: "n25" } },
-                  { data: { id: 'n27', name: 'n27' } },
-                  { data: { id: 'n28', name: 'n28' } },
-                  { data: { id: 'n29', name: 'n29' } },
-                  { data: { id: 'n30', name: 'n30' } },
-                  { data: { id: 'n31', name: 'n31' } }
+                  // { data: { id: 'n24', name: 'n24', parent: "n25" } },
+                  // { data: { id: 'n25', name: 'n25', parent: "n23" } },
+                  // { data: { id: 'n26', name: 'n26', parent: "n25" } },
+                  // { data: { id: 'n27', name: 'n27' } },
+                  // { data: { id: 'n28', name: 'n28' } },
+                  // { data: { id: 'n29', name: 'n29' } },
+                  // { data: { id: 'n30', name: 'n30' } },
+                  // { data: { id: 'n31', name: 'n31' } }
               ],
               edges: [
-                  { data: { source: 'n2', target: 'n3' } },
-                  { data: { source: 'n4', target: 'n3' } },
+                  // { data: { source: 'n2', target: 'n3' } },
+                  // { data: { source: 'n4', target: 'n3' } },
                   { data: { source: "n3", target: "n5" } },
                   { data: { source: "n5", target: "n6" } },
                   { data: { source: 'n5', target: 'n7' } },
@@ -90,8 +99,8 @@ var cy = window.cy = cytoscape({
                   { data: { source: "n9", target: "n10" } },
                   { data: { source: 'n10', target: 'n11' } },
                   { data: { source: 'n10', target: 'n12' } },
-                  { data: { source: "n12", target: "n13" } },
-                  { data: { source: "n12", target: "n14" } },
+                  // { data: { source: "n12", target: "n13" } },
+                  // { data: { source: "n12", target: "n14" } },
                   { data: { source: "n12", target: "n15" } },
                   { data: { source: 'n15', target: 'n16' } },
                   { data: { source: 'n15', target: 'n17' } },
@@ -99,12 +108,12 @@ var cy = window.cy = cytoscape({
                   { data: { source: "n17", target: "n19" } },
                   { data: { source: 'n17', target: 'n20' } },
                   { data: { source: 'n19', target: 'n20' } },
-                  { data: { source: "n19", target: "n21" } },
-                  { data: { source: "n27", target: "n28" } },
-                  { data: { source: "n28", target: "n29" } },
-                  { data: { source: "n29", target: "n30" } },
-                  { data: { source: "n30", target: "n31" } },
-                  { data: { source: "n31", target: "n27" } }
+                  // { data: { source: "n19", target: "n21" } },
+                  // { data: { source: "n27", target: "n28" } },
+                  // { data: { source: "n28", target: "n29" } },
+                  // { data: { source: "n29", target: "n30" } },
+                  // { data: { source: "n30", target: "n31" } },
+                  // { data: { source: "n31", target: "n27" } }
 
               ]
           }
@@ -155,6 +164,7 @@ document.getElementById("cose").addEventListener("click", function(){
   for (let i = 0; i < allEdges.length; i++)
   {
     allEdges[i].css("curve-style", "haystack");
+    allEdges[i].css("edge", "haystack");
   }
 
   var layout = cy.layout({
@@ -177,13 +187,22 @@ document.getElementById("sampleGraphs").addEventListener("change",function(){
     if( sampleGraphs.value == "1" ) {
         fetch("samples/sample1.json")
             .then(response => response.json())
-            .then(json => { console.log(json)
+            .then(json => { //console.log(json)
               window.cy.json(json);
+              window.cy.nodes().forEach(function(node){
+                node.data('width', node.width());
+                node.data('height', node.height());
+              });
+              window.cy.edges().forEach(function(edge){
+                edge.style({
+                  'edge-distances': 'node-position'
+                });
+              });
             });
     } else if(sampleGraphs.value == "2" ) {
         fetch("samples/sample2.json")
             .then(response => response.json())
-            .then(json => { console.log(json)
+            .then(json => { //console.log(json)
               window.cy.json(json);
               let i = 0;
               window.cy.nodes().forEach(function(node){
@@ -194,6 +213,13 @@ document.getElementById("sampleGraphs").addEventListener("change",function(){
                   'width': size,
                   'height': size
                 });
+                node.data('width', node.width());
+                node.data('height', node.height());
+              });
+              window.cy.edges().forEach(function(edge){
+                edge.style({
+                  'edge-distances': 'node-position'
+                });
               });
 
             });
@@ -202,6 +228,15 @@ document.getElementById("sampleGraphs").addEventListener("change",function(){
             .then(response => response.json())
             .then(json => { console.log(json)
               window.cy.json(json);
+              window.cy.nodes().forEach(function(node){
+                node.data('width', node.width());
+                node.data('height', node.height());
+              });
+              window.cy.edges().forEach(function(edge){
+                edge.style({
+                  'edge-distances': 'node-position'
+                });
+              });
             });
     } else if( sampleGraphs.value == "4"){
        fetch("samples/sample4.json")
@@ -216,6 +251,13 @@ document.getElementById("sampleGraphs").addEventListener("change",function(){
                 node.style({
                   'width': size,
                   'height': size
+                });
+                node.data('width', node.width());
+                node.data('height', node.height());
+              });
+              window.cy.edges().forEach(function(edge){
+                edge.style({
+                  'edge-distances': 'node-position'
                 });
               });
             });

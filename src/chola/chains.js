@@ -182,34 +182,6 @@ chain.prototype.shapeOfLink = function (link)
     }
     return out;
 };
-    // def __init__(this, gm, links, cycle=False):
-        
-
-    // def __len__(this):
-    //     return len(this.links)
-
-    // def __repr__(this):
-    //     s = 'Chain: %s' % [node.ID for node in this.links]
-    //     #if this.cycle:
-    //     #    s += ' (cycle)'
-    //     #elif this.isEll():
-    //     #    s += ' (ell)'
-    //     verbose = True
-    //     if verbose:
-    //         s += '\n    Internal edges:\n'
-    //         for edge in this.edges:
-    //             s += '    %s\n' % edge
-    //         if this.cycle:
-    //             s += '    Cycle return edge: %s\n' % this.returnEdge
-    //         else:
-    //             s += '    Left anchor: %s, %s\n' % (
-    //                 this.anchorNodeLeft.ID, this.anchorEdgeLeft
-    //             )
-    //             s += '    Right anchor: %s, %s\n' % (
-    //                 this.anchorNodeRight.ID, this.anchorEdgeRight
-    //             )
-    //     return s
-
     // def addRoutePointsInGraph(this, G):
     //     for a in this.aestheticBends:
     //         a.addRoutePointToEdgeInGraph(G)
@@ -383,6 +355,7 @@ chain.prototype.bendCost = function(bendtype, i0)
         // Normalise the cost.
         cost = Math.abs(alpha1/90);
     }
+
     return cost;
 };
 
@@ -407,8 +380,8 @@ chain.prototype.nextLocalOptimalPoint = function(i0, bendtype, remaining=0)
     var i1 = i0;
     var M = 2*len - 1;
     
-    if (this.cycle)
-        M = M + 1;
+    // if (this.cycle)
+    //     M = M + 1;
     
     M = M - remaining;
     var cost = bestCost;
@@ -417,6 +390,8 @@ chain.prototype.nextLocalOptimalPoint = function(i0, bendtype, remaining=0)
     for (let i = i0; i < M; i++)
     {
         cost = this.bendCost(bendtype, i);
+        if (i % 0 == 1)
+            cost = cost + 3;
         if (candidate != null && cost > bestCost)
         {
             i1 = candidate;
@@ -466,6 +441,8 @@ chain.prototype.globalOptimalPoint = function(bendtype, beginAt=0)
     for (let i = beginAt; i < M; i++)
     {
         let c = this.bendCost(bendtype, i);
+        if (i % 0 == 1)
+            cost = cost + 3;
         if (c < cost)
         {
             i0 = i;
@@ -489,37 +466,82 @@ chain.prototype.evaluateBendSeq = function(bendseq)
     The "places" are indices 0, 1, 2, 3, ... which refer to the first node in the chain,
     then the first edge, next node, next edge, and so on, with even numbers meaning links
     */
-
-    var queue = JSON.parse(JSON.stringify(bendseq.bendtypes));
-    var i = 0;
-    var cost = 0;
     var bendpoints = [];
-    while (queue.length > 1)
+    var cost = 0;
+    var i = 0; 
+    if (this.cycle)
     {
-        let bendtype = queue[0];
-        queue.shift();
-        let out = this.nextLocalOptimalPoint(i, bendtype, queue.length);
-        i = out[0];
-        let c = out[1];
-        if (i != null)
+        if (this.nodes.length == 3)
         {
-            bendpoints.push(i)
-            cost = cost + c;
-            i = i + 1;
+            //only this case will contain a bend
+            bendpoints = [0, 2, 4, 5];
+        }
+        else
+        {
+            //first node will be the first bendpoint
+            bendpoints.push(i);
+
+            //next bendpoints
+            let n = this.nodes.length;            
+            let m = n;
+            let width = parseInt(n/4);
+            if (n%2 != 0)
+            {
+                m = n + 1;
+                width = parseInt(m/4);
+            }
+            
+            let length = parseInt((m-2*width)/2);
+            
+            for (let j = 1; j < bendseq.bendtypes.length; j++)
+            {
+                if (j % 2 == 1)
+                    i = i + 2*length;
+                else 
+                    i = i + 2*width;
+                if (i <= (2*this.nodes.length - 1))
+                {
+                    bendpoints.push(i);
+                }
+                else
+                {
+                    bendpoints.push(i - 1);
+                }
+            }
         }
     }
-    if (queue.length == 1)
+    else
     {
-        let bendtype = queue[0];
-        queue.shift();
-        let out = this.globalOptimalPoint(bendtype, i);
-        i = out[0];
-        let c = out[1];
-        if (i != null)
+        var queue = JSON.parse(JSON.stringify(bendseq.bendtypes));     
+
+        while (queue.length > 1)
         {
-            bendpoints.push(i);
-            cost = cost + c;
-            i = i + 1;
+            let bendtype = queue[0];
+            queue.shift();
+            let out = this.nextLocalOptimalPoint(i, bendtype, queue.length);
+            i = out[0];
+            let c = out[1];
+            if (i != null)
+            {
+                bendpoints.push(i);
+                cost = cost + c;
+                i = i + 1;
+            }
+        }
+
+        if (queue.length == 1)
+        {
+            let bendtype = queue[0];
+            queue.shift();
+            let out = this.globalOptimalPoint(bendtype, i);
+            i = out[0];
+            let c = out[1];
+            if (i != null)
+            {
+                bendpoints.push(i);
+                cost = cost + c;
+                i = i + 1;
+            }
         }
     }
 
@@ -671,78 +693,85 @@ chain.prototype.writeConfigSeq = function(bendseq)
     return config;
 };
 
-chain.prototype.possibleBendSeqs = function(edgeLength) 
+chain.prototype.possibleBendSeqs = function() 
 {
-        /*
-        :return: list [s0, s1, ..., sk] where each si is a BendSequence object,
-                 indicating a sequence of bends that this
-                 chain may have, given its endpoints.
+    /*
+    :return: list [s0, s1, ..., sk] where each si is a BendSequence object,
+             indicating a sequence of bends that this
+             chain may have, given its endpoints.
 
-                 If "no bends" is a possibility, we return a BendSequence with empty
-                 list of bend types.
-        */
-        if (this.nodes.length == 1) 
-            return;
-        
-        var seqs = [];
-        if (this.cycle)
-        {    
-            for (let i = 0; i < LinkShape.bent.length; i++)
-            {
-                let bt = LinkShape.bent[i];
-                let ls = new LinkShape();
-                let bs = new BendSequence(ls.cwBendsFrom(bt));
-                seqs.push(bs);
-            }
-        }
+             If "no bends" is a possibility, we return a BendSequence with empty
+             list of bend types.
+    */
+    if (this.nodes.length == 1) 
+        return;
+    
+    var seqs = [];
+    if (this.cycle)
+    {    
+        let index = Math.floor((Math.random() * 3) + 0);
+        let bt = LinkShape.bent[index];
+        let ls = new LinkShape();
+        let bs = new BendSequence(ls.cwBendsFrom(bt));
+        seqs.push(bs);
+    }
+    else
+    {
+        // Get incoming and outgoing directions:
+        var A = this.anchorNodeLeft;
+        var Z = this.anchorNodeRight;
+        var b = this.nodes[0];
+        var y = this.nodes[this.nodes.length - 1];
+        var dIn = A.getDirec(b.getCenter(), false);
+        var dOut = y.getDirec(Z.getCenter(), false);
+        var dIns = [];
+        var dOuts = [];
+
+        // If edge (A, b) or (y, Z) is not configured, we look up possible directions.
+        if (dIn != null)
+            dIns = [dIn];
         else
         {
-            // Get incoming and outgoing directions:
-            var A = this.anchorNodeLeft;
-            var Z = this.anchorNodeRight;
-            var b = this.nodes[0];
-            var y = this.nodes[this.nodes.length - 1];
-            var dIn = A.getDirec(b, edgeLength);
-            var dOut = y.getDirec(Z, edgeLength);
-            var dIns = [];
-            var dOuts = [];
-
-            // If edge (A, b) or (y, Z) is not configured, we look up possible directions.
-            if (dIn != null)
-                dIns = [dIn];
-            else
+            var comp = new compass();
+            dIns = comp.possibleCardinalDirections(A, b);
+            if (dIns[0] == undefined)
             {
-                var comp = new compass();
-                dIns = comp.possibleCardinalDirections(A, b);
+                comp.possibleCardinalDirections(A,b);
             }
+        }
 
-            if (dOut != null)
-                dOuts = [dOut];
-            else
-            {
-                var comp = new compass();
-                dOuts = comp.possibleCardinalDirections(y, Z);
-            }
+        if (dOut != null)
+            dOuts = [dOut];
+        else
+        {
+            var comp = new compass();
+            dOuts = comp.possibleCardinalDirections(y, Z);
+        }
 
-            // Now computing the sequences.
-            for (let i = 0; i < dIns.length; i++)
+        // Now computing the sequences.
+        for (let i = 0; i < dIns.length; i++)
+        {
+            let d0 = dIns[i];
+            for (let j = 0; j < dOuts.length; j++)
             {
-                let d0 = dIns[i];
-                for (let j = 0; j < dOuts.length; j++)
+                let d1 = dOuts[j];
+                if (d0 == undefined)
                 {
-                    let d1 = dOuts[j];
-                    let bendSeqs = this.lookupMinimalBendSeqs(A, d0, Z, d1);
-                    for (let k = 0; k < bendSeqs.length; k++)
-                    {
-                       let bs = bendSeqs[k];
-                       let temp = new BendSequence(bs, dIn=d0, dOut=d1); 
-                       seqs.push(temp);
-                    }
-
+                    let b = 3; 
+                    let c = 4; 
+                }
+                let bendSeqs = this.lookupMinimalBendSeqs(A, d0, Z, d1);
+                for (let k = 0; k < bendSeqs.length; k++)
+                {
+                   let bs = bendSeqs[k];
+                   let temp = new BendSequence(bs, dIn=d0, dOut=d1); 
+                   seqs.push(temp);
                 }
             }
         }
-        return seqs;
+    }
+    
+    return seqs;
 };
 
 chain.prototype.lookupMinimalBendSeqs = function(A, d0, Z, d1)
@@ -767,10 +796,18 @@ chain.prototype.lookupMinimalBendSeqs = function(A, d0, Z, d1)
     let j = 5;
     let n = 2;
 
+    // console.log(A);
+    // console.log(Z);
+    // console.log(d0);
+    // console.log(d1);
+
     var pMap = [[0, 2, 2, 3, 5, 5, 6, 8, 8],        //E
                 [6, 3, 0, 8, 5, 2, 8, 5, 2],        //S
                 [8, 8, 6, 5, 5, 3, 2, 2, 0],        //W
                 [2, 5, 8, 2, 5, 8, 0, 3, 6]][d1];    //N
+
+    // console.log(d1);
+    // console.log(pMap);
         
     var d0Map =[[0, 1, 2, 3],        //E
                 [3, 0, 1, 2],        //S
@@ -850,6 +887,12 @@ chain.prototype.lookupMinimalBendSeqs = function(A, d0, Z, d1)
     ];
 
     var lookup = eastFinalLookup[pMap[p]][d0Map[d0]];
+    if (lookup == undefined)
+    {
+        let b = 4;
+        let c = 6;
+    }
+
     var bends = [];
 
     for (let i = 0; i < lookup.length; i++)
@@ -867,7 +910,7 @@ chain.prototype.lookupMinimalBendSeqs = function(A, d0, Z, d1)
     return bends;
 };
 
-chain.prototype.takeShapeBasedConfiguration = function(edgeLength)
+chain.prototype.takeShapeBasedConfiguration = function(gm, options, layout)
 {
     /*
     Give this chain an orthogonal configuration best fitting its present
@@ -883,81 +926,78 @@ chain.prototype.takeShapeBasedConfiguration = function(edgeLength)
 
     if (this.nodes.length == 1) 
     {
-        var node = this.nodes[0];
-        var edges = node.edges;
-        var neighbors = [edges[0].getOtherEnd(node), edges[1].getOtherEnd(node)];
-        let nbr1FreePositions = neighbors[0].getFreeSemiLocations(edgeLength);
-        let nbr2FreePositions = neighbors[1].getFreeSemiLocations(edgeLength);
-        let nbr = null;
-        let otherNbr = null;
-        let freePos = 0;
+        // var node = this.nodes[0];
+        // var edges = node.edges;
+        // var neighbors = [edges[0].getOtherEnd(node), edges[1].getOtherEnd(node)];
+        // let nbr1FreePositions = neighbors[0].getFreeSemiLocations(edgeLength);
+        // let nbr2FreePositions = neighbors[1].getFreeSemiLocations(edgeLength);
+        // let nbr = null;
+        // let otherNbr = null;
+        // let freePos = 0;
 
-        //find the neighbors with least number of free semi locations
-        if (nbr1FreePositions.length == 0 || nbr2FreePositions.length == 0)
-            return changes;
+        // //find the neighbors with least number of free semi locations
+        // if (nbr1FreePositions.length == 0 || nbr2FreePositions.length == 0)
+        //     return changes;
 
-        if (nbr1FreePositions.length > nbr2FreePositions.length)
-        {
-            nbr = neighbors[1];
-            otherNbr = neighbors[0];
-            freePos = nbr2FreePositions;
-        }
-        else
-        {    
-            nbr = neighbors[0];
-            otherNbr = neighbors[1];
-            freePos = nbr1FreePositions;
-        }
+        // if (nbr1FreePositions.length > nbr2FreePositions.length)
+        // {
+        //     nbr = neighbors[1];
+        //     otherNbr = neighbors[0];
+        //     freePos = nbr2FreePositions;
+        // }
+        // else
+        // {    
+        //     nbr = neighbors[0];
+        //     otherNbr = neighbors[1];
+        //     freePos = nbr1FreePositions;
+        // }
 
-        //finding current chain length
-        let currChainLength = node.findDistance(neighbors[0]) + node.findDistance(neighbors[1]);         
-        let nbrLoc = nbr.getCenter();
-        //place node at each free semi location and current location and find total length of chain
-        let cost = [];
-        let pos = null;
-        let min = currChainLength;
-        for (let i = 0; i < freePos.length; i++)
-        {
-            let loc = null;
-            if (freePos[i] == 0)
-                loc = [nbrLoc.x + edgeLength, nbrLoc.y];
-            else if (freePos[i] == 1)
-              {
-                loc = [nbrLoc.x, nbrLoc.y + edgeLength];
-              }
-              else if (freePos[i] == 2)
-              {
-                loc = [nbrLoc.x - edgeLength, nbrLoc.y];
-              }
-              else if (freePos[i] == 3)
-              {
-                loc = [nbrLoc.x, nbrLoc.y - edgeLength];
-              }
-            let chainLength = nbr.findDistance(loc) + otherNbr.findDistance(loc);
-            if (chainLength < min)
-            {    
-                pos = freePos[i];
-                min = chainLength;
-            }
-        }
-        if (min != currChainLength)
-        {
-            changes.push([[nbr, node, pos]]);
-        }
-        return changes;
-
+        // //finding current chain length
+        // let currChainLength = node.findDistance(neighbors[0]) + node.findDistance(neighbors[1]);         
+        // let nbrLoc = nbr.getCenter();
+        
+        // //place node at each free semi location and current location and find total length of chain
+        // let cost = [];
+        // let pos = null;
+        // let min = currChainLength;
+        // for (let i = 0; i < freePos.length; i++)
+        // {
+        //     let loc = null;
+        //     if (freePos[i] == 0)
+        //         loc = [nbrLoc.x + edgeLength, nbrLoc.y];
+        //     else if (freePos[i] == 1)
+        //       {
+        //         loc = [nbrLoc.x, nbrLoc.y + edgeLength];
+        //       }
+        //       else if (freePos[i] == 2)
+        //       {
+        //         loc = [nbrLoc.x - edgeLength, nbrLoc.y];
+        //       }
+        //       else if (freePos[i] == 3)
+        //       {
+        //         loc = [nbrLoc.x, nbrLoc.y - edgeLength];
+        //       }
+        //     let chainLength = nbr.findDistance(loc) + otherNbr.findDistance(loc);
+        //     if (chainLength < min)
+        //     {    
+        //         pos = freePos[i];
+        //         min = chainLength;
+        //     }
+        // }
+        // if (min != currChainLength)
+        // {
+        //     //changes.push([nbr, node, pos]);
+        //     layout.placementConstraints(pos, options, nbr, node);
+        // }
+        return;
     }
-
-    // //if both nodes in the chain are connected to 
-    // else if (this.nodes.length == 2 && this.anchorNodeLeft == this.anchorNodeRight)
-    //     return [];
 
     // Else there is at least one internal edge, and we assume that none of the
     // internal edges is yet configured. Therefore we /will/ be making
     // changes -- even if not creating any bent links (straight chains still need
     // to be configured).
     
-    var seqs = this.possibleBendSeqs(edgeLength);
+    var seqs = this.possibleBendSeqs();
     for (let i = 0; i < seqs.length; i++)
     {
         let bs = seqs[i];
@@ -980,6 +1020,7 @@ chain.prototype.takeShapeBasedConfiguration = function(edgeLength)
     }
     var bestSeq = seqs[index];
     var configseq = this.writeConfigSeq(bestSeq);
+
     // Now create the configuration.
     var G = this.gm;
     for (let j = 0; j < configseq.length; j++)
@@ -993,27 +1034,52 @@ chain.prototype.takeShapeBasedConfiguration = function(edgeLength)
         let v = this.getNode(k + 1);
         if (conf.length == 1)
         {
-            changes.push([[u, v, conf[0]]]);
-            // In this case the edge is to be aligned in a compass direction.
+            layout.placementConstraints(conf[0], options, u, v);
+
+            let value = options.relativeAlignment[options.relativeAlignment.length - 1];
+            if (value.top != undefined)
+            {
+                if (typeof(value.top) != "string")
+                {
+                    value.top = value.top.id;
+                    value.bottom = value.bottom.id;
+                }
+            }
+            else
+            {
+                if (typeof(value.left) != "string")
+                {
+                    value.left = value.left.id;
+                    value.right = value.right.id;
+                }
+            }
         }
         else
         {
-            //assert(len(conf) == 2)
-            // In this case we are to create a bend point.
-            // First sever the edge and free any config on the links.
-            //this.gm.severEdge(edge)
-            //this.gm.nodeConf.free(u, v)
-            // Create a bend point, giving it a reasonable initial location
-            // midway between u and v. It is not yet aligned with either of
-            // them; that will wait until we project onto the new constraints.
-            let x = (u.getCenter().x + v.getCenter().x) / 2;
-            let y = (u.getCenter().y + v.getCenter().y) / 2;
-            let bendpoint = [x, y];
+            if (u.getCenter().x == v.getCenter().x || u.getCenter().y == v.getCenter().y)
+                continue;
 
-            changes.push([[u, bendpoint, conf[0]],[bendpoint, v, conf[1]]]);
+            // In this case we are to create a bend point.
+            // Create a bend point
+            let bendpoint = {
+              x: null,
+              y: null
+            };
+            if (conf[0] == 0 || conf[0] == 2)
+            {
+                bendpoint.x = v.getCenter().x;
+                bendpoint.y = u.getCenter().y;
+            }
+            else if (conf[0] == 1 || conf[0] == 3)
+            {
+                bendpoint.x = u.getCenter().x;
+                bendpoint.y = v.getCenter().y;
+            }
+
+            edge.createBendPoint(bendpoint, conf[0], conf[1], u, v);
+            gm.edgesWithBends.push(edge);
         }
     }
-    return changes;
 };
 
 module.exports = chain;

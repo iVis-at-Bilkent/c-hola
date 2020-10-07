@@ -9,7 +9,7 @@ for (var prop in LayoutConstants) {
   cholaConstants[prop] = LayoutConstants[prop];
 }
 
-cholaConstants.DEFAULT_USE_MULTI_LEVEL_SCALING = false;;
+cholaConstants.DEFAULT_USE_MULTI_LEVEL_SCALING = false;
 cholaConstants.DEFAULT_RADIAL_SEPARATION = LayoutConstants.DEFAULT_MIN_LENGTH;
 cholaConstants.DEFAULT_COMPONENT_SEPERATION = 60;
 cholaConstants.TILE = true;
@@ -182,5 +182,21 @@ Should we use scaling when using stress majorization for neighbour stress layout
 Recent tests have shown it is faster if we do _not_ use it.
 */
 cholaConstants.USE_SCALING_IN_MAJORIZATION = false;
+cholaConstants.DEFAULT_TREE_DIREC = 1; // 1 means south
+
+/*
+Set the kinds of placements that are favoured for trees.
+*/
+cholaConstants.TREE_PLACEMENT_FAVOUR_CARDINAL = true;
+cholaConstants.TREE_PLACEMENT_FAVOUR_EXTERNAL = true;
+cholaConstants.TREE_PLACEMENT_FAVOUR_ISOLATION = true;
+
+cholaConstants.EAST = 0;
+cholaConstants.SOUTH = 1;
+cholaConstants.WEST = 2;
+cholaConstants.NORTH = 3;
+
+cholaConstants.XDIM = 0;
+cholaConstants.YDIM = 1;
 
 module.exports = cholaConstants;

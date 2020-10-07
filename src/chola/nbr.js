@@ -1,8 +1,10 @@
-function Nbr(id, dx, dy, degree) {
+function Nbr(id, dx, dy, degree, processed) 
+{
   this.id = id;
   this.x = dx;
   this.y = dy;
   this.degree = degree;
+  this.processed = processed;
 }
 
 Nbr.prototype.octalCode = function ()

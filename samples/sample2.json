@@ -8,7 +8,7 @@
         },
         "position": {
           "x": 133.23626445521222,
-          "y": 423.04010076942706
+          "y": 420.04010076942706
         },
         "group": "nodes",
         "removed": false,
@@ -416,7 +416,7 @@
         },
         "group": "edges",
         "removed": false,
-        "selected": false,
+        "selected": true,
         "selectable": true,
         "locked": false,
         "grabbable": true,
@@ -812,6 +812,12 @@
       "style": {
         "width": "3px",
         "line-color": "rgb(173,26,102)"
+      }
+    },
+    {
+      "selector": "edge:selected",
+      "style": {
+        "line-color": "rgb(0,0,0)"
       }
     }
   ],

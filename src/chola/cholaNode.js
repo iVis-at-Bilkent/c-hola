@@ -6,7 +6,11 @@ const cholaEdge = require('../chola/cholaEdge');
 function cholaNode(gm, loc, size, vNode) {
   LNode.call(this, gm, loc, size, vNode);
   this.processed = false;
-  this.treeSerialNo = -1;
+  this.treeSerialNum = 0;
+  this.dx = null;
+  this.dy = null;
+  this.isRootNode = false;
+  this.isDummy = false;
 }
 
 
@@ -15,75 +19,26 @@ for (var prop in LNode) {
   cholaNode[prop] = LNode[prop];
 }
 
-cholaNode.prototype.move = function ()
+cholaNode.prototype.setAsRootNode = function(option)
 {
-  var layout = this.graphManager.getLayout();
-  this.displacementX = layout.coolingFactor *
-          (this.springForceX + this.repulsionForceX + this.gravitationForceX) / this.noOfChildren;
-  this.displacementY = layout.coolingFactor *
-          (this.springForceY + this.repulsionForceY + this.gravitationForceY) / this.noOfChildren;
-
-
-  if (Math.abs(this.displacementX) > layout.coolingFactor * layout.maxNodeDisplacement)
-  {
-    this.displacementX = layout.coolingFactor * layout.maxNodeDisplacement *
-            IMath.sign(this.displacementX);
-  }
-
-  if (Math.abs(this.displacementY) > layout.coolingFactor * layout.maxNodeDisplacement)
-  {
-    this.displacementY = layout.coolingFactor * layout.maxNodeDisplacement *
-            IMath.sign(this.displacementY);
-  }
-
-  // a simple node, just move it
-  if (this.child == null)
-  {
-    this.moveBy(this.displacementX, this.displacementY);
-  }
-  // an empty compound node, again just move it
-  else if (this.child.getNodes().length == 0)
-  {
-    this.moveBy(this.displacementX, this.displacementY);
-  }
-  // non-empty compound node, propogate movement to children as well
-  else
-  {
-    this.propogateDisplacementToChildren(this.displacementX,
-            this.displacementY);
-  }
-
-  layout.totalDisplacement +=
-          Math.abs(this.displacementX) + Math.abs(this.displacementY);
-
-  this.springForceX = 0;
-  this.springForceY = 0;
-  this.repulsionForceX = 0;
-  this.repulsionForceY = 0;
-  this.gravitationForceX = 0;
-  this.gravitationForceY = 0;
-  this.displacementX = 0;
-  this.displacementY = 0;
+  this.isRootNode = option;
 };
 
-cholaNode.prototype.propogateDisplacementToChildren = function (dX, dY)
+cholaNode.prototype.getChildren = function()
 {
-  var nodes = this.getChild().getNodes();
-  var node;
-  for (var i = 0; i < nodes.length; i++)
+  /*
+  :return: a list of the neighbours of this node that sit as
+           the target end of the connecting edge
+  */
+  let kids = [];
+  let edges = this.edges;
+  for (let i = 0; i < edges.length; i++)
   {
-    node = nodes[i];
-    if (node.getChild() == null)
-    {
-      node.moveBy(dX, dY);
-      node.displacementX += dX;
-      node.displacementY += dY;
-    }
-    else
-    {
-      node.propogateDisplacementToChildren(dX, dY);
-    }
+    let edge = edges[i];
+    if (this.id == edge.source.id)
+      kids.push(edge.target);
   }
+  return kids;
 };
 
 cholaNode.prototype.octalCode = function ()
@@ -92,8 +47,8 @@ cholaNode.prototype.octalCode = function ()
   //Quadrants get octal codes 1,3,5,7; NorthEast:1; NorthWest:3; SouthWest:5; SouthEast:7
   var thisLoc = this.getCenter();
   var o = -1;
-  var x = thisLoc.x;
-  var y = thisLoc.y;
+  var x = this.dx;
+  var y = this.dy;
   if (x > 0)
   {
     if (y < 0)
@@ -129,7 +84,7 @@ cholaNode.prototype.octalCode = function ()
 };
 
 
-cholaNode.prototype.getFreeSemiLocations = function (edgeLength)
+cholaNode.prototype.getFreeSemiLocations = function (approx = false)
 {
   let edges = this.edges;
   let nbr = null;
@@ -140,7 +95,7 @@ cholaNode.prototype.getFreeSemiLocations = function (edgeLength)
   {
     let direction = null;
     let edge = edges[i];
-    if (edge.bendPoints.length == 0)
+    if (edge.bendpoints.length == 0)
     {
       nbr = edge.getOtherEnd(this); 
       nbrLocX = nbr.getCenter().x;
@@ -148,25 +103,45 @@ cholaNode.prototype.getFreeSemiLocations = function (edgeLength)
     }
     else
     {  
-      nbr = edge.bendPoints[0];
-      nbrLocX = nbr[0];
-      nbrLocY = nbr[1];
+      nbr = edge.bendpoints[0][0];
+      nbrLocX = nbr.x;
+      nbrLocY = nbr.y;
     }
 
     let nodeLoc = this.getCenter();
     if (nodeLoc.x == nbrLocX)
     {
-      if (nbrLocY == nodeLoc.y + edgeLength)
+      if (nbrLocY > nodeLoc.y)
         direction = 1;
-      else if (nbrLocY == nodeLoc.y - edgeLength)
+      else if (nbrLocY < nodeLoc.y)
         direction = 3;
     }
     else if (nodeLoc.y == nbrLocY)
     {
-      if (nbrLocX == nodeLoc.x + edgeLength)
+      if (nbrLocX > nodeLoc.x)
         direction = 0;
-      else if (nbrLocX == nodeLoc.x - edgeLength)
+      else if (nbrLocX < nodeLoc.x)
         direction = 2;
+    }
+
+    if (approx == true)
+    {
+      let dx = Math.abs(nodeLoc.x - nbrLocX);
+      let dy = Math.abs(nodeLoc.y - nbrLocY);
+      if (dx < dy)
+      {
+        if (nbrLocY > nodeLoc.y)
+          direction = 1;
+        else if (nbrLocY < nodeLoc.y)
+          direction = 3;
+      }
+      else if (dy > dx)
+      {
+        if (nbrLocX > nodeLoc.x)
+          direction = 0;
+        else if (nbrLocX < nodeLoc.x)
+          direction = 2;
+      }
     }
 
     if (direction != null)
@@ -196,7 +171,6 @@ cholaNode.prototype.deflectionFromSemi = function(semi, o)
       break;
     default:
       break;
-
   }
 
   switch (semi) {
@@ -251,29 +225,36 @@ cholaNode.prototype.deflectionFromSemi = function(semi, o)
 
 }
 
-cholaNode.prototype.setPred1 = function (pred1)
+cholaNode.prototype.getNeighborsWithDegree = function ()
 {
-  this.pred1 = pred1;
+  //returns a list of neighbors sorted in descending order of degree
+  var neighbors = [];
+  for (let i = 0; i < this.edges.length; i++)
+  {
+    let nbr = this.edges[i].getOtherEnd(this);
+    neighbors.push([nbr, nbr.getDegree()]);
+  }
+  neighbors.sort(function compareSecondColumn(a, b) {
+      if (a[1] === b[1]) {
+          return 0;
+      }
+      else {
+          return (a[1] < b[1]) ? -1 : 1;
+      }
+  });
+  neighbors.reverse();
+  return neighbors;
 };
 
-cholaNode.prototype.getPred1 = function ()
+cholaNode.prototype.getNeighbors = function ()
 {
-  return pred1;
-};
-
-cholaNode.prototype.getPred2 = function ()
-{
-  return pred2;
-};
-
-cholaNode.prototype.setNext = function (next)
-{
-  this.next = next;
-};
-
-cholaNode.prototype.getNext = function ()
-{
-  return next;
+  var neighbors = [];
+  for (let i = 0; i < this.edges.length; i++)
+  {
+    let nbr = this.edges[i].getOtherEnd(this);
+    neighbors.push(nbr);
+  }
+  return neighbors;
 };
 
 cholaNode.prototype.setProcessed = function (processed)
@@ -295,6 +276,26 @@ cholaNode.prototype.isCompound = function() {
 		}
 };
 
+cholaNode.prototype.findEdgeBetween = function(node) {
+  //finds if an edge exists between the current node and node and returns it
+  let output = null;
+  for (let i = 0; i < this.edges.length; i++)
+  {
+    let edge = this.edges[i]; 
+    if (edge.source == this && edge.target == node)
+    {
+        output = edge;
+        break;
+    }
+    else if (edge.source == node && edge.target == this)
+    {
+      output = edge;
+      break;
+    }
+  }
+  return output;
+}
+
 cholaNode.prototype.getDegree = function()
 {
   var edges = this.getEdges();
@@ -308,6 +309,47 @@ cholaNode.prototype.getDegree = function()
     }
   }
   return degree;
+};
+
+cholaNode.prototype.getBdryCompassPt = function(direc)
+{
+    /*
+    :param direc: a Compass direction
+    :return: point (u, v) on the boundary of this node in the given direction
+             from the centre
+    */
+    let c = new compass();
+    let cx = this.getLocation().x;
+    let cy = this.getLocation().y;
+
+    let hw, hh, sgnx, sgny, u, v;
+    [hw, hh] = self.halfDims();
+    [sgnx, sgny] = c.vectorSigns(direc);
+    [u, v] = [cx + sgnx * hw, cy + sgny * hh];
+    return [u, v];
+};
+
+cholaNode.prototype.halfDims = function()
+{
+    let hw = this.getWidth()/2;
+    let hh = this.getHeight()/2;
+    return [hw, hh];
+};
+
+cholaNode.prototype.boundingBoxxXyY = function()
+{
+    /*
+    :return: bounding box in the form (x, X, y, Y) giving extreme coords
+    */
+    let output = this.halfDims();
+    let hw = output[0];
+    let hh = output[1];
+    let u = this.getCenterX() - hw;
+    let v = this.getCenterY() - hh;
+
+    // Now use 2*hw, 2*hh instead of self.w, self.h, since in integer
+    // case the halfdims are rounded up with the ceiling function.
+    return [u, u + 2*hw, v, v+ 2*hh];
 };
 
 cholaNode.prototype.findDistance = function(node)
@@ -332,26 +374,67 @@ cholaNode.prototype.findDistance = function(node)
   return distance;
 };
 
-cholaNode.prototype.addPadding = function(xPad, yPad)
+cholaNode.prototype.getNbrsCWCyclic = function() 
 {
-  this.setWidth(this.getWidth() + xPad);
-  this.setHeight(this.getHeight() + yPad);
-};
+    /*
+    :return: list of all neighbours in clockwise cyclic order
+            (assuming the usual graphics convention of x increasing
+             to the right and y increasing downward)
+    */
+    let nbrs = this.getNeighbors();
+    if (nbrs.length == 0)
+      return [];
 
-cholaNode.prototype.getDirec = function(v, edgeLength)
+    function sortByLocation(array, node) {
+        return array.sort(function (a, b) {
+            let x = Math.atan2((a.getLocation().y - node.getLocation().y), (a.getLocation().x - node.getLocation().x));
+            let y = Math.atan2((b.getLocation().y - node.getLocation().y), (b.getLocation().x - node.getLocation().x));
+            return (x - y);
+        });
+    }
+
+    let sortedNbrs = sortByLocation(nbrs, this);
+    
+    return sortedNbrs;
+};
+        
+
+
+cholaNode.prototype.getDirec = function(vLoc, cardinal = false, ordinal = false)
 {        
   /*
-  :param v: a Node object
+  :param vLcc: a location object
+  :param cardinal: if true, the function returns the closest cardinal direction
   :return: the configured Compass direction from current node to v if any, else None
   */
   var thisLoc = this.getCenter();
-  var vLoc = v.getCenter();
   let x1 = thisLoc.x;
   let y1 = thisLoc.y;
   let x2 = vLoc.x;
   let y2 = vLoc.y;
+  let dx = Math.abs(x1 - x2);
+  let dy = Math.abs(y1 - y2);
 
   let d = null;
+
+  if(cardinal == true)
+  {
+    if (dx < dy)
+    {
+      if (y2 > y1)
+        d = 1;           //south
+      else if (y2 < y1)
+        d = 3;           //north  
+    }
+    //checking if node v is aligned to east or west of node
+    else if (dx > dy)
+    {
+      if (x2 > x1)
+        d = 0;           //east
+      else if (x2 < x1)
+        d = 2;           //west
+    }
+  }
 
   //checking if the nodes are already configured
   if (x1 == x2 || y1 == y2) 
@@ -359,20 +442,33 @@ cholaNode.prototype.getDirec = function(v, edgeLength)
     //checking if node v is aligned to north or south of node
     if (x1 == x2)
     {
-      if (y2 == y1 + edgeLength)
+      if (y2 > y1)
         d = 1;           //south
-      else if (y2 == y1 - edgeLength)
+      else if (y2 < y1)
         d = 3;           //north  
     }
     //checking if node v is aligned to east or west of node
     else if (y1 == y2)
     {
-      if (x2 == x1 + edgeLength)
+      if (x2 > x1)
         d = 0;           //east
-      else if (x2 == x1 - edgeLength)
+      else if (x2 < x1)
         d = 2;           //west
     }
   }
+  else if (ordinal == true)
+  {
+    if (x2 > x1 && y2 > y1)
+      d = 4;
+    else if (x2 < x1 && y2 > y1)
+      d = 5;
+    else if (x2 < x1 && y2 < y1)
+      d = 6;
+    else if (x2 > x1 && y2 < y1)
+      d = 7;
+  }
+
   return d;
 }
+
 module.exports = cholaNode;

@@ -1087,6 +1087,12 @@
         "width": "3px",
         "line-color": "rgb(173,26,102)"
       }
+    },
+    {
+      "selector": "edge:selected",
+      "style": {
+        "line-color": "rgb(0,0,0)"
+      }
     }
   ],
   "data": {},

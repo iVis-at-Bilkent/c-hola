@@ -1,56 +1,36 @@
 <!DOCTYPE>
-
 <html>
-
   <head>
     <title>cytoscape-chola.js demo (compound)</title>
-
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
-
     <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
     <script src="https://unpkg.com/layout-base/layout-base.js"></script>
-    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+    <script src="https://raw.githack.com/iVis-at-Bilkent/cose-base/constraint-support/cose-base.js"></script>
+    <!-- <script src="cose-base.js"></script> -->
     <script src="https://unpkg.com/cytoscape-cose-bilkent/cytoscape-cose-bilkent.js"></script>
     <script src="demoControl.js" defer></script>
-    <!--script src="https://github.com/iVis-at-Bilkent/cytoscape.js-edge-editing/blob/master/cytoscape-edge-editing.js"></script-->
-    <!-- for testing with local version of cytoscape.js -->
-    <!--<script src="../cytoscape.js/build/cytoscape.js"></script>-->
     <meta charset="UTF-8" />
     <script src="cytoscape-chola.js"></script>
-    <!-- <script src="cytoscape-cose-bilkent.js"></script> -->
-
-
     <style>
       body {
         font-family: helvetica;
         font-size: 14px;
       }
-
       #cy {
         width: 100%;
         height: 90%;
         z-index: 999;
       }
-
       h1 {
         opacity: 0.5;
         font-size: 1em;
       }
-
       button {
         margin-right: 10px;
       }
     </style>
-
     <script>
       document.addEventListener('DOMContentLoaded', function(){
-
-        
-        
-        // 
-				// });
-        
-
         function getKey(e)
         {
           if (e.keyCode == 46)
@@ -65,11 +45,9 @@
 
   <body>
     <h1>cytoscape-chola-bilkent demo (compound)</h1>
-
     <button id = "randomize" type = "button"> Randomize </button>
     <button id = "cose" type = "button"> COSE </button>
     <button id = "cholaLayoutButton" type = "button"> C-HOLA</button>
-    
      <label>Load sample graph:</label>
      <select id = "sampleGraphs">
        <option value = "1">Sample Graph 1</option>
@@ -77,9 +55,7 @@
        <option value = "3">Sample Graph 3</option>
        <option value = "4">Sample Graph 4</option>
      </select>
-
     <div id="cy"></div>
-
   </body>
 
 </html>

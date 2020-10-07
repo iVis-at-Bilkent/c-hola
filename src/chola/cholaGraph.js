@@ -1,4 +1,4 @@
-var LGraph = require('cose-base').layoutBase.LGraph;
+var LGraph = require('layout-base').LGraph;
 
 function cholaGraph(parent, graphMgr, vGraph) {
   LGraph.call(this, parent, graphMgr, vGraph);

@@ -1,18 +1,9 @@
 const Nbr = require('../chola/nbr');
-const Quad = require('../chola/quad');
 const Perm = require('../chola/Perm');
 const Assignment = require('../chola/Assignment');
 
 function Arrangement(neighbors, degree, id, highIds) {
   this.div = 4;
-  // for (;;this.div*=2)
-  // {
-  //   if (neighbors.length <= this.div)
-  //     break;
-  //   else
-  //     continue;
-  // }
-
   this.semis = [];
   this.quads = [];
   this.nbrs = neighbors;
@@ -23,10 +14,10 @@ function Arrangement(neighbors, degree, id, highIds) {
 
 Arrangement.prototype.getArrangement = function()
 {
-  this.quads = [new Quad(0), new Quad(1), new Quad(2), new Quad(3)];
   for (let i = 0; i < this.div; i++)
   {
     this.semis.push([]);
+    this.quads.push([]);
   }
 
   var quads = this.quads;
@@ -39,14 +30,12 @@ Arrangement.prototype.getArrangement = function()
     if (o % 2 === 0)
     {
       var s = o / 2;
-      semis[s*(this.div/4)].push(nbr);
+      semis[s].push(nbr);
     }
     else {
-      if (this.div == 4)
-      {
-        var q = (o - 1) / 2;
-        quads[q].addNbr(nbr);
-      }
+      var q = (o - 1) / 2;
+      quads[q].push(nbr);
+      
     }
   }
 };
@@ -80,8 +69,8 @@ Arrangement.prototype.getCyclicOrder = function()
 
   for (let i = 0; i < this.quads.length; i++)
   {
-    let semi = this.semis[i*(this.div/4)];
-    let quad = this.quads[i].nbrs;
+    let semi = this.semis[i];
+    let quad = this.quads[i];
     let orderedNodes = [];
     if (semi != null)
     {
@@ -100,7 +89,6 @@ Arrangement.prototype.getCyclicOrder = function()
     }
     for (let j = 0; j < quad.length; j++)
     {
-      //var arr = [quad[j].y, quad[j].x, quad[j].id];
       var arr = [quad[j], null];
       orderedNodes.push(arr);
     }
@@ -110,7 +98,7 @@ Arrangement.prototype.getCyclicOrder = function()
       for (let k = 0; k < orderedNodes.length; k++)
       {
         let node = orderedNodes[k][0];
-        orderedNodes[k][1] = node.deflectionFromSemi(i, node.octalCode);
+        orderedNodes[k][1] = node.deflectionFromSemi(i, node.octalCode());
       }
       orderedNodes.sort(function(a, b){
           return a[1] - b[1];
@@ -166,8 +154,8 @@ Arrangement.prototype.combination = function (array, k){
     let temp = [];
     if (k == 0)
       return;
-    else if (k > 3) 
-      k = 3;
+    else if (k > array.length) 
+      k = array.length;
     function run(level, start, c){
       
         for(var i=start; i < array.length - k + level + 1; i++){
@@ -185,9 +173,6 @@ Arrangement.prototype.combination = function (array, k){
 
     
     run(0, 0, combinations);
-
-    console.log(combinations);
-    console.log("printed combinations");
     return combinations;
 }
 
@@ -303,6 +288,11 @@ Arrangement.prototype.getAssignment = function(cyclicNodes, am) {
       unAvailableSemis.push(i);
   }
 
+  //if no semis are available, then return
+
+  if (availableSemis.length == 0)
+    return;
+
   //determine processed nodes which do not lie on a semi
   let quadNodes = [];
   if (processedNodes.length != unAvailableSemis.length)
@@ -349,18 +339,13 @@ Arrangement.prototype.getAssignment = function(cyclicNodes, am) {
   }
 
   //chose the node closest to a semi and fix it
-    var index = costArray.indexOf(Math.min(...costArray));
-    var startNode = unProcessedNodes[index % unProcessedNodes.length];
-    let startCost = costArray[index];
+  var index = costArray.indexOf(Math.min(...costArray));
+  var startNode = unProcessedNodes[index % unProcessedNodes.length];
+  let startCost = costArray[index];
 
-    if (typeof(startNode) == 'undefined')
-    {
-      var mobi = 1;
-      mobi = 6+9;
-    }
   let overallCostArray = [];
-    let combinationsArray = [];
-    let individualCostArray = [];
+  let combinationsArray = [];
+  let individualCostArray = [];
 
   if (unProcessedNodes.length == 1)
   {
@@ -394,86 +379,106 @@ Arrangement.prototype.getAssignment = function(cyclicNodes, am) {
   }
   else
   {
-    
-
     for (let j = 0; j < availableSemis.length; j++)
-    {
+  {
       let tempArray = JSON.parse(JSON.stringify(array));
-        let semiIndex = availableSemis[j];
-        let index = array.indexOf(availableSemis[j]);
-        
-        let firstPart = tempArray.slice(index)
-        let secondPart = tempArray.slice(0, index)
-        firstPart.splice(0, 1);
-        tempArray = firstPart.concat(secondPart); 
+      let semiIndex = availableSemis[j];
+      let index = array.indexOf(availableSemis[j]);
+      
 
-        
-        
-        let combinations = this.combination(tempArray, unProcessedNodes.length - 1);
-        
-          for (let k = 0; k < combinations.length; k++)
-          {
-            let cost = 0;
-            let costArr = [];
-            let o = startNode.octalCode();
-            cost += startNode.deflectionFromSemi(semiIndex, o);
+      let firstPart = tempArray.slice(index)
+      let secondPart = tempArray.slice(0, index)
+      firstPart.splice(0, 1);
+      tempArray = firstPart.concat(secondPart); 
+      
+     // let comb = [];
+      
 
-            let comb = [];  //comb[semi index] = [node][cost]
-            a = unProcessedNodes.indexOf(startNode) + 1;
-            let c = combinations[k];
-            for (let l = 0; l < c.length; l++)
-            {
-              if (a > unProcessedNodes.length - 1)
-                  a = a % unProcessedNodes.length;
-              
-              let nextNode = unProcessedNodes[a]; 
-              let nextSemiIndex = c[l];
-              let o = nextNode.octalCode();
-              let defl = nextNode.deflectionFromSemi(nextSemiIndex, o);
-              cost += defl;
-              comb[nextSemiIndex] = nextNode;
-              costArr[nextSemiIndex] = defl;
-              a = a + 1;
-            }
-            comb[semiIndex] = startNode;
-            costArr[j] = startCost;
-            for (let l = 0; l < unAvailableSemis.length; l++)
-            {
-              let index = unAvailableSemis[l];
-              comb[index] = this.semis[index][0];
-              costArr[index] = 0;
-            }
-            let finalNode = startNode;
-            //check if combination follows the cyclic order
-            if (unAvailableSemis.length > 0)
-              finalNode = this.semis[unAvailableSemis[0]][0];
+      // if (tempArray.length == 0)
+      // {
 
-            var out = this.compareConfiguration(finalNode, cyclicNodes, comb, cost, costArr, quadNodes);
-            combinationsArray.push(comb);
-            overallCostArray.push(out[1]); 
-            individualCostArray.push(out[0]);
-          }
+      // }
+      //find the possible combinations based on available spaces and unprocessed nodes
+      let combinations = this.combination(tempArray, unProcessedNodes.length - 1);
+
+      // if (combinations.length == 0)
+      // {
+      //   if (tempArray.length == 1)
+      //   {
+      //     for (let k = 0; k < unProcessedNodes.length; k++)
+      //     {
+      //       combinations.push(tempArray);
+      //     }
+      //   }
+      // }
+      
+      for (let k = 0; k < combinations.length; k++)
+      {
+        let cost = 0;
+        let costArr = [];
+
+        //fix the startnode at the first available semi and find the cost
+        let o = startNode.octalCode();
+        cost += startNode.deflectionFromSemi(semiIndex, o);
+
+        let comb = [];  //comb[semi index] = [node][cost]
+        a = unProcessedNodes.indexOf(startNode) + 1;
+        let c = combinations[k];
+        for (let l = 0; l < c.length; l++)
+        {
+          if (a > unProcessedNodes.length - 1)
+              a = a % unProcessedNodes.length;
+          
+          let nextNode = unProcessedNodes[a]; 
+          let nextSemiIndex = c[l];
+          let o = nextNode.octalCode();
+          let defl = nextNode.deflectionFromSemi(nextSemiIndex, o);
+          cost += defl;
+          comb[nextSemiIndex] = nextNode;
+          costArr[nextSemiIndex] = defl;
+          a = a + 1;
+        }
+        comb[semiIndex] = startNode;
+        costArr[j] = startCost;
+        
+        for (let l = 0; l < unAvailableSemis.length; l++)
+        {
+          let index = unAvailableSemis[l];
+          comb[index] = this.semis[index][0];
+          costArr[index] = 0;
+        }
+        let finalNode = startNode;
+        //check if combination follows the cyclic order
+        if (unAvailableSemis.length > 0)
+          finalNode = this.semis[unAvailableSemis[0]][0];
+
+        var out = this.compareConfiguration(finalNode, cyclicNodes, comb, cost, costArr, quadNodes);
+        combinationsArray.push(comb);
+        overallCostArray.push(out[1]); 
+        individualCostArray.push(out[0]);
+      }
         
 
 
           // if (j == 1)
           //   break;
-      }
+    }
+
   }
-        var index = overallCostArray.indexOf(Math.min(...overallCostArray));
-        var comb = combinationsArray[index];
-        var cost = individualCostArray[index];
-        for (let i = 0; i < comb.length; i=i+2)
-        {
-          if (comb[i] == null)
-            continue;
-          if (cost[i] > 100)
-            continue;
-          else
-          {
-            this.semis[i/2] = comb[i];
-          }
-        }
+  var index = overallCostArray.indexOf(Math.min(...overallCostArray));
+  var comb = combinationsArray[index];
+  var cost = individualCostArray[index];
+  for (let i = 0; i < comb.length; i=i+2)
+  {
+    if (comb[i] == null)
+      continue;
+    if (cost[i] > 100)
+      continue;
+    else
+    {
+      this.semis[i/2] = comb[i];
+    }
+  }
 
 
 

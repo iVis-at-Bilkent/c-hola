@@ -23,8 +23,15 @@ function compass() {
     this.increasing = [0, 1];
     this.decreasing = [2, 3];
 
-    this.abbrev = [[this.EAST, "E"], [this.SOUTH, "S"], [this.WEST, "W"], [this.NORTH, "N"],
-        [this.SE, "SE"], [this.SW, "SW"], [this.NW, "NW"], [this.NE, "NE"]];
+    this.abbrev = {
+        0: "E", 
+        1: "S", 
+        2: "W", 
+        3: "N",
+        4: "SE", 
+        5: "SW", 
+        6: "NW", 
+        7: "NE"};
 
     // Directions w.r.t which we must /increase/ the const
     // coord in order to move to the right:
@@ -33,60 +40,63 @@ function compass() {
     // coord in order to move to the right:
     this.rightSideMinus = [this.SOUTH, this.WEST];
 
-    this.variableDimension = [
-        [this.EAST, 0],
-        [this.SOUTH, 1],
-        [this.WEST, 0],
-        [this.NORTH, 1]
-    ];
+    this.variableDimension = {
+        0: 0,
+        1: 1,
+        2: 0,
+        3: 1
+    };
 
-    this.constantDimension = [
-        [this.EAST, 1],
-        [this.SOUTH, 0],
-        [this.WEST, 1],
-        [this.NORTH, 0]
-    ];
+    this.constantDimension = {
+        0: 1,
+        1: 0,
+        2: 1,
+        3: 0
+    };
 
-    this.components = [
-        [this.SE, [this.SOUTH, this.EAST]],
-        [this.SW, [this.SOUTH, this.WEST]],
-        [this.NW, [this.NORTH, this.WEST]],
-        [this.NE, [this.NORTH, this.EAST]],
-        [this.EAST, [this.EAST]],
-        [this.SOUTH, [this.SOUTH]],
-        [this.WEST, [this.WEST]],
-        [this.NORTH, [this.NORTH]]
-    ];
+    this.components = {
+        4: [this.SOUTH, this.EAST],
+        5: [this.SOUTH, this.WEST],
+        6: [this.NORTH, this.WEST],
+        7: [this.NORTH, this.EAST],
+        0: [this.EAST],
+        1: [this.SOUTH],
+        2: [this.WEST],
+        3: [this.NORTH]
+    };
 
-    this.signs = [
-        [this.EAST, [1, 0]],
-        [this.SE, [1, 1]],
-        [this.SOUTH, [0, 1]],
-        [this.SW, [-1, 1]],
-        [this.WEST, [-1, 0]],
-        [this.NW, [-1, -1]],
-        [this.NORTH, [0, -1]],
-        [this.NE, [1, -1]]
-    ];
+    this.signs = {
+        0: [1, 0],
+        4: [1, 1],
+        1: [0, 1],
+        5: [-1, 1],
+        2: [-1, 0],
+        6: [-1, -1],
+        3: [0, -1],
+        7: [1, -1]
+    };
 
-    this.libavoidVisibility = [
-        [this.EAST, 8],
-        [this.SOUTH, 2],
-        [this.WEST, 4],
-        [this.NORTH, 1]
-    ];
+    this.libavoidVisibility = {
+        0: 8,
+        1: 2,
+        2: 4,
+        3: 1
+    };
 };
-    // @classmethod
-    // def cwClosedInterval(cls, d0, d1):
-    //     """
-    //     :param d0: a direction
-    //     :param d1: another direction
-    //     :return: list of all compass directions from d0 to d1 inclusive, going clockwise
-    //     """
-    //     rr = cls.cwRose + cls.cwRose
-    //     i0 = rr.index(d0)
-    //     i1 = i0 + rr[i0:].index(d1)
-    //     return rr[i0:i1+1]
+
+compass.prototype.cwClosedInterval = function(d0, d1)
+{
+    /*
+    :param d0: a direction
+    :param d1: another direction
+    :return: list of all compass directions from d0 to d1 inclusive, going clockwise
+    */
+
+    let rr = this.cwRose.concat(this.cwRose);
+    let i0 = rr.indexOf(d0);
+    let i1 = i0 + rr.slice(i0).indexOf(d1);
+    return rr.slice(i0,i1+1);
+};
 
     // @classmethod
     // def acwClosedInterval(cls, d0, d1):
@@ -124,14 +134,15 @@ function compass() {
     //     """
     //     return len(cls.acwClosedInterval(d0, d1)) - 1
 
-    // @classmethod
-    // def sameDimension(cls, d0, d1):
-    //     """
-    //     :param d0: a cardinal Compass direction
-    //     :param d1: a cardinal Compass direction
-    //     :return: boolean saying if these directions are in the same dimension
-    //     """
-    //     return (d0 % 2) == (d1 % 2)
+compass.prototype.sameDimension = function(d0, d1)
+{
+    /*
+    :param d0: a cardinal Compass direction
+    :param d1: a cardinal Compass direction
+    :return: boolean saying if these directions are in the same dimension
+    */
+    return ((d0 % 2) == (d1 % 2));
+}
 
     // @classmethod
     // def perpendicular(cls, d0, d1):
@@ -197,52 +208,88 @@ compass.prototype.possibleCardinalDirections = function(node1, node2)
     if (dy < 0)
         dirs.push(this.NORTH);
     return dirs;
+};
+
+compass.prototype.direction = function(node1, node2)
+{
+    var node1Loc = node1.getCenter();
+    var node2Loc = node2.getCenter();
+    let x1 = node1Loc.x;
+    let x2 = node2Loc.x;
+    let y1 = node1Loc.y;
+    let y2 = node2Loc.y;
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+
+    let dir;
+    if (dx > 0 && dy < 0)
+        dir = this.NE;
+    else if (dx > 0 && dy == 0)
+        dir = this.EAST;
+    else if (dx > 0 && dy > 0)
+        dir = this.SE;
+    else if (dx == 0 && dy > 0)
+        dir = this.SOUTH;
+    else if (dx < 0 && dy > 0)
+        dir = this.SW;
+    else if (dx < 0 && dy == 0)
+        dir = this.WEST;
+    else if (dx < 0 && dy < 0)
+        dir = this.NW;
+    else if (dx == 0 && dy < 0)
+        dir = this.NORTH;
+    return dir;
+};
+
+compass.prototype.getRotationFunction = function(fromDir, toDir)
+{
+    // For now we only handle cardinal directions.
+
+    let d = (toDir - fromDir) % 4;
+    if (d < 0)
+        d = d + 4;
+    return [
+        function(a){return [a[0], a[1]]},
+        function(a){return [-1*a[1], a[0]]},
+        function(a){return [-1*a[0], -1*a[1]]},
+        function(a){return [a[1], -1*a[0]]},
+    ][d];
 }
 
-    // @classmethod
-    // def getRotationFunction(cls, fromDir, toDir):
-    //     # For now we only handle cardinal directions.
-    //     if fromDir not in cls.cwCards or toDir not in cls.cwCards:
-    //         raise Exception("only cardinal directions are currently handled")
-    //     a, b = fromDir, toDir
-    //     d = (b - a) % 4
-    //     return [
-    //         lambda v: (v[0], v[1]),
-    //         lambda v: (-v[1], v[0]),
-    //         lambda v: (-v[0], -v[1]),
-    //         lambda v: (v[1], -v[0])
-    //     ][d]
+compass.prototype.flip = function(direc)
+{
+    let i0 = this.cwRose.indexOf(direc);
+    return this.cwRose[(i0+4)%8];
+}
 
-    // @classmethod
-    // def flip(cls, direc):
-    //     i0 = cls.cwRose.index(direc)
-    //     return cls.cwRose[(i0+4)%8]
-
-    // @classmethod
-    // def cw90(cls, direc):
-    //     i0 = cls.cwRose.index(direc)
-    //     return cls.cwRose[(i0+2)%8]
+compass.prototype.cw90 = function(direc)
+{
+    let i0 = this.cwRose.indexOf(direc);
+    return this.cwRose[(i0+2)%8];
+}
 
     // @classmethod
     // def acw90(cls, direc):
     //     i0 = cls.cwRose.index(direc)
     //     return cls.cwRose[(i0-2)%8]
 
-    // @classmethod
-    // def rotateCW(cls, n, direc):
-    //     i0 = cls.cwRose.index(direc)
-    //     return cls.cwRose[(i0+n)%8]
+compass.prototype.rotateCW = function(n, direc)
+{
+    let i0 = this.cwRose.indexOf(direc);
+    return this.cwRose[(i0+n)%8];
+}
 
-    // @classmethod
-    // def vectorSigns(cls, direc):
-    //     """
-    //     :param direc: a Compass direction
-    //     :return: (xs, ys) where xs in {-1, 0, 1} represents the sign of
-    //     the x-coordinate of a vector lying in the "octant" represented
-    //     by direc, and likewise for ys. Here an "octant" is a semiaxis for
-    //     a cardinal direction and an open quadrant for an ordinal direction.
-    //     """
-    //     return cls.signs[direc]
+compass.prototype.vectorSigns = function(direc)
+{
+    /*
+    :param direc: a Compass direction
+    :return: (xs, ys) where xs in {-1, 0, 1} represents the sign of
+    the x-coordinate of a vector lying in the "octant" represented
+    by direc, and likewise for ys. Here an "octant" is a semiaxis for
+    a cardinal direction and an open quadrant for an ordinal direction.
+    */
+    return this.signs[direc];
+};
 
     // @classmethod
     // def vector(cls, direc, mag=1):
@@ -264,6 +311,5 @@ compass.prototype.possibleCardinalDirections = function(node1, node2)
     //         cls.NE: [hsqrt2, -hsqrt2]
     //     }[direc]
     //     return [mag*c for c in v]
-
 
 module.exports = compass;
