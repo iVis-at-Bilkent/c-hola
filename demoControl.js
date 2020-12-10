@@ -132,7 +132,8 @@ document.getElementById('importGraphML-input').addEventListener('change', functi
                 'border-width': '3px'
             })
             .selector('node:parent').style({
-                'background-opacity': 0.333
+                'background-opacity': 0.333,
+                'padding': 10
             })
             .selector('edge').style({
                 'width': 3,
@@ -266,7 +267,8 @@ document.getElementById("sampleGraphs").addEventListener("change",function()
                 node.style({
                   'width': size,
                   'height': size,
-                  'opacity': 0.75
+                  'opacity': 0.75,
+                  'font-size': 25
                 });
                 node.data('width', node.width());
                 node.data('height', node.height());
