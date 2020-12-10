@@ -7,7 +7,7 @@
 		exports["cytoscapeChola"] = factory(require("cose-base"), require("layout-base"));
 	else
 		root["cytoscapeChola"] = factory(root["coseBase"], root["layoutBase"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE__4__, __WEBPACK_EXTERNAL_MODULE__11__) {
+})(window, function(__WEBPACK_EXTERNAL_MODULE__4__, __WEBPACK_EXTERNAL_MODULE__11__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -446,6 +446,8 @@ var chola = function () {
         options.relativePlacementConstraint = undefined;
       }
 
+      // this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+
       //turning non-orthogonal edges to orthogonal edges
       var newEdgesWithBends = layout.createOrthogonalEdges(coreGm, 1);
 
@@ -482,6 +484,8 @@ var chola = function () {
         options.alignmentConstraint = undefined;
         options.relativePlacementConstraint = undefined;
       }
+
+      //this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
       //apply symmetric layout to the trees
       var trees = [];
@@ -592,45 +596,44 @@ var chola = function () {
       coreGm.resetAllEdges();
       coreGm.getAllEdges();
 
-      //Printing For debugging
-      for (var _i10 = 0; _i10 < compoundNodes.length; _i10++) {
-        var _cholaNode3 = compoundNodes[_i10];
-        var id = compoundNodes[_i10].id;
-        console.log("before changing dimensions");
-        console.log(_cholaNode3.id);
-        console.log(_cholaNode3.getCenter());
-        console.log(_cholaNode3.getWidth());
-        console.log(_cholaNode3.getHeight());
-      }
+      // //Printing For debugging
+      // for (let i = 0; i < compoundNodes.length; i++)
+      // {
+      //   let cholaNode = compoundNodes[i];
+      //   let id = compoundNodes[i].id;
+      //   console.log("before changing dimensions");
+      //   console.log(cholaNode.id);
+      //   console.log(cholaNode.getCenter());
+      //   console.log(cholaNode.getWidth());
+      //   console.log(cholaNode.getHeight()); 
+      // }
+
 
       //updating the positions, widths and heights of the compounds nodes
       //FUTURE FIX: MAKE IT WORK FOR LABELS
       layout.updateCompoundDimensions(compoundNodes);
 
-      //Printing For debugging
-      for (var _i11 = 0; _i11 < compoundNodes.length; _i11++) {
-        var _cholaNode4 = compoundNodes[_i11];
-        var _id = compoundNodes[_i11].id;
-        console.log("after changing dimensions");
-        console.log(_cholaNode4.id);
-        console.log(_cholaNode4.getCenter());
-        console.log(_cholaNode4.getWidth());
-        console.log(_cholaNode4.getHeight());
-      }
+      // //Printing For debugging
+      // for (let i = 0; i < compoundNodes.length; i++)
+      // {
+      //     let cholaNode = compoundNodes[i];
+      //     let id = compoundNodes[i].id;
+      //     console.log("after changing dimensions");
+      //     console.log(cholaNode.id);
+      //     console.log(cholaNode.getCenter());
+      //     console.log(cholaNode.getWidth());
+      //     console.log(cholaNode.getHeight()); 
+      // }
+
 
       //now creating bendpoints for edges connected with compound nodes
       var compoundEdges = layout.createOrthogonalEdges(coreGm, 2);
-      for (var _i12 = 0; _i12 < compoundEdges.length; _i12++) {
-        var _edge3 = compoundEdges[_i12];
+      for (var _i10 = 0; _i10 < compoundEdges.length; _i10++) {
+        var _edge3 = compoundEdges[_i10];
         var _bendpoints = _edge3.bendpoints;
         for (var _k2 = 0; _k2 < this.cy.edges().length; _k2++) {
           var _cyEdge = this.cy.edges()[_k2];
           if (_edge3.id == _cyEdge.id()) {
-            // console.log("edge.sourceport");
-            // console.log(edge.sourceport);
-            // console.log("Edge.targetPort");
-            // console.log(edge.targetPort);
-
             var relativePos = _edge3.source.getRelativeRatiotoNodeCenter(_edge3.sourcePort);
             _cyEdge.style({ 'source-endpoint': +relativePos.x + "% " + +relativePos.y + '%' });
             relativePos = _edge3.target.getRelativeRatiotoNodeCenter(_edge3.targetPort);
@@ -641,8 +644,8 @@ var chola = function () {
 
       //Last step: finally create edges with bends in cytoscape
       var cholaEdges2 = coreGm.edgesWithBends;
-      for (var _i13 = 0; _i13 < cholaEdges2.length; _i13++) {
-        var _cholaEdge2 = cholaEdges2[_i13];
+      for (var _i11 = 0; _i11 < cholaEdges2.length; _i11++) {
+        var _cholaEdge2 = cholaEdges2[_i11];
         for (var _k3 = 0; _k3 < this.cy.edges().length; _k3++) {
           var _cyEdge2 = this.cy.edges()[_k3];
           if (_cholaEdge2.id == _cyEdge2.id()) {
@@ -1118,7 +1121,7 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
               //if target is on the right
               else if (tgtCenterX > srcBbox[1] && tgtFreeLocs.includes(c.WEST)) {
                   edge.sourcePort = { x: srcBbox[1], y: tgtCenterY };
-                  edge.targetPort = { x: tgtBbox[2], y: tgtCenterY };
+                  edge.targetPort = { x: tgtBbox[0], y: tgtCenterY };
                 } else createBp = true;
             } else createBp = true;
           } else if (!source.isCompound() && target.isCompound()) {
@@ -1155,7 +1158,9 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
               var xValues = [srcBbox[0], srcBbox[1], tgtBbox[0], tgtBbox[1]];
 
               //now we sort these values in ascending order
-              xValues.sort();
+              xValues.sort(function (a, b) {
+                return a - b;
+              });
 
               //the two nodes overlap (not literally but in x dimensions) between xValues[1] and xValues[2]
               //the mean of these two values will be x value of the source and target ports
@@ -1177,7 +1182,9 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
             else if (srcBbox[2] < tgtBbox[2] && tgtBbox[2] < srcBbox[3] || srcBbox[2] < tgtBbox[3] && tgtBbox[3] < srcBbox[3]) {
 
                 var yValues = [srcBbox[2], srcBbox[3], tgtBbox[2], tgtBbox[3]];
-                yValues.sort();
+                yValues.sort(function (a, b) {
+                  return a - b;
+                });
 
                 var _mean = (yValues[1] + yValues[2]) / 2;
 
@@ -1201,6 +1208,25 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
             //finding the value of target port of edge
             if (option[2] == 0) edge.targetPort = { x: tgtBbox[0], y: tgtCenterY };else if (option[2] == 1) edge.targetPort = { x: tgtCenterX, y: tgtBbox[2] };else if (option[2] == 2) edge.targetPort = { x: tgtBbox[1], y: tgtCenterY };else if (option[2] == 3) edge.targetPort = { x: tgtCenterX, y: tgtBbox[3] };
           } else outputEdges.push(edge);
+
+          // console.log("source");
+          // console.log(source.id);
+          // console.log(source.getCenter());
+          // console.log(source.getWidth());
+          // console.log(source.getHeight());
+          // console.log(srcBbox);
+          // console.log(edge.sourcePort);
+
+          // console.log("target");
+          // console.log(target.id);
+          // console.log(target.getCenter());
+          // console.log(target.getWidth());
+          // console.log(target.getHeight());
+          // console.log(tgtBbox);
+          // console.log(edge.targetPort);
+          // console.log("_____________________");
+
+          //break;
         }
 
       if (createBp == true) {
@@ -2456,11 +2482,11 @@ cholaLayout.prototype.updateCompoundDimensions = function (compoundNodes) {
         //var childGraph = parent.getChild();
 
         parent.updateBounds2();
-        console.log("after updating bounds");
-        console.log(parent.id);
-        console.log(parent.getCenter());
-        console.log(parent.getWidth());
-        console.log(parent.getHeight());
+        // console.log("after updating bounds");
+        // console.log(parent.id);
+        // console.log(parent.getCenter());
+        // console.log(parent.getWidth());
+        // console.log(parent.getHeight());
       }
     }
 
@@ -3081,18 +3107,24 @@ cholaGraphManager.prototype.getNode = function (node) {
 };
 
 cholaGraphManager.prototype.severNodes = function (nodes, buckets, compoundNodes, idList, parentList) {
-    //let parentList = {};
     for (var i = 0; i < nodes.length; i++) {
         var node = nodes[i];
-        //console.log("severing node");
-        if (!compoundNodes.includes(node)) {
+
+        //check here again if a node is the last node inside a compound node
+        //if the compound node includes just 2 2 nodes connected to each other, then they will both be removed in pruning
+        //this has to be prevented by checking here again
+        // if (node.getParent().id !== 'undefined' && compoundNodes.includes(node.getParent()) && node.getParent().child.nodes.length === 1)
+        // {
+        //     //the node will already be a zero degree node now, so we do nothing
+        //     continue;
+        // }
+        /*else */if (!compoundNodes.includes(node)) {
             var edge = node.edges[0];
             if (edge == undefined) continue;
-            //console.log(edge);
+
             var otherNode = edge.getOtherEnd(node);
             var degree = otherNode.getDegree();
 
-            //if (node.getParentNode() != null)
             parentList[node.id] = [node, node.getEdges()[0], node.getOwner()];
 
             node.owner.remove(node);
@@ -3104,8 +3136,6 @@ cholaGraphManager.prototype.severNodes = function (nodes, buckets, compoundNodes
     }
     this.resetAllNodes();
     this.resetAllEdges();
-
-    //return parentList;
 };
 
 cholaGraphManager.prototype.getConnectedComponents = function () {
@@ -5866,25 +5896,56 @@ nodeBuckets.prototype.takeLeaves = function (compoundNodes) {
     var leaves = this.buckets[1];
     var tempNodes = [];
     var leafNodes = [];
+    var leafIdList = [];
     for (var i = 0; i < leaves.length; i++) {
         var node = leaves[i];
         var edge = node.edges[0];
 
         // if a leave node does not have to be removed, it is stored in tempNodes
+
         //we do not remove a node if it is a compound node
         if (compoundNodes.includes(node)) {
             tempNodes.push(node);
         }
         //we do not remove a node if it is the last node left inside a compound node
-        else if (node.getParent().id !== 'undefined' && compoundNodes.includes(node.getParent()) && node.getParent().child.nodes.length === 1) {
+        else if (node.getParent().id !== 'undefined' && compoundNodes.includes(node.getParent())) {
+                var children = node.getParent().child.nodes;
+                if (children.length === 1) {
+                    tempNodes.push(node);
+                } else if (children.length == 2) {
+                    //check if a 1-degree neighbor of a 1-degree node has already been added to the leafnodes
+                    var child1 = children[0];
+                    var child2 = children[1];
 
-                tempNodes.push(node);
+                    if (child1.getDegree == 1 && child2.getDegree == 1) {
+                        var _edge = child1.edges[0];
+                        if (_edge.getOtherEnd().id == child2.id) {
+                            //BOTH 1 DEGREE NODES ARE CONNECTED TO EACH other
+
+                            //check if child2 has been added to the leaf nodes
+                            if (node.id == child1.id && leafIdList.includes(child2.id)) {
+                                //if child2 has already been added to the list, then we dont add child1 to the list
+                                tempNodes.push(node);
+                            } else if (node.id == child2.id && leafIdList.includes(child1.id)) {
+                                //if child2 has already been added to the list, then we dont add child1 to the list
+                                tempNodes.push(node);
+                            } else {
+                                leafNodes.push(node);
+                                leafIdList.push(node.id);
+                            }
+                        }
+                    }
+                }
             }
             //we do not remove nodes with intergraph edges
             else if (edge.source.owner !== edge.target.owner) {
                     tempNodes.push(node);
-                } else leafNodes.push(node);
+                } else {
+                    leafNodes.push(node);
+                    leafIdList.push(node.id);
+                }
     }
+
     this.buckets[1] = tempNodes;
     return leafNodes;
 };
