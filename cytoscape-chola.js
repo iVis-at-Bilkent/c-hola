@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("cose-base"));
+		module.exports = factory(require("cose-base"), require("layout-base"));
 	else if(typeof define === 'function' && define.amd)
-		define(["cose-base"], factory);
+		define(["cose-base", "layout-base"], factory);
 	else if(typeof exports === 'object')
-		exports["cytoscapeChola"] = factory(require("cose-base"));
+		exports["cytoscapeChola"] = factory(require("cose-base"), require("layout-base"));
 	else
-		root["cytoscapeChola"] = factory(root["coseBase"]);
-})(window, function(__WEBPACK_EXTERNAL_MODULE__4__) {
+		root["cytoscapeChola"] = factory(root["coseBase"], root["layoutBase"]);
+})(window, function(__WEBPACK_EXTERNAL_MODULE__4__, __WEBPACK_EXTERNAL_MODULE__11__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -155,12 +155,13 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
 var cholaLayout = __webpack_require__(3);
 var HashMap = __webpack_require__(4).layoutBase.HashMap;
-var assign = __webpack_require__(31);
+var assign = __webpack_require__(32);
 var cholaConstants = __webpack_require__(5);
-var tree = __webpack_require__(32);
-var idDispenser = __webpack_require__(13);
+var tree = __webpack_require__(33);
+var fs = __webpack_require__(34);
 
 var defaults = Object.freeze((_Object$freeze = {
+
   quality: 'default',
   // use random node positions at beginning of layout
   // if this is set to false, then quality option must be "proof"
@@ -188,17 +189,16 @@ var defaults = Object.freeze((_Object$freeze = {
   // number of ticks per frame; higher is faster but more jerky
   refresh: 30,
   // Padding on fit
-  padding: 20,
+  padding: 10,
   // Node repulsion (non overlapping) multiplier
   nodeRepulsion: 4500
-}, _defineProperty(_Object$freeze, 'animate', 'end'), _defineProperty(_Object$freeze, 'animationDuration', 500), _defineProperty(_Object$freeze, 'idealEdgeLength', 50), _defineProperty(_Object$freeze, 'edgeGap', 50), _defineProperty(_Object$freeze, 'edgeElasticity', 0.45), _defineProperty(_Object$freeze, 'nestingFactor', 0.1), _defineProperty(_Object$freeze, 'gravity', 0.25), _defineProperty(_Object$freeze, 'numIter', 2500), _defineProperty(_Object$freeze, 'tile', false), _defineProperty(_Object$freeze, 'tilingPaddingVertical', 10), _defineProperty(_Object$freeze, 'tilingPaddingHorizontal', 10), _defineProperty(_Object$freeze, 'gravityRangeCompound', 1.5), _defineProperty(_Object$freeze, 'gravityCompound', 1.0), _defineProperty(_Object$freeze, 'gravityRange', 3.8), _defineProperty(_Object$freeze, 'initialEnergyOnIncremental', 0.5), _defineProperty(_Object$freeze, 'fixedNodeConstraint', undefined), _defineProperty(_Object$freeze, 'alignmentConstraint', undefined), _defineProperty(_Object$freeze, 'relativePlacementConstraint', undefined), _defineProperty(_Object$freeze, 'verticalAlignment', []), _defineProperty(_Object$freeze, 'horizontalAlignment', []), _defineProperty(_Object$freeze, 'relativeAlignment', []), _defineProperty(_Object$freeze, 'placementDict', {}), _defineProperty(_Object$freeze, 'ready', function ready() {}), _defineProperty(_Object$freeze, 'stop', function stop() {}), _Object$freeze));
+}, _defineProperty(_Object$freeze, 'animate', 'end'), _defineProperty(_Object$freeze, 'animationDuration', 500), _defineProperty(_Object$freeze, 'idealEdgeLength', 50), _defineProperty(_Object$freeze, 'edgeGap', 50), _defineProperty(_Object$freeze, 'edgeElasticity', 0.45), _defineProperty(_Object$freeze, 'nestingFactor', 0.1), _defineProperty(_Object$freeze, 'gravity', 0.25), _defineProperty(_Object$freeze, 'numIter', 2500), _defineProperty(_Object$freeze, 'tile', false), _defineProperty(_Object$freeze, 'tilingPaddingVertical', 10), _defineProperty(_Object$freeze, 'tilingPaddingHorizontal', 10), _defineProperty(_Object$freeze, 'gravityRangeCompound', 1.5), _defineProperty(_Object$freeze, 'gravityCompound', 1.0), _defineProperty(_Object$freeze, 'gravityRange', 3.8), _defineProperty(_Object$freeze, 'initialEnergyOnIncremental', 0.5), _defineProperty(_Object$freeze, 'maxNodeDimension', 0), _defineProperty(_Object$freeze, 'fixedNodeConstraint', undefined), _defineProperty(_Object$freeze, 'alignmentConstraint', undefined), _defineProperty(_Object$freeze, 'relativePlacementConstraint', undefined), _defineProperty(_Object$freeze, 'verticalAlignment', []), _defineProperty(_Object$freeze, 'horizontalAlignment', []), _defineProperty(_Object$freeze, 'relativeAlignment', []), _defineProperty(_Object$freeze, 'placementDict', {}), _defineProperty(_Object$freeze, 'graphOutput', false), _defineProperty(_Object$freeze, 'debug', true), _defineProperty(_Object$freeze, 'ready', function ready() {}), _defineProperty(_Object$freeze, 'stop', function stop() {}), _Object$freeze));
 
 var chola = function () {
   function chola(options) {
     _classCallCheck(this, chola);
 
     this.options = assign({}, defaults, options);
-    //this.cholaGm;
     this.idList = [];
     this.cholaNodeToCoseNode = {};
     this.cholaEdgeToCoseEdge = new HashMap();
@@ -210,7 +210,6 @@ var chola = function () {
   _createClass(chola, [{
     key: 'run',
     value: function run() {
-      var frameId;
       var cholaIdToLNode = this.cholaIdToLNode = {};
       var coseIdToLNode = this.coseIdToLNode = {};
       var cholaNodesMap = this.cholaNodesMap;
@@ -223,17 +222,19 @@ var chola = function () {
       this.cy.trigger({ type: 'layoutstart', layout: this });
 
       var gm = layout.newGraphManager();
-      //this.cholaGm = gm;
 
       var nodes = this.options.eles.nodes();
       var edges = this.options.eles.edges();
 
-      if (nodes.length == 0) return;
+      if (nodes.length == 0 || edges.length == 0) return;
 
       //we get the nodes which are parent nodes or do not have a parent node above them
       var topMostNodes = layout.getTopMostNodes(nodes);
       layout.processChildrenList(this.options, gm.addRoot(), topMostNodes, layout, "chola", cholaIdToLNode, cholaNodesMap);
       layout.processEdges(layout, "chola", gm, edges, cholaIdToLNode, this.cholaEdgesMap);
+
+      //set the parents of the nodes
+      layout.setParents(gm);
 
       //finds and saves the compound nodes
       var compoundNodes = layout.findCompoundNodes(gm);
@@ -246,8 +247,7 @@ var chola = function () {
         var theId = ele.data('id');
         //take the chola node
         var lNode = self.cholaIdToLNode[theId];
-        // console.log(lNode.id);
-        // console.log(lNode.getLocation());
+
         return {
           x: lNode.getRect().getCenterX(),
           y: lNode.getRect().getCenterY()
@@ -257,11 +257,14 @@ var chola = function () {
       //store all cholanodes before the pruning
       var allCholaNodes = Object.assign({}, gm.getAllNodes());
 
+      var parentList = {};
+
       //removes the leaf nodes and return the graph components
-      var output = layout.prune(gm, compoundNodes, this.idList);
+      var output = layout.prune(gm, compoundNodes, this.idList, parentList);
       var c = output[0];
       var graphIsTree = output[1];
-      options.edgeGap = layout.getMaxNodeDimension(gm) + options.idealEdgeLength;
+      options.maxNodeDimension = layout.getMaxNodeDimension(gm);
+      options.edgeGap = options.maxNodeDimension + options.idealEdgeLength;
 
       //if length of this list is 1, this means that the whole graph is a tree
       if (c.length == 1 && graphIsTree) {
@@ -301,6 +304,9 @@ var chola = function () {
         return;
       }
 
+      // this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+      //   return;
+
       //core graph manager
       var coreGm = c[0];
       c.shift();
@@ -331,34 +337,87 @@ var chola = function () {
         // // applying cose on the core
         coseLayout = layout.constraintCoseLayout(coreGm, coseLayout, options, turn);
 
+        // if (options.debug)
+        //   return;
+
+        var cholaNodesDict = {};
+
         // Reflect changes back to chola nodes
-        var cholaNodes = coreGm.getAllNodes(); //allCholaNodes;//
+        var cholaNodes = coreGm.getAllNodes();
         for (var _i3 = 0; _i3 < cholaNodes.length; _i3++) {
           var _cholaNode = cholaNodes[_i3];
           var _coseNode = self.cholaNodeToCoseNode[_cholaNode.id];
+
+          if (_cholaNode.isCompound()) {
+            var width = _coseNode.getWidth();
+            var height = _coseNode.getHeight();
+            _cholaNode.setWidth(width);
+            _cholaNode.setHeight(height);
+          }
+
           var _loc = _coseNode.getCenter();
           _cholaNode.setCenter(_loc.x, _loc.y);
+
+          cholaNodesDict[_cholaNode.id] = _cholaNode;
+        }
+
+        return cholaNodesDict;
+      };
+
+      var download = function download(filename, text) {
+        var pom = document.createElement('a');
+        pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        pom.setAttribute('download', filename);
+
+        if (document.createEvent) {
+          var event = document.createEvent('MouseEvents');
+          event.initEvent('click', true, true);
+          pom.dispatchEvent(event);
+        } else {
+          pom.click();
         }
       };
 
+      // if (options.debug)
+      // {
+      //   console.log(options.horizontalAlignment);
+      //   console.log(options.verticalAlignment);
+      //   console.log(options.relativeAlignment);
+      // }
+
       //creating orthogonal layout for higher degree nodes
       layout.higherNodesConfiguration(coreGm, highDegreeNodes, options);
+      var nodesDict = constraintLayout(coreGm, coseLayout, options, 0);
 
-      constraintLayout(coreGm, coseLayout, options, 0);
+      // this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+      // return;
+
+      if (options.graphOutput) {
+        var constraintsS1 = { alignmentConstraint: null, relativePlacementConstraint: null };
+        constraintsS1.alignmentConstraint = options.alignmentConstraint;
+        constraintsS1.relativePlacementConstraint = options.relativePlacementConstraint;
+
+        var constraintStringS1 = JSON.stringify(constraintsS1, null, 2);
+        download('constraintsStep1.json', constraintStringS1);
+
+        var dataS1 = JSON.stringify(this.cy.json().elements);
+        download('cyElementsStep1.json', dataS1);
+
+        options.alignmentConstraint = undefined;
+        options.relativePlacementConstraint = undefined;
+      }
+
+      //return;
 
       //orthogonal layout for lower degree nodes
       layout.chainNodesConfiguration(coreGm, options);
-
-      //create dummy nodes and edges for bendpoints in cose 
-      //also generate constraints
+      //creating dummy nodes and edges for bendpoints in cose and also generating constraints for them
       //stores the cose dummy nodes corresponding to the id of chola edge
       var edgeToDummyNodes = {};
       layout.createDummyNodesAndEdges(this.cholaNodeToCoseNode, edgeToDummyNodes, coreGm.edgesWithBends, coseLayout, this.cholaEdgeToCoseEdge, options);
-
       //orthogonal layout for one-degree nodes 
       //1 degree nodes attached to 2 degree nodes will be left unaligned after the previous step
       layout.oneDegreeNodesConfiguration(coreGm, oneDegreeNodes, options);
-
       constraintLayout(coreGm, coseLayout, options, 1);
 
       //create adjusted bendpoints for cholaedges from cose
@@ -372,14 +431,29 @@ var chola = function () {
         _cholaEdge.distance = relativeBendPosition.distance;
       }
 
+      if (options.graphOutput) {
+        var constraintsS2 = { alignmentConstraint: null, relativePlacementConstraint: null };
+        constraintsS2.alignmentConstraint = options.alignmentConstraint;
+        constraintsS2.relativePlacementConstraint = options.relativePlacementConstraint;
+
+        var constraintStringS2 = JSON.stringify(constraintsS2, null, 2);
+        download('constraintsStep2.json', constraintStringS2);
+
+        var dataS2 = JSON.stringify(this.cy.json().elements);
+        download('cyElementsStep2.json', dataS2);
+
+        options.alignmentConstraint = undefined;
+        options.relativePlacementConstraint = undefined;
+      }
+
       //turning non-orthogonal edges to orthogonal edges
-      var newEdgesWithBends = layout.createOrthogonalEdges(coreGm);
+      var newEdgesWithBends = layout.createOrthogonalEdges(coreGm, 1);
 
       //copying the id, source and target of the edges with bends
       var edgesWithBends = [];
       for (var _i5 = 0; _i5 < coreGm.edgesWithBends.length; _i5++) {
         var edge = coreGm.edgesWithBends[_i5];
-        edgesWithBends.push([edge.id, edge.source, edge.target]);
+        edgesWithBends.push([edge.id, edge.source, edge.target, edge.bendpoints]);
       }
 
       //create dummy points for new edges with bends in cose
@@ -394,6 +468,21 @@ var chola = function () {
 
       constraintLayout(coreGm, coseLayout, options, 2);
 
+      if (options.graphOutput) {
+        var constraintsS3 = { alignmentConstraint: null, relativePlacementConstraint: null };
+        constraintsS3.alignmentConstraint = options.alignmentConstraint;
+        constraintsS3.relativePlacementConstraint = options.relativePlacementConstraint;
+
+        var constraintStringS3 = JSON.stringify(constraintsS3, null, 2);
+        download('constraintsStep3.json', constraintStringS3);
+
+        var dataS3 = JSON.stringify(this.cy.json().elements);
+        download('cyElementsStep3.json', dataS3);
+
+        options.alignmentConstraint = undefined;
+        options.relativePlacementConstraint = undefined;
+      }
+
       //apply symmetric layout to the trees
       var trees = [];
       var growthDir = cholaConstants.DEFAULT_TREE_DIREC;
@@ -401,7 +490,7 @@ var chola = function () {
         var g = treeGraphs[_i6];
         var _t = new tree(g, g.rootNode);
         trees.push(_t);
-        _t.symmetricLayout(growthDir, options.edgeGap / 2, 2 * options.edgeGap);
+        _t.symmetricLayout(growthDir, options.edgeGap, 1.5 * options.edgeGap);
 
         //replicate the changes back to the original gm
         var _allNodes = Object.values(_t.nodes);
@@ -414,32 +503,43 @@ var chola = function () {
         }
       };
 
-      coreGm.edgesWithBends = [];
-
       //adding trees back to the graphs
-      layout.reAttachTrees(coreGm, trees, options, cholaIdToLNode);
-      // console.log(options.relativeAlignment);
-      // console.log(options.horizontalAlignment);
-      // console.log(options.verticalAlignment);
+      layout.reAttachTrees(coreGm, trees, options, cholaIdToLNode, parentList);
 
-      // Reflect changes back to cose nodes
-      // console.log("transferring values back to cose");
-      //   var cholaNodes = coreGm.getAllNodes(); //allCholaNodes;//
-      //   for (let i = 0; i < cholaNodes.length; i++)
-      //   {
-      //       let cholaNode = cholaNodes[i];
-      //       let coseNode = self.cholaNodeToCoseNode[cholaNode.id];
-      //       let loc = cholaNode.getCenter();
-      //       coseNode.setCenter(loc.x, loc.y);
-      //       console.log(coseNode.id);
-      //       console.log(coseNode.getCenter());
-      //   }
+      var cholaNodesDict = constraintLayout(coreGm, coseLayout, options, 3);
 
-      constraintLayout(coreGm, coseLayout, options, 3);
+      this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+      //return;
+
+      if (options.graphOutput) {
+        var constraintsS4 = { alignmentConstraint: null, relativePlacementConstraint: null };
+        constraintsS4.alignmentConstraint = options.alignmentConstraint;
+        constraintsS4.relativePlacementConstraint = options.relativePlacementConstraint;
+
+        var constraintStringS4 = JSON.stringify(constraintsS4, null, 2);
+        download('constraintsStep4.json', constraintStringS4);
+
+        var dataS4 = JSON.stringify(this.cy.json().elements);
+        download('cyElementsStep4.json', dataS4);
+      }
 
       for (var _i8 = 0; _i8 < trees.length; _i8++) {
         var _t2 = trees[_i8];
-        if (Object.values(_t2.nodes).length > 2) _t2.createOrthogonalEdges(coreGm);
+        var _nodes = Object.values(_t2.nodes);
+        if (_nodes.length > 2) {
+          //transfer the positions after constraint layout back to the tree nodes
+          for (var _k = 0; _k < _nodes.length; _k++) {
+            var _treeNode2 = _nodes[_k];
+            var _cholaNode2 = cholaNodesDict[_treeNode2.id];
+            // console.log(cholaNode.id);
+            // console.log(cholaNode.getCenter());
+
+            var cholaLocX = _cholaNode2.getCenterX();
+            var cholaLocY = _cholaNode2.getCenterY();
+            _treeNode2.setCenter(cholaLocX, cholaLocY);
+          }
+          _t2.createOrthogonalEdges(coreGm);
+        }
       }
 
       //replace dummy nodes and edges of cholagm with edges with bendpoints
@@ -447,6 +547,7 @@ var chola = function () {
         var cholaEdgeId = edgesWithBends[_i9][0];
         var source = edgesWithBends[_i9][1];
         var target = edgesWithBends[_i9][2];
+        var bendpoints = edgesWithBends[_i9][3];
 
         var dummyNodes = cholaEdgeToDummyNodes[cholaEdgeId][0];
         var dummyEdges = cholaEdgeToDummyNodes[cholaEdgeId][1];
@@ -478,46 +579,80 @@ var chola = function () {
         //now create an edge with bendpoint at dummy node location
         var _edge = coreGm.add(coreGm.getLayout().newEdge(), source, target);
         _edge.id = cholaEdgeId;
+        var value = bendpoints[0];
+        _edge.bendpoints.push([_bendpoint, value[1], value[2]]);
 
         var relativeBendPosition = _edge.convertToRelativeBendPosition(_bendpoint);
         _edge.weight = relativeBendPosition.weight;
         _edge.distance = relativeBendPosition.distance;
 
         coreGm.edgesWithBends.push(_edge);
-
-        // console.log(edge.id);
-        // console.log(edge.weight);
-        // console.log(edge.distance);
       }
 
-      // console.log(".");
-      // console.log(".");
-      // console.log(".");
+      coreGm.resetAllEdges();
+      coreGm.getAllEdges();
 
-      this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+      //Printing For debugging
+      for (var _i10 = 0; _i10 < compoundNodes.length; _i10++) {
+        var _cholaNode3 = compoundNodes[_i10];
+        var id = compoundNodes[_i10].id;
+        console.log("before changing dimensions");
+        console.log(_cholaNode3.id);
+        console.log(_cholaNode3.getCenter());
+        console.log(_cholaNode3.getWidth());
+        console.log(_cholaNode3.getHeight());
+      }
 
-      cholaEdges = coreGm.edgesWithBends;
-      for (var _i10 = 0; _i10 < cholaEdges.length; _i10++) {
-        var _cholaEdge2 = cholaEdges[_i10];
-        for (var _k = 0; _k < this.cy.edges().length; _k++) {
-          var _cyEdge = this.cy.edges()[_k];
-          if (_cholaEdge2.id == _cyEdge.id()) {
-            // console.log(cholaEdge.id);
-            // console.log(cholaEdge.weight);
-            // console.log(cholaEdge.distance);
-            // console.log(cholaEdge.source.getCenter());
-            // console.log(cholaEdge.target.getCenter());
+      //updating the positions, widths and heights of the compounds nodes
+      //FUTURE FIX: MAKE IT WORK FOR LABELS
+      layout.updateCompoundDimensions(compoundNodes);
 
-            _cyEdge.css("curve-style", "segments");
-            _cyEdge.css("segment-weights", _cholaEdge2.weight);
-            _cyEdge.css("segment-distances", _cholaEdge2.distance);
-            break;
+      //Printing For debugging
+      for (var _i11 = 0; _i11 < compoundNodes.length; _i11++) {
+        var _cholaNode4 = compoundNodes[_i11];
+        var _id = compoundNodes[_i11].id;
+        console.log("after changing dimensions");
+        console.log(_cholaNode4.id);
+        console.log(_cholaNode4.getCenter());
+        console.log(_cholaNode4.getWidth());
+        console.log(_cholaNode4.getHeight());
+      }
+
+      //now creating bendpoints for edges connected with compound nodes
+      var compoundEdges = layout.createOrthogonalEdges(coreGm, 2);
+      for (var _i12 = 0; _i12 < compoundEdges.length; _i12++) {
+        var _edge3 = compoundEdges[_i12];
+        var _bendpoints = _edge3.bendpoints;
+        for (var _k2 = 0; _k2 < this.cy.edges().length; _k2++) {
+          var _cyEdge = this.cy.edges()[_k2];
+          if (_edge3.id == _cyEdge.id()) {
+            // console.log("edge.sourceport");
+            // console.log(edge.sourceport);
+            // console.log("Edge.targetPort");
+            // console.log(edge.targetPort);
+
+            var relativePos = _edge3.source.getRelativeRatiotoNodeCenter(_edge3.sourcePort);
+            _cyEdge.style({ 'source-endpoint': +relativePos.x + "% " + +relativePos.y + '%' });
+            relativePos = _edge3.target.getRelativeRatiotoNodeCenter(_edge3.targetPort);
+            _cyEdge.style({ 'target-endpoint': +relativePos.x + "% " + +relativePos.y + '%' });
           }
         }
       }
 
-      var fs = __webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module 'fs'"); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
-      fs.writeFile('./cyElements.json', JSON.stringify(this.cy.json().elements), 'utf-8');
+      //Last step: finally create edges with bends in cytoscape
+      var cholaEdges2 = coreGm.edgesWithBends;
+      for (var _i13 = 0; _i13 < cholaEdges2.length; _i13++) {
+        var _cholaEdge2 = cholaEdges2[_i13];
+        for (var _k3 = 0; _k3 < this.cy.edges().length; _k3++) {
+          var _cyEdge2 = this.cy.edges()[_k3];
+          if (_cholaEdge2.id == _cyEdge2.id()) {
+            _cyEdge2.css("curve-style", "segments");
+            _cyEdge2.css("segment-weights", _cholaEdge2.weight);
+            _cyEdge2.css("segment-distances", _cholaEdge2.distance);
+            break;
+          }
+        }
+      }
     }
   }]);
 
@@ -550,17 +685,18 @@ var cholaConstants = __webpack_require__(5);
 var cholaGraphManager = __webpack_require__(7);
 var cholaNode = __webpack_require__(8);
 var cholaEdge = __webpack_require__(9);
+var cholaGraph = __webpack_require__(10);
 var PointD = __webpack_require__(4).layoutBase.PointD;
 var DimensionD = __webpack_require__(4).layoutBase.DimensionD;
-var Layout = __webpack_require__(4).layoutBase.Layout;
+var Layout = __webpack_require__(11).Layout;
 var HashMap = __webpack_require__(4).layoutBase.HashMap;
-var assign = __webpack_require__(14);
-var chain = __webpack_require__(19);
-var nodeBuckets = __webpack_require__(22);
+var assign = __webpack_require__(15);
+var chain = __webpack_require__(20);
+var nodeBuckets = __webpack_require__(23);
 var compass = __webpack_require__(6);
-var stem = __webpack_require__(23);
-var edgeSegment = __webpack_require__(11);
-var faceSet = __webpack_require__(24);
+var stem = __webpack_require__(24);
+var edgeSegment = __webpack_require__(12);
+var faceSet = __webpack_require__(25);
 
 // Constructor
 function cholaLayout() {
@@ -576,7 +712,7 @@ for (var property in Layout) {
 
 cholaLayout.prototype.defineCoseConstants = function (options) {
   if (options.nodeRepulsion != null) CoSEConstants.DEFAULT_REPULSION_STRENGTH = FDLayoutConstants.DEFAULT_REPULSION_STRENGTH = options.nodeRepulsion;
-  if (options.idealEdgeLength != null) CoSEConstants.DEFAULT_EDGE_LENGTH = FDLayoutConstants.DEFAULT_EDGE_LENGTH = options.idealEdgeLength;
+  if (options.idealEdgeLength != null) CoSEConstants.DEFAULT_EDGE_LENGTH = FDLayoutConstants.DEFAULT_EDGE_LENGTH = options.idealEdgeLength; // + options.maxNodeDimension;
   if (options.edgeElasticity != null) CoSEConstants.DEFAULT_SPRING_STRENGTH = FDLayoutConstants.DEFAULT_SPRING_STRENGTH = options.edgeElasticity;
   if (options.nestingFactor != null) CoSEConstants.PER_LEVEL_IDEAL_EDGE_LENGTH_FACTOR = FDLayoutConstants.PER_LEVEL_IDEAL_EDGE_LENGTH_FACTOR = options.nestingFactor;
   if (options.gravity != null) CoSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
@@ -610,6 +746,10 @@ cholaLayout.prototype.newNode = function (loc, size) {
   return new cholaNode(this.graphManager, loc, size, null);
 };
 
+cholaLayout.prototype.newGraph = function (vGraph) {
+  return new cholaGraph(null, this.graphManager, vGraph);
+};
+
 cholaLayout.prototype.getGraphManager = function () {
   return this.graphManager;
 };
@@ -623,14 +763,16 @@ cholaLayout.prototype.newEdge = function (source, target, vEdge) {
 
 cholaLayout.prototype.getTopMostNodes = function (nodes) {
   var nodesMap = {};
+
   for (var i = 0; i < nodes.length; i++) {
     nodesMap[nodes[i].id()] = true;
   }
+
   var roots = nodes.filter(function (ele, i) {
-    if (typeof ele === "number") {
-      ele = i;
-    }
+    if (typeof ele === "number") ele = i;
+
     var parent = ele.parent()[0];
+
     while (parent != null) {
       if (nodesMap[parent.id()]) {
         return false;
@@ -639,12 +781,14 @@ cholaLayout.prototype.getTopMostNodes = function (nodes) {
     }
     return true;
   });
+
   return roots;
 };
 
 cholaLayout.prototype.processChildrenList = function (options, parent, children, layout, layoutType, idToLNode, cholaNodesMap, cholaNodeToCoseNode) {
   var size = children.length;
   var includeLabelsOption = options.nodeDimensionsIncludeLabels;
+
   for (var i = 0; i < size; i++) {
     var theChild = children[i];
     var children_of_children = theChild.children();
@@ -669,6 +813,7 @@ cholaLayout.prototype.processChildrenList = function (options, parent, children,
     theNode.paddingTop = parseInt(theChild.css('padding'));
     theNode.paddingRight = parseInt(theChild.css('padding'));
     theNode.paddingBottom = parseInt(theChild.css('padding'));
+    theNode.borderWidth = parseInt(theChild.css('border-width'));
 
     //Attach the label properties to compound if labels will be included in node dimensions
     if (options.nodeDimensionsIncludeLabels) {
@@ -707,10 +852,22 @@ cholaLayout.prototype.processChildrenList = function (options, parent, children,
   }
 };
 
+cholaLayout.prototype.setParents = function (gm) {
+  var allNodes = gm.getAllNodes();
+
+  for (var i = 0; i < allNodes.length; i++) {
+    var _cholaNode = allNodes[i];
+    if (_cholaNode.owner.parent.id != undefined) {
+      _cholaNode.parentNode = _cholaNode.owner.parent;
+    }
+  }
+};
+
 //return the list of compound nodes
 cholaLayout.prototype.findCompoundNodes = function (gm) {
   var allNodes = gm.getAllNodes();
   var compoundNodes = [];
+
   for (var i = 0; i < allNodes.length; i++) {
     var node = allNodes[i];
     if (node.isCompound()) {
@@ -720,7 +877,7 @@ cholaLayout.prototype.findCompoundNodes = function (gm) {
   return compoundNodes;
 };
 
-cholaLayout.prototype.prune = function (gm, compoundNodes, idList) {
+cholaLayout.prototype.prune = function (gm, compoundNodes, idList, parentList) {
   var nodebuckets = new nodeBuckets(gm);
   var newGm = this.newGraphManager();
   var parent = newGm.addRoot();
@@ -728,7 +885,7 @@ cholaLayout.prototype.prune = function (gm, compoundNodes, idList) {
   var graphIsTree = false;
   while (leaves.length > 0) {
     var stems = this.stemsFromLeaves(leaves);
-    gm.severNodes(leaves, nodebuckets, compoundNodes, idList);
+    gm.severNodes(leaves, nodebuckets, compoundNodes, idList, parentList);
     if (gm.isEmpty()) {
       //this happens when the whole graph is a tree with two centers
       //we can choose any of the centers
@@ -808,14 +965,16 @@ cholaLayout.prototype.coseOnCore = function (options, idToLNode, cholaNodesMap, 
   var nodes = options.eles.nodes();
   var edges = options.eles.edges();
   var topMostNodes = this.getTopMostNodes(nodes);
+
   this.processChildrenList(options, gm.addRoot(), topMostNodes, coseLayout, "cose", idToLNode, cholaNodesMap, cholaNodeToCoseNode);
   this.processEdges(coseLayout, "cose", gm, edges, idToLNode, cholaEdgesMap, cholaEdgeToCoseEdge);
-  //processConstraints(coseLayout, options);
+
   coseLayout.runLayout();
   return coseLayout;
 };
 
 cholaLayout.prototype.constraintCoseLayout = function (cholaGm, coseLayout, options, turn) {
+  CoSEConstants.DEFAULT_EDGE_LENGTH = FDLayoutConstants.DEFAULT_EDGE_LENGTH = options.idealEdgeLength + options.maxNodeDimension;
   // transfer cytoscape constraints to cose layout
   var processConstraints = function processConstraints(layout, options) {
     if (options.alignmentConstraint) {
@@ -828,83 +987,61 @@ cholaLayout.prototype.constraintCoseLayout = function (cholaGm, coseLayout, opti
     }
   };
 
-  console.log(options.relativeAlignment);
-  console.log(options.verticalAlignment);
-  console.log(options.horizontalAlignment);
-
   LayoutConstants.DEFAULT_INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL = CoSEConstants.DEFAULT_INCREMENTAL = true;
 
   if (turn == 0) {
     this.removeConflictingConstraints(cholaGm, options);
-    //options.relativeAlignment = this.removeDuplicateConstraints(options);
   }
 
-  if (turn < 3) this.createOrthogonalAlignments(options);
+  if (turn < 3) this.createOrthogonalAlignments(options);else CoSEConstants.DEFAULT_EDGE_LENGTH = FDLayoutConstants.DEFAULT_EDGE_LENGTH = options.idealEdgeLength + options.maxNodeDimension;
 
   options.alignmentConstraint = { vertical: options.verticalAlignment, horizontal: options.horizontalAlignment };
   options.relativePlacementConstraint = options.relativeAlignment;
   processConstraints(coseLayout, options);
 
-  // console.log(options.relativeAlignment);
-  // console.log(options.verticalAlignment);
-  // console.log(options.horizontalAlignment);
-
-  console.log(options.alignmentConstraint);
-  console.log(options.relativePlacementConstraint);
-
-  // let coseNodes = coseLayout.getGraphManager().getAllNodes();
-  // for (let i = 0; i < coseNodes.length; i++)
+  // if (options.debug)
   // {
-  //     //let cholaNode = cholaNodes[i];
-  //     let coseNode = coseNodes[i];
-  //     //let loc = cholaNode.getCenter();
-  //     //coseNode.setCenter(loc.x, loc.y);
-  //     console.log(coseNode.id);
-  //     console.log(coseNode.getCenter());
+  //   console.log(options.horizontalAlignment);
+  //   console.log(options.verticalAlignment);
+  //   console.log(options.relativeAlignment);
+  //   //return;
   // }
 
-  // if (turn != 2)
-  // {
   coseLayout.getGraphManager().allNodesToApplyGravitation = null;
   coseLayout.runLayout();
-  //}
-
-  var coseNodes = coseLayout.getGraphManager().getAllNodes();
-  for (var i = 0; i < coseNodes.length; i++) {
-    //let cholaNode = cholaNodes[i];
-    var coseNode = coseNodes[i];
-    //let loc = cholaNode.getCenter();
-    //coseNode.setCenter(loc.x, loc.y);
-    console.log(coseNode.id);
-    console.log(coseNode.getCenter());
-  }
 
   if (turn < 2) {
     //second turn will be after performing chain configuration
     options.verticalAlignment = [];
     options.horizontalAlignment = [];
   }
-  options.alignmentConstraint = undefined;
-  options.relativePlacementConstraint = undefined;
 
   return coseLayout;
 };
 
-cholaLayout.prototype.createOrthogonalEdges = function (gm) {
+cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
+  var compoundEdges = [];
   var allEdges = gm.getAllEdges();
-  var edgesWithBends = [];
+  var outputEdges = [];
+  var createBp = false;
+
   for (var i = 0; i < allEdges.length; i++) {
     var edge = allEdges[i];
+
     //if edge is not orthogonal, we make it orthogonal
-    if (!edge.isOrthogonal()) {
+    if (turn == 1 && !edge.isOrthogonal() || turn == 2) {
       var source = edge.source;
       var target = edge.target;
       var c = new compass();
       var dir = c.direction(source, target);
-      //console.log(dir);
+      var bbox = void 0;
+
+      if (turn == 1 && (source.isCompound() || target.isCompound())) continue;else if (turn == 2 && !source.isCompound() && !target.isCompound()) continue;
 
       //storing possible semi positions for source and target to create an edge with a bendpoint
-      //possible direction (a,b) contains free semi a of source and free semi b of trgt
+      //possible direction (a,b,c) mean that the edge goes in a direction from the source,
+      //b is the direction from target to bendpoint
+      //c is the direction from bendpoint to target (opposide to b)
       var possibleDirections = [];
       if (dir == c.SE) {
         possibleDirections.push([0, 3, 1]);
@@ -920,29 +1057,173 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm) {
         possibleDirections.push([0, 1, 3]);
       }
 
-      var srcFreeLocs = source.getFreeSemiLocations();
-      var tgtFreeLocs = target.getFreeSemiLocations();
+      var srcFreeLocs = source.getFreeSemiLocations(false, true);
+      var tgtFreeLocs = target.getFreeSemiLocations(false, true);
       var option = void 0;
+
       for (var k = 0; k < possibleDirections.length; k++) {
         option = possibleDirections[k];
         if (srcFreeLocs.includes(option[0]) && tgtFreeLocs.includes(option[1])) break;
       }
-      if (option != null) {
-        var bendpoint = { x: null, y: null };
-        if (option[0] == 0 || option[0] == 2) {
-          bendpoint.x = target.getCenterX();
-          bendpoint.y = source.getCenterY();
-        } else if (option[0] == 1 || option[0] == 3) {
-          bendpoint.x = source.getCenterX();
-          bendpoint.y = target.getCenterY();
-        }
-        edge.createBendPoint(bendpoint, option[0], option[2], source, target);
-        gm.edgesWithBends.push(edge);
-        edgesWithBends.push(edge);
+
+      var bendpoint = { x: null, y: null };
+
+      //reset any bendpoints that the edge might have
+      if (edge.bendpoints.length != null) edge.resetBendpoints(gm);
+
+      if (!source.isCompound() && !target.isCompound()) {
+        createBp = true;
       }
+      //if any of the incident nodes is compound, then we create source and target ports
+      else {
+          var srcLocX = source.getLocation().x;
+          var srcLocY = source.getLocation().y;
+          var srcCenterX = source.getCenterX();
+          var srcCenterY = source.getCenterY();
+          var srcWidth = source.getWidth();
+          var srcHeight = source.getHeight();
+
+          var tgtLocX = target.getLocation().x;
+          var tgtLocY = target.getLocation().y;
+          var tgtCenterX = target.getCenterX();
+          var tgtCenterY = target.getCenterY();
+          var tgtWidth = target.getWidth();
+          var tgtHeight = target.getHeight();
+
+          //bbox = [x1, x2, y1, y2] 
+          var srcBbox = [srcLocX, srcLocX + srcWidth, srcLocY, srcLocY + srcHeight];
+          var tgtBbox = [tgtLocX, tgtLocX + tgtWidth, tgtLocY, tgtLocY + tgtHeight];
+
+          if (source.isCompound() && !target.isCompound()) {
+            if (srcBbox[0] < tgtCenterX && tgtCenterX < srcBbox[1]) {
+              //edge can be straight
+              //target with either be on top or on bottom i.e. north or south
+
+              //if target is on top
+              if (tgtCenterY < srcBbox[2] && tgtFreeLocs.includes(c.SOUTH)) {
+                edge.sourcePort = { x: tgtCenterX, y: srcBbox[2] };
+                edge.targetPort = { x: tgtCenterX, y: tgtBbox[3] };
+              }
+              //target is on bottom
+              else if (tgtCenterY > srcBbox[3] && tgtFreeLocs.includes(c.NORTH)) {
+                  edge.sourcePort = { x: tgtCenterX, y: srcBbox[3] };
+                  edge.targetPort = { x: tgtCenterX, y: tgtBbox[2] };
+                } else createBp = true;
+            } else if (srcBbox[2] < tgtCenterY && tgtCenterY < srcBbox[3]) {
+              //edge can be straight
+              //if target is on the left
+              if (tgtCenterX < srcBbox[0] && tgtFreeLocs.includes(c.EAST)) {
+                edge.sourcePort = { x: srcBbox[0], y: tgtCenterY };
+                edge.targetPort = { x: tgtBbox[1], y: tgtCenterY };
+              }
+              //if target is on the right
+              else if (tgtCenterX > srcBbox[1] && tgtFreeLocs.includes(c.WEST)) {
+                  edge.sourcePort = { x: srcBbox[1], y: tgtCenterY };
+                  edge.targetPort = { x: tgtBbox[2], y: tgtCenterY };
+                } else createBp = true;
+            } else createBp = true;
+          } else if (!source.isCompound() && target.isCompound()) {
+            if (tgtBbox[0] < srcCenterX && srcCenterX < tgtBbox[1]) {
+              //edge can be straight
+              //source can either be on top or on bottom i.e. north or south
+
+              //if source is on top
+              if (srcCenterY < tgtBbox[2] && srcFreeLocs.includes(c.SOUTH)) {
+                edge.targetPort = { x: srcCenterX, y: tgtBbox[2] };
+                edge.sourcePort = { x: srcCenterX, y: srcBbox[3] };
+              }
+              //source is on bottom
+              else if (srcCenterY > tgtBbox[3] && srcFreeLocs.includes(c.NORTH)) {
+                  edge.targetPort = { x: srcCenterX, y: tgtBbox[3] };
+                  edge.sourcePort = { x: srcCenterX, y: srcBbox[2] };
+                } else createBp = true;
+            } else if (tgtBbox[2] < srcCenterY && srcCenterY < tgtBbox[3]) {
+              //edge can be straight
+              //if source is on the left
+              if (srcCenterX < tgtBbox[0] && srcFreeLocs.includes(c.EAST)) {
+                edge.targetPort = { x: tgtBbox[0], y: srcCenterY };
+                edge.sourcePort = { x: srcBbox[1], y: srcCenterY };
+              }
+              //if source is on the right
+              else if (srcCenterX > tgtBbox[1] && srcFreeLocs.includes(c.WEST)) {
+                  edge.targetPort = { x: tgtBbox[1], y: srcCenterY };
+                  edge.sourcePort = { x: srcBbox[0], y: srcCenterY };
+                } else createBp = true;
+            } else createBp = true;
+          } else if (source.isCompound() && target.isCompound()) {
+            //we check if the target node lies within the width of the source node
+            if (srcBbox[0] < tgtBbox[0] && tgtBbox[0] < srcBbox[1] || srcBbox[0] < tgtBbox[1] && tgtBbox[1] < srcBbox[1]) {
+              var xValues = [srcBbox[0], srcBbox[1], tgtBbox[0], tgtBbox[1]];
+
+              //now we sort these values in ascending order
+              xValues.sort();
+
+              //the two nodes overlap (not literally but in x dimensions) between xValues[1] and xValues[2]
+              //the mean of these two values will be x value of the source and target ports
+
+              var mean = (xValues[1] + xValues[2]) / 2;
+
+              //if target lies on top of the source node
+              if (tgtCenterY < srcCenterY) {
+                edge.sourcePort = { x: mean, y: srcBbox[2] };
+                edge.targetPort = { x: mean, y: tgtBbox[3] };
+              }
+              //if target lies at the bottom
+              else {
+                  edge.sourcePort = { x: mean, y: srcBbox[3] };
+                  edge.targetPort = { x: mean, y: tgtBbox[2] };
+                }
+            }
+            //we check if the target node lies within the height of the source node
+            else if (srcBbox[2] < tgtBbox[2] && tgtBbox[2] < srcBbox[3] || srcBbox[2] < tgtBbox[3] && tgtBbox[3] < srcBbox[3]) {
+
+                var yValues = [srcBbox[2], srcBbox[3], tgtBbox[2], tgtBbox[3]];
+                yValues.sort();
+
+                var _mean = (yValues[1] + yValues[2]) / 2;
+
+                //if target lies on the left of the source node
+                if (tgtCenterX < srcCenterX) {
+                  edge.sourcePort = { x: srcBbox[0], y: _mean };
+                  edge.targetPort = { x: tgtBbox[1], y: _mean };
+                }
+                //if target lies on the right of the source node
+                else {
+                    edge.sourcePort = { x: srcBbox[1], y: _mean };
+                    edge.targetPort = { x: tgtBbox[0], y: _mean };
+                  }
+              } else createBp = true;
+          }
+
+          if (createBp == true) {
+            //finding the value of source port of edge
+            if (option[0] == 0) edge.sourcePort = { x: srcBbox[1], y: srcCenterY };else if (option[0] == 1) edge.sourcePort = { x: srcCenterX, y: srcBbox[3] };else if (option[0] == 2) edge.sourcePort = { x: srcBbox[0], y: srcCenterY };else if (option[0] == 3) edge.sourcePort = { x: srcCenterX, y: srcBbox[2] };
+
+            //finding the value of target port of edge
+            if (option[2] == 0) edge.targetPort = { x: tgtBbox[0], y: tgtCenterY };else if (option[2] == 1) edge.targetPort = { x: tgtCenterX, y: tgtBbox[2] };else if (option[2] == 2) edge.targetPort = { x: tgtBbox[1], y: tgtCenterY };else if (option[2] == 3) edge.targetPort = { x: tgtCenterX, y: tgtBbox[3] };
+          } else outputEdges.push(edge);
+        }
+
+      if (createBp == true) {
+        if (option != null) {
+          if (option[0] == 0 || option[0] == 2) {
+            bendpoint.x = target.getCenterX();
+            bendpoint.y = source.getCenterY();
+          } else if (option[0] == 1 || option[0] == 3) {
+            bendpoint.x = source.getCenterX();
+            bendpoint.y = target.getCenterY();
+          }
+          edge.createBendPoint(bendpoint, option[0], option[2], source, target);
+          gm.edgesWithBends.push(edge);
+          outputEdges.push(edge);
+        }
+      }
+
+      createBp = false;
     }
   }
-  return edgesWithBends;
+
+  return outputEdges;
 };
 
 cholaLayout.prototype.getMaxNodeDimension = function (gm) {
@@ -1017,6 +1298,9 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes, 
 cholaLayout.prototype.placementConstraints = function (newLoc, options, node1, node2) {
   var ignoreDuplicates = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
 
+  // console.log(node1.id);
+  // console.log(node2.id);
+  // console.log(newLoc);
   if (newLoc == 0) {
     this.addPlacementConstraints(options, node1, node2, 0, ignoreDuplicates);
   } else if (newLoc == 1) {
@@ -1101,43 +1385,18 @@ cholaLayout.prototype.combineAlignments = function (alignment, orientation) {
   }
 };
 
-cholaLayout.prototype.removeDuplicateConstraints = function (options) {
-  //combine the constraints into a set to remove duplicates
-
-  var aligns = new Set();
-  var keys = Object.keys(placementDict);
-  for (var i = 0; i < keys.length; i++) {
-    var node = keys[i];
-    var constraints = placementDict[node];
-    for (var j = 0; j < constraints.length; j++) {
-      aligns.add(constraints[j]);
-    }
-  }
-  return Array.from(aligns);
-};
-
 cholaLayout.prototype.removeConflictingConstraints = function (gm, options) {
-  //let placementDict = options.placementDict;
-
   for (var i = 0; i < options.relativeAlignment.length; i++) {
     var value = options.relativeAlignment[i];
-    //console.log(value);
     var nbr = void 0;
     var node1 = void 0,
         node2 = void 0;
 
     //determine the proposed direction from node to nbr in the constraint
     if (value.top != undefined) {
-      //if constraint has been checked in a previous iteration
-      // if (typeof(value.top) == "string")
-      //   continue;
-
-      //determine whether node is on top or bottom
-      //if (value.top == node)
-      //{
-
       node1 = gm.nodes[value.top];
       node2 = gm.nodes[value.bottom];
+
       var dir = node1.getDirec(node2.getCenter(), false);
       if (dir != 1) {
         options.relativeAlignment.splice(i, 1);
@@ -1149,38 +1408,10 @@ cholaLayout.prototype.removeConflictingConstraints = function (gm, options) {
         value.top = node1.id;
         value.bottom = node2.id;
       }
-      // }
-      // else  //else node is at the bottom
-      // {
-      //     nbr = gm.nodes[value.top];
-      //     node1 = gm.nodes[value.bottom];
-      //     let dir = node1.getDirec(nbr.getCenter(), false);
-      //     if (dir != 3)
-      //     {
-      //         constraints.splice(k, 1);
-      //         k = k - 1;
-
-      //         //and create a new constraint if possible
-      //         if (dir == 0 || dir == 1 || dir == 2)
-      //           this.placementConstraints(dir, options, node1, nbr);
-      //     }
-      //     else 
-      //     {
-      //       value.top = nbr.id;
-      //       value.bottom = node1.id;
-      //     }
-      // }
     } else if (value.left != undefined) {
-      //if constraint has been checked in a previous iteration
-      // if (typeof(value.left) == "string")
-      //   continue;
-
-      //determine whether node is on left or right
-      // if (value.left == node)
-      // {
-
       node1 = gm.nodes[value.left];
       node2 = gm.nodes[value.right];
+
       var _dir = node1.getDirec(node2.getCenter(), false);
       if (_dir != 0) {
         options.relativeAlignment.splice(i, 1);
@@ -1192,156 +1423,8 @@ cholaLayout.prototype.removeConflictingConstraints = function (gm, options) {
         value.left = node1.id;
         value.right = node2.id;
       }
-      // }
-      // else  //else node is at the right
-      // {
-      //     nbr = gm.nodes[value.left];
-      //     node1 = gm.nodes[value.right];
-      //     let dir = node1.getDirec(nbr.getCenter(), false);
-      //     if (dir != 2)
-      //     {
-      //         //if the constraint is not being satisfied, we remove it
-      //         constraints.splice(k, 1);
-      //         k = k - 1;
-
-      //         //and create a new constraint if possible
-      //         if (dir == 0 || dir == 1 || dir == 3)
-      //           this.placementConstraints(dir, options, node1, nbr);
-      //     }
-      //     else 
-      //     {
-      //       value.left = nbr.id;
-      //       value.right = node1.id;
-      //     }
-      // }
     }
   }
-
-  // //remove conflicting relative placement constraints
-  // let keys = Object.keys(options.placementDict);
-
-  // //let gm = this.graphManager;
-  // for (let i = 0; i < keys.length; i++)
-  // {
-  //   let node = keys[i];
-  //   //console.log(node);
-
-  //   if (node == "n11")
-  //   {
-  //     let c = 6;
-  //     let p = 8;
-  //   }
-
-  //   let constraints = options.placementDict[node];
-  //   let len = constraints.length;
-
-  //   for (let k = 0; k < constraints.length; k++)
-  //   {
-  //       let value = constraints[k];
-  //       //console.log(value);
-  //       let nbr;
-  //       let node1;
-  //       //determine the proposed direction from node to nbr in the constraint
-  //       if (value.top != undefined)
-  //       {
-  //           //if constraint has been checked in a previous iteration
-  //           // if (typeof(value.top) == "string")
-  //           //   continue;
-
-  //           //determine whether node is on top or bottom
-  //           if (value.top == node)
-  //           {
-  //               nbr = gm.nodes[value.bottom];
-  //               node1 = gm.nodes[value.top];
-  //               let dir = node1.getDirec(nbr.getCenter(), false);
-  //               if (dir != 1)
-  //               {
-  //                   constraints.splice(k, 1);
-  //                   k = k - 1;
-
-  //                   //and create a new constraint if possible
-  //                   if (dir == 0 || dir == 2 || dir == 3)
-  //                     this.placementConstraints(dir, options, node1, nbr);
-  //               }
-  //               else 
-  //               {
-  //                 value.top = node1.id;
-  //                 value.bottom = nbr.id;
-  //               }
-  //           }
-  //           else  //else node is at the bottom
-  //           {
-  //               nbr = gm.nodes[value.top];
-  //               node1 = gm.nodes[value.bottom];
-  //               let dir = node1.getDirec(nbr.getCenter(), false);
-  //               if (dir != 3)
-  //               {
-  //                   constraints.splice(k, 1);
-  //                   k = k - 1;
-
-  //                   //and create a new constraint if possible
-  //                   if (dir == 0 || dir == 1 || dir == 2)
-  //                     this.placementConstraints(dir, options, node1, nbr);
-  //               }
-  //               else 
-  //               {
-  //                 value.top = nbr.id;
-  //                 value.bottom = node1.id;
-  //               }
-  //           }
-  //       }
-  //       else if (value.left != undefined)
-  //       {
-  //           //if constraint has been checked in a previous iteration
-  //           // if (typeof(value.left) == "string")
-  //           //   continue;
-
-  //           //determine whether node is on left or right
-  //           if (value.left == node)
-  //           {
-  //               nbr = gm.nodes[value.right];
-  //               node1 = gm.nodes[value.left];
-  //               let dir = node1.getDirec(nbr.getCenter(), false);
-  //               if (dir != 0)
-  //               {
-  //                   constraints.splice(k, 1);
-  //                   k = k - 1;
-
-  //                   //and create a new constraint if possible
-  //                   if (dir == 1 || dir == 2 || dir == 3)
-  //                     this.placementConstraints(dir, options, node1, nbr);
-  //               }
-  //               else 
-  //               {
-  //                 value.left = node1.id;
-  //                 value.right = nbr.id;
-  //               }
-  //           }
-  //           else  //else node is at the right
-  //           {
-  //               nbr = gm.nodes[value.left];
-  //               node1 = gm.nodes[value.right];
-  //               let dir = node1.getDirec(nbr.getCenter(), false);
-  //               if (dir != 2)
-  //               {
-  //                   //if the constraint is not being satisfied, we remove it
-  //                   constraints.splice(k, 1);
-  //                   k = k - 1;
-
-  //                   //and create a new constraint if possible
-  //                   if (dir == 0 || dir == 1 || dir == 3)
-  //                     this.placementConstraints(dir, options, node1, nbr);
-  //               }
-  //               else 
-  //               {
-  //                 value.left = nbr.id;
-  //                 value.right = node1.id;
-  //               }
-  //           }
-  //       }
-  //   }
-
-  // }
 };
 
 cholaLayout.prototype.addPlacementConstraints = function (options, node1, node2, direction) {
@@ -1380,6 +1463,7 @@ cholaLayout.prototype.addPlacementConstraints = function (options, node1, node2,
     if (ignoreDuplicates) temp = { top: node1, bottom: node2, gap: options.edgeGap / 2 };else temp = { top: node1, bottom: node2, gap: options.edgeGap };
     options.relativeAlignment.push(temp);
   }
+  //console.log(temp);
 
   if (options.placementDict[node1] == undefined) options.placementDict[node1] = [temp];else options.placementDict[node1].push(temp);
 
@@ -1409,32 +1493,31 @@ cholaLayout.prototype.setNeighborPosition = function (gm, node, nbr, newNbrLoc, 
 };
 
 cholaLayout.prototype.getAdjacencyMatrix = function (gm) {
-  var am = [];
-  var nodeIds = [];
+  var am = {};
+
   var allNodes = gm.getAllNodes();
   for (var i = 0; i < allNodes.length; i++) {
-    var temp = [];
-    nodeIds.push(allNodes[i].id);
+    var temp = {};
     for (var j = 0; j < allNodes.length; j++) {
-      temp[j] = false;
+      temp[allNodes[j].id] = false;
     }
-    am.push(temp);
+    am[allNodes[i].id] = temp;
   }
+
   var allEdges = gm.getAllEdges();
   for (var _i4 = 0; _i4 < allEdges.length; _i4++) {
     var edge = allEdges[_i4];
-    var srcIndex = allNodes.indexOf(edge.getSource());
-    var trgtIndex = allNodes.indexOf(edge.getTarget());
-    am[srcIndex][trgtIndex] = true;
-    am[trgtIndex][srcIndex] = true;
+    var srcId = edge.source.id;
+    var tgtId = edge.target.id;
+    am[srcId][tgtId] = true;
+    am[tgtId][srcId] = true;
   }
 
-  return [am, nodeIds];
+  return am;
 };
 
 cholaLayout.prototype.createDummyNodesAndEdges = function (cholaNodeToCoseNode, edgeToDummyNodes, edgesWithBends, coseLayout, cholaEdgeToCoseEdge, options) {
   var coseGm = coseLayout.getGraphManager();
-  //let edgeToDummyNodes = {};
 
   for (var i = 0; i < edgesWithBends.length; i++) {
     var _cholaEdge = edgesWithBends[i];
@@ -1451,53 +1534,66 @@ cholaLayout.prototype.createDummyNodesAndEdges = function (cholaNodeToCoseNode, 
         dir2 = void 0,
         j = void 0;
 
-    for (j = 0; j < _cholaEdge.bendpoints.length; j++) {
-      var bendpoint = _cholaEdge.bendpoints[j][0];
-      dir1 = _cholaEdge.bendpoints[j][1][0];
-      dir2 = _cholaEdge.bendpoints[j][1][1];
+    j = 0;
 
-      source = _cholaEdge.bendpoints[j][2][0];
-      target = _cholaEdge.bendpoints[j][2][1];
+    // for (j = 0; j < cholaEdge.bendpoints.length; j++)
+    // {
+    var bendpoint = _cholaEdge.bendpoints[j][0];
+    dir1 = _cholaEdge.bendpoints[j][1][0];
+    dir2 = _cholaEdge.bendpoints[j][1][1];
 
-      if (prev.id != source.id) {
-        prev = coseEdge.target;
-        target = coseEdge.source;
-      } else {
-        target = coseEdge.target;
-      }
+    source = _cholaEdge.bendpoints[j][2][0];
+    target = _cholaEdge.bendpoints[j][2][1];
 
-      // create new dummy node
-      var dummyNode = coseGm.getRoot().add(new CoSENode(coseGm, bendpoint, new DimensionD(1, 1)));
-      dummyNode.id = "dnode:" + coseEdge.source.id + "to" + coseEdge.target.id + ":" + j.toString();
-      cholaNodeToCoseNode[dummyNode.id] = dummyNode;
+    // if (prev.id != source.id)
+    // {
+    //   prev = coseEdge.target;
+    //   target = coseEdge.source;
+    // }
+    // else
+    // {
+    //   target = coseEdge.target;
+    // }
 
-      // create new dummy edge between prev and dummy node
-      var _dummyEdge = coseGm.add(coseGm.getLayout().newEdge(), prev, dummyNode);
-      _dummyEdge.id = "dedge:" + prev.id + "to" + dummyNode.id + ":" + j.toString();
+    // create new dummy node
+    var dummyNode = coseGm.getRoot().add(new CoSENode(coseGm, bendpoint, new DimensionD(1, 1)));
+    dummyNode.id = "dnode:" + coseEdge.source.id + "to" + coseEdge.target.id + ":" + j.toString();
+    cholaNodeToCoseNode[dummyNode.id] = dummyNode;
 
-      this.placementConstraints(dir1, options, prev, dummyNode);
+    // create new dummy edge between prev and dummy node
+    var dummyEdge = coseGm.add(coseGm.getLayout().newEdge(), coseEdge.source, dummyNode);
+    dummyEdge.id = "dedge:" + prev.id + "to" + dummyNode.id + ":" + j.toString();
 
-      dummyNodes.push(dummyNode);
-
-      prev = dummyNode;
-    }
-
-    var dummyEdge = coseGm.add(coseGm.getLayout().newEdge(), prev, target);
+    dummyEdge = coseGm.add(coseGm.getLayout().newEdge(), dummyNode, coseEdge.target);
     dummyEdge.id = "dedge:" + prev.id + "to" + target.id + ":" + j.toString();
 
-    this.placementConstraints(dir2, options, prev, target);
-    //this.changeNodestoIds(options);
+    dummyNodes.push(dummyNode);
+
+    prev = dummyNode;
+    //}
+
 
     edgeToDummyNodes[_cholaEdge.id] = dummyNodes;
 
-    //remove real edge from graph manager if it is inter-graph
+    // if (coseEdge.source.id != source.id)
+    // {
+    //     //placement direction has to be changed
+    //     this.placementConstraints(dir1, options, target, dummyNode);
+    //     this.placementConstraints(dir2, options, dummyNode, source);
+
+    // }
+    // else
+    // {
+    this.placementConstraints(dir1, options, source, dummyNode);
+    this.placementConstraints(dir2, options, dummyNode, target);
+
+    // }
+
     if (coseEdge.isInterGraph) {
       coseLayout.graphManager.remove(coseEdge);
+    } else {
+      graph.remove(coseEdge);
     }
-    //else, remove the edge from the current graph
-    else {
-        graph.remove(coseEdge);
-      }
 
     coseGm.resetAllEdges();
     coseGm.resetAllNodes();
@@ -1531,40 +1627,6 @@ cholaLayout.prototype.chainNodesConfiguration = function (gm, options) {
   for (var _i6 = 0; _i6 < chains.length; _i6++) {
     var c = chains[_i6];
     if (c.nodes.length == 1) {
-      //    let node = c.nodes[0];
-      //  //let endNode = c.nodes[c.nodes.length - 1];
-      //    //removing previous relative constraints for the chain nodes
-      //  let arr = [];
-
-      //  // if (startNode.id == endNode.id)
-      //  //   arr = [startNode];
-      //  // else
-      //  //   arr = [startNode, endNode];
-
-      // // for (let k = 0; k < arr.length; k++)
-      //  //{
-      //    //let node = arr[k];
-      //    for (let j = 0; j < options.relativeAlignment.length; j++)
-      //    {
-      //      let align = options.relativeAlignment[j];
-      //      if (align.top != undefined)
-      //      {
-      //        if (align.top == node.id || align.bottom == node.id)
-      //        {
-      //          options.relativeAlignment.splice(j, 1);
-      //          j = j-1;
-      //        }
-      //      }
-      //      else
-      //      {
-      //        if (align.left == node.id || align.right == node.id)
-      //        {
-      //          options.relativeAlignment.splice(j, 1);
-      //          j = j-1;
-      //        }
-      //      }
-      //    }
-      //}
       continue;
     }
 
@@ -1634,7 +1696,7 @@ cholaLayout.prototype.oneDegreeNodesConfiguration = function (gm, nodes, options
       //when nbr is a 2 degree node
       else {
           //find the free semi locations by the nbr
-          var _availableSemis = nbr.getFreeSemiLocations();
+          var _availableSemis = nbr.getFreeSemiLocations(false);
 
           //finding the least cost position
           var nodeLoc = node.getCenter();
@@ -1695,11 +1757,11 @@ cholaLayout.prototype.removeEdgeOverlaps = function (gm, coseLayout, cholaNodeTo
       routePoints.push(dummyNode);
 
       // create new dummy edge between prev and dummy node
-      var _dummyEdge2 = gm.add(gm.getLayout().newEdge(), prev, dummyNode);
-      _dummyEdge2.id = "dedge:" + prev.id + "to" + dummyNode.id + ":" + j.toString();
+      var _dummyEdge = gm.add(gm.getLayout().newEdge(), prev, dummyNode);
+      _dummyEdge.id = "dedge:" + prev.id + "to" + dummyNode.id + ":" + j.toString();
 
       dummyNodes.push(dummyNode);
-      dummyEdges.push(_dummyEdge2);
+      dummyEdges.push(_dummyEdge);
 
       prev = dummyNode;
     }
@@ -1887,16 +1949,15 @@ cholaLayout.prototype.removeEdgeCrossings = function (gm, coseLayout, options) {
            nodes at all edge crossings in Q
   */
 
-  // // Get the new graph P started by giving it a copy of each node in Q.
-  // let p = this.newGraphManager();
-  // let parent = p.addRoot();
-  // let allNodes = q.getAllNodes();
-  // for (let i = 0; i < allNodes.length; i++)
-  // {
-  //     let node = allNodes[i];
-  //     let newNode = parent.add(new cholaNode(p, node.getLocation(), new DimensionD(parseFloat(node.getWidth()), parseFloat(node.getHeight()))));
-  //     newNode.id = node.id;
-  // }
+  // Get the new graph P started by giving it a copy of each node in Q.
+  var p = this.newGraphManager();
+  var parent = p.addRoot();
+  var allNodes = gm.getAllNodes();
+  for (var i = 0; i < allNodes.length; i++) {
+    var node = allNodes[i];
+    var newNode = parent.add(new cholaNode(p, node.getLocation(), new DimensionD(parseFloat(node.getWidth()), parseFloat(node.getHeight()))));
+    newNode.id = node.id;
+  }
 
   // Build a EdgeSegment object for each edge in Q.
   var segs = gm.buildSegments();
@@ -1904,21 +1965,31 @@ cholaLayout.prototype.removeEdgeCrossings = function (gm, coseLayout, options) {
   // Compute and add nodes to the crossing pairs.
   this.computeCrossings(segs, gm.idDisp, p);
 
-  for (var i = 0; i < segs.length; i++) {
-    var seg = segs[i];
+  for (var _i8 = 0; _i8 < segs.length; _i8++) {
+    var seg = segs[_i8];
     var sourceNode = seg.n1;
     var targetNode = seg.n2;
     var e1 = p.add(this.newEdge(), p.getNode(sourceNode), p.getNode(targetNode));
-    e1.id = "e:" + sourceNode.id + " to " + targetNode.id + ": " + toString(q.idDisp.takeNext());
+    e1.id = "e:" + sourceNode.id + " to " + targetNode.id + ": " + toString(gm.idDisp.takeNext());
   }
 
-  for (var _i8 = 0; _i8 < segs.length; _i8++) {
-    var _seg = segs[_i8];
+  for (var _i9 = 0; _i9 < segs.length; _i9++) {
+    var _seg = segs[_i9];
     var d = new edgeSegment(_seg.n1, _seg.n2).origDir;
     //p.nodeConf.setDirec(seg.n1, seg.n2, d);
     this.placementConstraints(d, options, _seg.n1, _seg.n2);
     //this.changeNodestoIds(options);
   }
+  // // Get the new graph P started by giving it a copy of each node in Q.
+  //  let p = this.newGraphManager();
+  //  let parent = p.addRoot();
+  //  let allNodes = gm.getAllNodes();
+  //  for (let i = 0; i < allNodes.length; i++)
+  //  {
+  //      let node = allNodes[i];
+  //      let newNode = parent.add(new cholaNode(p, node.getLocation(), new DimensionD(parseFloat(node.getWidth()), parseFloat(node.getHeight()))));
+  //      newNode.id = node.id;
+  //  }
 
   return p;
 };
@@ -1991,8 +2062,8 @@ cholaLayout.prototype.computeCrossings = function (segs, idDisp, p) {
 
   var openH = [];
   var parent = p.getRoot();
-  for (var _i9 = 0; _i9 < xparts.length; _i9++) {
-    var part = xparts[_i9];
+  for (var _i10 = 0; _i10 < xparts.length; _i10++) {
+    var part = xparts[_i10];
     var openV = null;
     var active = [];
 
@@ -2050,27 +2121,21 @@ cholaLayout.prototype.computeCrossings = function (segs, idDisp, p) {
   }
 };
 
-cholaLayout.prototype.reAttachTrees = function (trunk, trees, options, cholaIdToLNode) {
+cholaLayout.prototype.reAttachTrees = function (trunk, trees, options, cholaIdToLNode, parentList) {
   /*
-    :param trunk: a Graph object, being the trunk of a graph, with an existing layout
-    :param trees: a list of Tree objects, being the trees of the graph, with existing layout
-    :param iel: ideal edge length for the graph
-    :return: the FaceSet for the trunk, in which the Faces will have all the TreePlacements
-             representing the placements that we make
-     We add to trunk a node representing each tree, having the tree's bounding
-    box dimensions. Each such node contains a reference to the tree that it
-    represents, in the field, 'actualTree'.
-    */
+  :param trunk: a Graph object, being the trunk of a graph, with an existing layout
+  :param trees: a list of Tree objects, being the trees of the graph, with existing layout
+  :param options:
+  */
 
   // Compute the faces of the trunk.
   //let faceset = new faceSet(trunk);
+  var c = new compass();
 
-  // Sort the trees into the order in which we want to reattach them.
-  // For now we try placing those with biggest perimeter first.
+  // Sort the trees in the decreasing size of their bounding boxes
   trees.sort(function (a, b) {
     return b.graph.bboxPerimeter() - a.graph.bboxPerimeter();
   });
-  var c = new compass();
 
   //creating a map of chola nodes to their id
   var allNodes = trunk.getAllNodes();
@@ -2080,16 +2145,13 @@ cholaLayout.prototype.reAttachTrees = function (trunk, trees, options, cholaIdTo
     cholaNodesMap[node.id] = node;
   }
 
-  var allEdges = trunk.getAllEdges();
-
   // Reattach the trees one by one.
-  for (var _i10 = 0; _i10 < trees.length; _i10++) {
+  for (var _i11 = 0; _i11 < trees.length; _i11++) {
     allNodes = trunk.getAllNodes();
 
-    var tree = trees[_i10];
+    var tree = trees[_i11];
 
     var root = cholaNodesMap[tree.root.id];
-    console.log(root.id);
 
     var rx = root.getCenterX();
     var ry = root.getCenterY();
@@ -2100,35 +2162,33 @@ cholaLayout.prototype.reAttachTrees = function (trunk, trees, options, cholaIdTo
     //this will store the overlapping nodes for each possible placement direction
     var overlappingNodes = {};
 
+    var w = void 0,
+        h = void 0,
+        u = void 0,
+        v = void 0;
+
     //now create the tree box
     for (var j = 0; j < availableSemis.length; j++) {
-
       var placementDir = availableSemis[j];
-      console.log(placementDir);
-
-      var _w = void 0,
-          _h = void 0,
-          _u = void 0,
-          _v = void 0;
 
       var _tree$treeBoxWithRoot = tree.treeBoxWithRootVector(placementDir);
 
       var _tree$treeBoxWithRoot2 = _slicedToArray(_tree$treeBoxWithRoot, 4);
 
-      _w = _tree$treeBoxWithRoot2[0];
-      _h = _tree$treeBoxWithRoot2[1];
-      _u = _tree$treeBoxWithRoot2[2];
-      _v = _tree$treeBoxWithRoot2[3];
+      w = _tree$treeBoxWithRoot2[0];
+      h = _tree$treeBoxWithRoot2[1];
+      u = _tree$treeBoxWithRoot2[2];
+      v = _tree$treeBoxWithRoot2[3];
 
 
       var ax = void 0,
           aX = void 0,
           ay = void 0,
           aY = void 0;
-      ax = _u - _w / 2;
-      ay = _v - _h / 2;
-      aX = ax + _w;
-      aY = ay + _h;
+      ax = u - w / 2;
+      ay = v - h / 2;
+      aX = ax + w;
+      aY = ay + h;
 
       //now find the corners of the tree box node when translated to the actual location of the root node
       var x = void 0,
@@ -2139,14 +2199,14 @@ cholaLayout.prototype.reAttachTrees = function (trunk, trees, options, cholaIdTo
       //these are now the coordinates of center of the tree box node
       var ru = void 0,
           rv = void 0;
-      ru = rx + _u;
-      rv = ry + _v;
+      ru = rx + u;
+      rv = ry + v;
 
       //now finding the corners.
-      x = ru - _w / 2;
-      y = rv - _h / 2;
-      X = x + _w;
-      Y = y + _h;
+      x = ru - w / 2;
+      y = rv - h / 2;
+      X = x + w;
+      Y = y + h;
 
       //now check if any node in the coregm will overlap if the treenode in placed in the placement direction
       //the number of overlapping nodes and edges will be used as a cost function
@@ -2199,6 +2259,8 @@ cholaLayout.prototype.reAttachTrees = function (trunk, trees, options, cholaIdTo
     for (var _j9 = 0; _j9 < values.length; _j9++) {
       var value = values[_j9];
       cost[keys[_j9]] = value.length;
+      // console.log("Cost");
+      // console.log(value.length);
     }
 
     var costValues = Object.values(cost);
@@ -2214,224 +2276,74 @@ cholaLayout.prototype.reAttachTrees = function (trunk, trees, options, cholaIdTo
     //create constraints for nodes of the tree with each other
     tree.createMainConstraints(dp, options, this);
 
-    //make space in the graph for the chosen placement
-    //if (minCost > 0)
-    //{
-    //let allNodes = trunk.getAllNodes();
-    var toBeMovedNodes = [];
-    var w = void 0,
-        h = void 0,
-        u = void 0,
-        v = void 0;
+    //make space in the graph for the chosen placement if the cost/overlaps are greater than zero
+    if (minCost > 0) {
+      var _tree$treeBoxWithRoot3 = tree.treeBoxWithRootVector(dp);
 
-    //this implies that the tree node is overlapping with other nodes
-    //we have to push these nodes away to make space for the tree
+      var _tree$treeBoxWithRoot4 = _slicedToArray(_tree$treeBoxWithRoot3, 4);
 
-    var _tree$treeBoxWithRoot3 = tree.treeBoxWithRootVector(dp);
+      w = _tree$treeBoxWithRoot4[0];
+      h = _tree$treeBoxWithRoot4[1];
+      u = _tree$treeBoxWithRoot4[2];
+      v = _tree$treeBoxWithRoot4[3];
 
-    var _tree$treeBoxWithRoot4 = _slicedToArray(_tree$treeBoxWithRoot3, 4);
 
-    w = _tree$treeBoxWithRoot4[0];
-    h = _tree$treeBoxWithRoot4[1];
-    u = _tree$treeBoxWithRoot4[2];
-    v = _tree$treeBoxWithRoot4[3];
-    for (var _j10 = 0; _j10 < allNodes.length; _j10++) {
-      var _node3 = allNodes[_j10];
-      var nodeLoc = _node3.getCenter();
-      var rootLoc = root.getCenter();
+      for (var _j10 = 0; _j10 < allNodes.length; _j10++) {
+        var _node3 = allNodes[_j10];
+        var nodeLoc = _node3.getCenter();
+        var rootLoc = root.getCenter();
 
-      if (dp == c.EAST) {
-        if (nodeLoc.x > rootLoc.x) {
-          _node3.setCenter(nodeLoc.x + w + options.edgeGap, nodeLoc.y);
-          //this.placementConstraints(dp, options, Object.values(tree.leaves)[0], node);
-        }
-      } else if (dp == c.SOUTH) {
-        if (nodeLoc.y > rootLoc.y) {
-          _node3.setCenter(nodeLoc.x, nodeLoc.y + h + options.edgeGap);
-          //this.placementConstraints(dp, options, Object.values(tree.leaves)[0], node);
-        }
-      } else if (dp == c.WEST) {
-        if (nodeLoc.x < rootLoc.x) {
-          _node3.setCenter(nodeLoc.x - w - options.edgeGap, nodeLoc.y);
-          //this.placementConstraints(dp, options, Object.values(tree.leaves)[0], node);
-        }
-      } else if (dp == c.NORTH) {
-        if (nodeLoc.y < rootLoc.y) {
-          _node3.setCenter(nodeLoc.x, nodeLoc.y - h - options.edgeGap);
-          //this.placementConstraints(dp, options, Object.values(tree.leaves)[0], node);
+        if (dp == c.EAST) {
+          if (nodeLoc.x > rootLoc.x) _node3.setCenter(nodeLoc.x + w + options.edgeGap, nodeLoc.y);
+        } else if (dp == c.SOUTH) {
+          if (nodeLoc.y > rootLoc.y) _node3.setCenter(nodeLoc.x, nodeLoc.y + h + options.edgeGap);
+        } else if (dp == c.WEST) {
+          if (nodeLoc.x < rootLoc.x) _node3.setCenter(nodeLoc.x - w - options.edgeGap, nodeLoc.y);
+        } else if (dp == c.NORTH) {
+          if (nodeLoc.y < rootLoc.y) _node3.setCenter(nodeLoc.x, nodeLoc.y - h - options.edgeGap);
         }
       }
     }
-    //}
-
-    console.log("placement direction is ");
-    console.log(dp);
 
     // Insert the nodes of the tree (except root) back to the graph
-    this.insertTreeIntoGraph(tree, trunk, cholaNodesMap, cholaIdToLNode);
-    //break;
+    this.insertTreeIntoGraph(tree, trunk, cholaNodesMap, cholaIdToLNode, parentList);
   }
-
-  //return faceset;
 };
 
-cholaLayout.prototype.insertTreeIntoGraph = function (tree, gm, cholaNodesMap, cholaIdToLNode) {
+cholaLayout.prototype.insertTreeIntoGraph = function (tree, gm, cholaNodesMap, cholaIdToLNode, parentList) {
   //insert all nodes of the tree into the graph
   var allNodes = Object.values(tree.nodes);
   for (var i = 0; i < allNodes.length; i++) {
     var node = allNodes[i];
-    if (node.id == tree.root.id) continue;else {
+
+    if (node.id == tree.root.id) {
+      continue;
+    } else {
       //create a new cholanode
       var loc = node.getLocation();
-      var tempNode = gm.getRoot().add(new cholaNode(gm, loc, new DimensionD(node.getWidth(), node.getHeight())));
-      tempNode.id = node.id;
 
-      // console.log(tempNode.id);
-      // console.log(tempNode.getRect());
+      var nodeData = parentList[node.id];
+      var edge = nodeData[1];
+      var ownerGraph = nodeData[2];
+
+      var tempNode = ownerGraph.add(new cholaNode(gm, loc, new DimensionD(node.getWidth(), node.getHeight())));
+      tempNode.id = node.id;
 
       cholaNodesMap[tempNode.id] = tempNode;
       cholaIdToLNode[tempNode.id] = tempNode;
+
+      var sourceNode = cholaNodesMap[edge.source.id];
+      var targetNode = cholaNodesMap[edge.target.id];
+
+      var tempEdge = ownerGraph.add(gm.getLayout().newEdge(), sourceNode, targetNode);
+      tempEdge.id = edge.id;
     }
   }
 
   gm.resetAllNodes();
   gm.getAllNodes();
-
-  //insert all edges into the graph
-  var allEdges = Object.values(tree.edges);
-  for (var _i11 = 0; _i11 < allEdges.length; _i11++) {
-    var edge = allEdges[_i11];
-    var sourceNode = cholaNodesMap[edge.source.id];
-    var targetNode = cholaNodesMap[edge.target.id];
-    var tempEdge = gm.add(gm.getLayout().newEdge(), sourceNode, targetNode);
-    tempEdge.id = edge.id;
-  }
-
   gm.resetAllEdges();
   gm.getAllEdges();
-};
-
-cholaLayout.prototype.chooseBestPlacement = function (gm, tps, iel) {
-  var favourCardinal = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
-  var favourExternal = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : true;
-  var favourIsolation = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : true;
-
-  /*
-  :param tps: list of TreePlacement objects
-  :param iel: ideal edge length for the graph
-  :return: the best one
-  */
-  var bestPlacement = null;
-  var c = new compass();
-
-  var cmpCardinal = function cmpCardinal(p, q) {
-    var pc = void 0,
-        qc = void 0;
-    if (c.cwCards.includes(p.placementDirec)) pc = true;else pc = false;
-
-    if (c.cwCards.includes(q.placementDirec)) qc = true;else qc = false;
-
-    if (pc && !qc) return -1;else if (qc && !pc) return 1;else return 0;
-  };
-
-  var cmpExternal = function cmpExternal(p, q) {
-    var pe = p.face.external;
-    var qe = q.face.external;
-    if (pe && !qe) return -1;else if (qe && !pe) return 1;else return 0;
-  };
-
-  var cmpIsolation = function cmpIsolation(p, q) {
-    return p.getNumPotentialNbrs() - q.getNumPotentialNbrs();
-  };
-
-  if (favourCardinal) {
-    tps.sort(cmpCardinal);
-
-    // How many of the placements are in a cardinal direction?
-    // Due to sorting, these all come first, if any.
-    var _numCardinal = 0;
-
-    for (var i = 0; i < tps.length; i++) {
-      var tp = tps[i];
-      if (c.cwCards.indexOf(tp.placementDirec) > -1) _numCardinal = _numCardinal + 1;else break;
-    }
-
-    if (_numCardinal == 1) {
-      // There is a unique cardinal placement. Choose it.
-      bestPlacement = tps[0];
-    } else {
-      // If there are several cardinal placements, then we choose only from among them.
-      if (_numCardinal > 1) tps = tps.slice(0, _numCardinal);
-    }
-  }
-
-  if (bestPlacement == null && favourExternal) {
-    tps.sort(cmpExternal);
-
-    // Consider how many placements are in the external face.
-    var numExternal = 0;
-    for (var _i12 = 0; _i12 < tps.length; _i12++) {
-      var _tp = tps[_i12];
-      if (_tp.face.external) numExternal = numCardinal + 1;else break;
-    }
-
-    if (numExternal == 1) {
-      // There is a unique external placement. Choose it.
-      bestPlacement = tps[0];
-    } else {
-      // If there are several external placements, then we choose only from among them.
-      if (numExternal > 1) tps = tps.slice(0, numExternal);
-    }
-  }
-
-  if (bestPlacement == null && favourIsolation) {
-    // Sort tps by number of potential nbrs.
-    var nbrnums = [];
-    for (var _i14 = 0; _i14 < tps.length; _i14++) {
-      var _tp2 = tps[_i14];
-      var output = _tp2.getNumPotentialNbrs();
-      nbrnums.push([_tp2, output]);
-    }
-
-    nbrnums.sort(function (a, b) {
-      return a[1] - b[1];
-    });
-
-    // Get all those that have minimal number.
-    var m = nbrnums[0][1];
-    var _i13 = 0;
-
-    while (_i13 < tps.length && nbrnums[_i13][1] == m) {
-      _i13 = _i13 + 1;
-    }var arr = nbrnums.slice(0, _i13);
-    var minimal = [];
-    for (var j = 0; j < arr.length; _i13++) {
-      var _p = arr[j];
-      minimal.push(_p[0]);
-    }
-
-    var numMinimal = _i13;
-
-    if (numMinimal == 1) {
-      // There is a unique placement with minimal number of potential neighbours. Choose it.
-      bestPlacement = minimal[0];
-    } else {
-      // We choose only from among the placements with minimal number of potential nbrs.
-      tps = minimal;
-    }
-  }
-
-  if (bestPlacement == null) {
-    // Finally, we come to the case in which we must evaluate the cost of each remaining
-    // potential placement, and choose the cheapest one.
-    for (var _i15 = 0; _i15 < tps.length; _i15++) {
-      var _tp3 = tps[_i15];
-      if (cholaConstants.ESTIMATE_TREE_PLACEMENT_COSTS) _tp3.estimateCost(gm, iel, cholaConstants.USE_OLD_COST_ESTIMATE_HEURISTIC);else _tp3.evaluateCost(gm, iel);
-    }
-    //bestPlacement = min(tps, key=lambda tp: tp.cost);
-  }
-
-  return bestPlacement;
 };
 
 cholaLayout.prototype.getHighDegreeNodes = function (gm) {
@@ -2440,7 +2352,7 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
   var highDegreeNodes = [];
   var oneDegreeNodes = [];
   var sortedList = [];
-  //console.log("One degree nodes");
+
   for (var i = 0; i < allNodes.length; i++) {
     var node = allNodes[i];
     var degree = node.getDegree();
@@ -2465,6 +2377,7 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
   highDegreeNodes.sort(compareSecondColumn);
   highDegreeNodes.reverse();
 
+  //create the list of iteration for the higher degree nodes such that their neighbors are processed in an order
   if (highDegreeNodes.length > 0) {
     var j = 0;
     for (var k = 0; k < highDegreeNodes.length; k++) {
@@ -2475,9 +2388,9 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
         //find its neighbors sorted in descending order of degree
         var neighbors = sortedList[j].getNeighborsWithDegree();
         //add nodes with degree 3 or higher to the sortedList
-        for (var _i16 = 0; _i16 < neighbors.length; _i16++) {
-          var _degree = neighbors[_i16][1];
-          if (sortedList.indexOf(neighbors[_i16][0]) >= 0) continue;else if (_degree >= 3) sortedList.push(neighbors[_i16][0]);else break;
+        for (var _i12 = 0; _i12 < neighbors.length; _i12++) {
+          var _degree = neighbors[_i12][1];
+          if (sortedList.indexOf(neighbors[_i12][0]) >= 0) continue;else if (_degree >= 3) sortedList.push(neighbors[_i12][0]);else break;
         }
       }
       if (sortedList.length == highDegreeNodes.length) break;
@@ -2487,15 +2400,75 @@ cholaLayout.prototype.getHighDegreeNodes = function (gm) {
   return [sortedList, oneDegreeNodes];
 };
 
-cholaLayout.prototype.findNeighbors = function (node) {
-  var neighborsList = [];
-  for (var i = 0; i < node.edges.length; i++) {
-    var edge = node.edges[i];
-    var source = edge.source;
-    var target = edge.target;
-    if (source.id == node.id && target.id == node.id) continue;else if (source.id == node.id) neighborsList.push(target.id);else if (target.id == node.id) neighborsList.push(source.id);
+cholaLayout.prototype.updateCompoundDimensions = function (compoundNodes) {
+  var hierarchyList = [];
+
+  compoundNodes.sort(function (a, b) {
+    return b.getArea() - a.getArea();
+  });
+
+  //create a hierarchy list for the compound nodes
+  for (var i = 0; i < compoundNodes.length; i++) {
+    var node = compoundNodes[i];
+    var children = node.getChildren();
+
+    var childList = [];
+
+    //check if any children of the compound node is a compound node
+    for (var j = 0; j < children.length; j++) {
+      var child = children[j];
+      if (child.isCompound()) childList.push(child);
+    }
+    hierarchyList.push([node, childList, childList.length]);
   }
-  return [].concat(_toConsumableArray(new Set(neighborsList)));
+
+  function compareSecondColumn(a, b) {
+    if (a[2] === b[2]) {
+      return 0;
+    } else {
+      return a[2] < b[2] ? -1 : 1;
+    }
+  };
+
+  hierarchyList.sort(compareSecondColumn);
+
+  //we start updating the dimensions of the compound nodes from the inner most or single compound nodes
+  for (var _i13 = 0; _i13 < hierarchyList.length; _i13++) {
+    var _node5 = hierarchyList[_i13][0];
+    var _children = hierarchyList[_i13][1];
+
+    // if node does not contain any children nodes
+    if (_children.length == 0) {
+      var posX = _node5.getCenterX();
+      var posY = _node5.getCenterY();
+
+      _node5.updateBounds2();
+
+      // //2 is for the extra padding added in cytoscape
+      // let newWidth = node.getWidth() + node.borderWidth + 2;
+      // node.setWidth(newWidth);
+
+      // let newHeight = node.getHeight() + node.borderWidth + 2;
+      // node.setHeight(newHeight);
+
+      // node.setCenter(posX, posY);
+
+      var parent = _node5.getParentNode();
+
+      if (parent != null) {
+        //var childGraph = parent.getChild();
+
+        parent.updateBounds2();
+        console.log("after updating bounds");
+        console.log(parent.id);
+        console.log(parent.getCenter());
+        console.log(parent.getWidth());
+        console.log(parent.getHeight());
+      }
+    }
+
+    //if node is inside a compound node
+  }
 };
 
 module.exports = cholaLayout;
@@ -2814,42 +2787,6 @@ compass.prototype.cwClosedInterval = function (d0, d1) {
     return rr.slice(i0, i1 + 1);
 };
 
-// @classmethod
-// def acwClosedInterval(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: list of all compass directions from d0 to d1 inclusive, going anticlockwise
-//     """
-//     return list(reversed(cls.cwClosedInterval(d1, d0)))
-
-// @classmethod
-// def cwRoseDistance(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: the number of steps on the compass rose going clockwise from d0 to d1
-//     """
-//     return len(cls.cwClosedInterval(d0, d1)) - 1
-
-// @classmethod
-// def shortestRoseDistance(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: the minimum number of steps on the compass rose from d0 to d1, going in either direction
-//     """
-//     return min(cls.cwRoseDistance(d0, d1), cls.acwRoseDistance(d0, d1))
-
-// @classmethod
-// def acwRoseDistance(cls, d0, d1):
-//     """
-//     :param d0: a direction
-//     :param d1: another direction
-//     :return: the number of steps on the compass rose going anticlockwise from d0 to d1
-//     """
-//     return len(cls.acwClosedInterval(d0, d1)) - 1
-
 compass.prototype.sameDimension = function (d0, d1) {
     /*
     :param d0: a cardinal Compass direction
@@ -2858,16 +2795,6 @@ compass.prototype.sameDimension = function (d0, d1) {
     */
     return d0 % 2 == d1 % 2;
 };
-
-// @classmethod
-// def perpendicular(cls, d0, d1):
-//     """
-//     :param d0: a cardinal Compass direction
-//     :param d1: a cardinal Compass direction
-//     :return: boolean saying if these directions are perpendicular to one another
-//     """
-//     return not cls.sameDimension(d0, d1)
-
 
 compass.prototype.cardinalDirection = function (p1, p2) {
     /*
@@ -2952,11 +2879,6 @@ compass.prototype.cw90 = function (direc) {
     return this.cwRose[(i0 + 2) % 8];
 };
 
-// @classmethod
-// def acw90(cls, direc):
-//     i0 = cls.cwRose.index(direc)
-//     return cls.cwRose[(i0-2)%8]
-
 compass.prototype.rotateCW = function (n, direc) {
     var i0 = this.cwRose.indexOf(direc);
     return this.cwRose[(i0 + n) % 8];
@@ -2973,27 +2895,6 @@ compass.prototype.vectorSigns = function (direc) {
     return this.signs[direc];
 };
 
-// @classmethod
-// def vector(cls, direc, mag=1):
-//     """
-//     :param direc: a Compass direction, cardinal or ordinal
-//     :param mag: a float
-//     :return: a vector in the form [x, y] having the given magnitude and
-//              pointing in the given direction
-//     """
-//     hsqrt2 = 0.7071067811865476
-//     v = {
-//         cls.EAST: [1, 0],
-//         cls.SOUTH: [0, 1],
-//         cls.WEST: [-1, 0],
-//         cls.NORTH: [0, -1],
-//         cls.SE: [hsqrt2, hsqrt2],
-//         cls.SW: [-hsqrt2, hsqrt2],
-//         cls.NW: [-hsqrt2, -hsqrt2],
-//         cls.NE: [hsqrt2, -hsqrt2]
-//     }[direc]
-//     return [mag*c for c in v]
-
 module.exports = compass;
 
 /***/ }),
@@ -3007,11 +2908,9 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 var LGraphManager = __webpack_require__(4).layoutBase.LGraphManager;
 var cholaNode = __webpack_require__(8);
-var nearbyObjectFinder = __webpack_require__(10);
-var edgeSegment = __webpack_require__(11);
+var edgeSegment = __webpack_require__(12);
 var DimensionD = __webpack_require__(4).layoutBase.DimensionD;
-var idDispenser = __webpack_require__(13);
-//const nodeConfig = require('../chola/nodeConfig');
+var idDispenser = __webpack_require__(14);
 
 function cholaGraphManager(layout) {
     LGraphManager.call(this, layout);
@@ -3019,7 +2918,6 @@ function cholaGraphManager(layout) {
     this.maxDegree = 0;
     this.rootNode;
     this.idDisp = new idDispenser(0);
-    //this.nodeConf = new nodeConfig(this);
     this.edgeToDummyNodes = {};
     this.edgesWithBends = [];
     this.nodes = {};
@@ -3185,7 +3083,8 @@ cholaGraphManager.prototype.getNode = function (node) {
     return null;
 };
 
-cholaGraphManager.prototype.severNodes = function (nodes, buckets, compoundNodes, idList) {
+cholaGraphManager.prototype.severNodes = function (nodes, buckets, compoundNodes, idList, parentList) {
+    //let parentList = {};
     for (var i = 0; i < nodes.length; i++) {
         var node = nodes[i];
         //console.log("severing node");
@@ -3195,6 +3094,10 @@ cholaGraphManager.prototype.severNodes = function (nodes, buckets, compoundNodes
             //console.log(edge);
             var otherNode = edge.getOtherEnd(node);
             var degree = otherNode.getDegree();
+
+            //if (node.getParentNode() != null)
+            parentList[node.id] = [node, node.getEdges()[0], node.getOwner()];
+
             node.owner.remove(node);
             delete this.nodes[node.id];
 
@@ -3204,6 +3107,8 @@ cholaGraphManager.prototype.severNodes = function (nodes, buckets, compoundNodes
     }
     this.resetAllNodes();
     this.resetAllEdges();
+
+    //return parentList;
 };
 
 cholaGraphManager.prototype.getConnectedComponents = function () {
@@ -3245,6 +3150,7 @@ cholaGraphManager.prototype.getConnectedComponents = function () {
             var n1 = queue[0][1]; //node in original gm
             tempNode1 = gm.getNode(n1); //node in newGm
             queue.splice(0, 1);
+
             var n2 = edge.getOtherEnd(n1); //node in original gm
             var tempNode2 = gm.getNode(n2); //node in newGm
             if (tempNode2 != null) continue;
@@ -3390,8 +3296,10 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 var LNode = __webpack_require__(4).layoutBase.LNode;
 var IMath = __webpack_require__(4).layoutBase.IMath;
-
+var PointD = __webpack_require__(4).layoutBase.PointD;
 var cholaEdge = __webpack_require__(9);
+var cholaGraph = __webpack_require__(10);
+var LayoutConstants = __webpack_require__(4).layoutBase.LayoutConstants;
 
 function cholaNode(gm, loc, size, vNode) {
   LNode.call(this, gm, loc, size, vNode);
@@ -3401,6 +3309,7 @@ function cholaNode(gm, loc, size, vNode) {
   this.dy = null;
   this.isRootNode = false;
   this.isDummy = false;
+  this.parentNode = null;
 }
 
 cholaNode.prototype = Object.create(LNode.prototype);
@@ -3412,18 +3321,58 @@ cholaNode.prototype.setAsRootNode = function (option) {
   this.isRootNode = option;
 };
 
+cholaNode.prototype.getParentNode = function () {
+  return this.parentNode;
+};
+
+cholaNode.prototype.getArea = function () {
+  return this.getWidth() * this.getHeight();
+};
+
 cholaNode.prototype.getChildren = function () {
-  /*
-  :return: a list of the neighbours of this node that sit as
-           the target end of the connecting edge
-  */
-  var kids = [];
-  var edges = this.edges;
-  for (var i = 0; i < edges.length; i++) {
-    var edge = edges[i];
-    if (this.id == edge.source.id) kids.push(edge.target);
+  var children = null;
+
+  if (this.isCompound()) {
+    return this.child.nodes;
   }
-  return kids;
+};
+
+cholaNode.prototype.updateBounds2 = function () {
+  if (this.getChild() == null) {
+    throw "assert failed";
+  }
+  if (this.getChild().getNodes().length != 0) {
+    // wrap the children nodes by re-arranging the boundaries
+    var childGraph = this.getChild();
+    childGraph.updateBounds2(false);
+
+    this.rect.x = childGraph.getLeft();
+    this.rect.y = childGraph.getTop();
+
+    this.setWidth(childGraph.getRight() - childGraph.getLeft());
+    this.setHeight(childGraph.getBottom() - childGraph.getTop());
+
+    // Update compound bounds considering its label properties    
+    if (LayoutConstants.NODE_DIMENSIONS_INCLUDE_LABELS) {
+
+      var width = childGraph.getRight() - childGraph.getLeft();
+      var height = childGraph.getBottom() - childGraph.getTop();
+
+      if (this.labelWidth > width) {
+        this.rect.x -= (this.labelWidth - width) / 2;
+        this.setWidth(this.labelWidth);
+      }
+
+      if (this.labelHeight > height) {
+        if (this.labelPos == "center") {
+          this.rect.y -= (this.labelHeight - height) / 2;
+        } else if (this.labelPos == "top") {
+          this.rect.y -= this.labelHeight - height;
+        }
+        this.setHeight(this.labelHeight);
+      }
+    }
+  }
 };
 
 cholaNode.prototype.octalCode = function () {
@@ -3449,15 +3398,22 @@ cholaNode.prototype.octalCode = function () {
 
 cholaNode.prototype.getFreeSemiLocations = function () {
   var approx = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+  var compound = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
 
   var edges = this.edges;
   var nbr = null;
-  var availableSemis = [0, 1, 2, 3];
   var nbrLocX = null;
   var nbrLocY = null;
+  var availableSemis = [0, 1, 2, 3];
+
   for (var i = 0; i < edges.length; i++) {
     var direction = null;
     var edge = edges[i];
+
+    //compound is true when orthogonalizing compound node edges
+    //in that case, the direction to the compound is not counted in free locations
+    if (compound == true && edge.getOtherEnd(this).isCompound()) continue;
+
     if (edge.bendpoints.length == 0) {
       nbr = edge.getOtherEnd(this);
       nbrLocX = nbr.getCenter().x;
@@ -3469,9 +3425,9 @@ cholaNode.prototype.getFreeSemiLocations = function () {
     }
 
     var nodeLoc = this.getCenter();
-    if (nodeLoc.x == nbrLocX) {
+    if (Math.round(nodeLoc.x * 100.0) / 100.0 == Math.round(nbrLocX * 100.0) / 100.0) {
       if (nbrLocY > nodeLoc.y) direction = 1;else if (nbrLocY < nodeLoc.y) direction = 3;
-    } else if (nodeLoc.y == nbrLocY) {
+    } else if (Math.round(nodeLoc.y * 100.0) / 100.0 == Math.round(nbrLocY * 100.0) / 100.0) {
       if (nbrLocX > nodeLoc.x) direction = 0;else if (nbrLocX < nodeLoc.x) direction = 2;
     }
 
@@ -3479,9 +3435,9 @@ cholaNode.prototype.getFreeSemiLocations = function () {
       var dx = Math.abs(nodeLoc.x - nbrLocX);
       var dy = Math.abs(nodeLoc.y - nbrLocY);
       if (dx < dy) {
-        if (nbrLocY > nodeLoc.y) direction = 1;else if (nbrLocY < nodeLoc.y) direction = 3;
-      } else if (dy > dx) {
-        if (nbrLocX > nodeLoc.x) direction = 0;else if (nbrLocX < nodeLoc.x) direction = 2;
+        if (!availableSemis.includes(1)) direction = 3;else if (!availableSemis.includes(3)) direction = 1;else if (nbrLocY > nodeLoc.y) direction = 1;else if (nbrLocY < nodeLoc.y) direction = 3;
+      } else {
+        if (!availableSemis.includes(0)) direction = 2;else if (!availableSemis.includes(2)) direction = 0;else if (nbrLocX > nodeLoc.x) direction = 0;else if (nbrLocX < nodeLoc.x) direction = 2;
       }
     }
 
@@ -3733,6 +3689,11 @@ cholaNode.prototype.getNbrsCWCyclic = function () {
   return sortedNbrs;
 };
 
+cholaNode.prototype.getRelativeRatiotoNodeCenter = function (portLocation) {
+  var node = this;
+  return new PointD((portLocation.x - node.getCenterX()) / node.getWidth() * 100, (portLocation.y - node.getCenterY()) / node.getHeight() * 100);
+};
+
 cholaNode.prototype.getDirec = function (vLoc) {
   var cardinal = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
   var ordinal = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
@@ -3801,14 +3762,34 @@ function cholaEdge(source, target, vEdge) {
   LEdge.call(this, source, target, vEdge);
   this.weight = 0.5;
   this.distance = 0;
+
+  //each entry in this.bendpoint contains [bendpoint, [dir1, dir2], [node1, node2]]
   this.bendpoints = [];
   this.routePoints = [];
+
+  //stores the location of the ports on the source or target (if any) 
+  this.sourcePort = null;
+  this.targetPort = null;
 }
 
 cholaEdge.prototype = Object.create(LEdge.prototype);
 for (var prop in LEdge) {
   cholaEdge[prop] = LEdge[prop];
 }
+
+cholaEdge.prototype.resetBendpoints = function (gm) {
+  this.weight = 0.5;
+  this.distance = 0;
+
+  this.bendpoints = [];
+  this.routePoints = [];
+
+  var edgesWithBends = gm.edgesWithBends;
+  for (var i = 0; i < edgesWithBends.length; i++) {
+    var edge = edgesWithBends[i];
+    if (edge.id == this.id) edgesWithBends.splice(i, 1);
+  }
+};
 
 /*Get the other end to which an edge is connected with*/
 cholaEdge.prototype.getOtherEnd = function (node) {
@@ -3832,31 +3813,17 @@ cholaEdge.prototype.createDummyNodesForBendpoints = function (gm, layout) {
     // create new dummy node
     var dummyNode = gm.getRoot().add(new cholaNode(gm, new PointD(0, 0), new DimensionD(1, 1)));
     dummyNode.id = edge.source + "to" + edge.target + toString(i);
-    //layout.newNode(null);
-    //dummyNode.setRect(new PointD(0, 0), new DimensionD(1, 1));
-
-    //graph.add(dummyNode);
 
     // create new dummy edge between prev and dummy node
     var _dummyEdge = gm.add(gm.getLayout().newEdge(), prev, dummyNode);
-    //layout.newEdge(null);
-    //gm.add(dummyEdge, prev, dummyNode);
 
     dummyNodes.add(dummyNode);
     prev = dummyNode;
   }
 
   var dummyEdge = gm.add(gm.getLayout().newEdge(), prev, edge.target);
-  //gm.add(dummyEdge, prev, edge.target);
 
   gm.edgeToDummyNodes[edge] = dummyNodes;
-
-  // remove real edge from graph manager if it is inter-graph
-  // if (edge.isInterGraph())
-  // {
-  //   layout.graphManager.remove(edge);
-  // }
-  // else, remove the edge from the current graph
 
   graph.remove(edge);
 
@@ -3873,19 +3840,10 @@ cholaEdge.prototype.isOrthogonal = function () {
 cholaEdge.prototype.createBendPoint = function (bendpoint, dir1, dir2, node1, node2) {
   var tree = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : false;
 
-
   var relativeBendPosition;
-  if (!tree) relativeBendPosition = this.convertToRelativeBendPosition(bendpoint);
-  //let srcPoint = this.sourceEndpoint();
-  //let trgtPoint = this.targetEndpoint();
-
-  // console.log("source");
-  // console.log(node1.id);
-  // console.log("target");
-  // console.log(node2.id);
-  else {
-      relativeBendPosition = this.getDistWeight(node1.getCenterX(), node1.getCenterY(), node2.getCenterX(), node2.getCenterY(), bendpoint.x, bendpoint.y);
-    }
+  if (!tree) relativeBendPosition = this.convertToRelativeBendPosition(bendpoint);else {
+    relativeBendPosition = this.getDistWeight(node1.getCenterX(), node1.getCenterY(), node2.getCenterX(), node2.getCenterY(), bendpoint.x, bendpoint.y);
+  }
   this.weight = relativeBendPosition.weight;
   this.distance = relativeBendPosition.distance;
   this.bendpoints.push([bendpoint, [dir1, dir2], [node1, node2]]);
@@ -3925,8 +3883,8 @@ cholaEdge.prototype.getDistWeight = function (sX, sY, tX, tY, PointX, PointY) {
   W = W * delta2;
 
   return {
-    ResultDistance: D,
-    ResultWeight: W
+    distance: D,
+    weight: W
   };
 };
 
@@ -3956,35 +3914,12 @@ cholaEdge.prototype.convertToRelativeBendPosition = function (bendpoint) {
   //Get the direction of the line from intesection point to bend point
   var dir2 = this.getLineDirection(intersectionPoint, bendpoint);
 
-  console.log(this.id);
-
-  console.log(dir1);
-  console.log(dir2);
-
   //If the difference is not -2 and not 6 then the direction of the distance is negative
   if (dir1 - dir2 != -2 && dir1 - dir2 != 6) {
     if (distance != 0) {
       distance = -1 * distance;
-      console.log("inverted distance");
     }
   }
-
-  // if (distance != 0)
-  //  {
-  //     //if (dir1 == 2 && dir2 == 8)
-  //       //distance = -1 * distance;
-  //     if (dir1 == 4 && dir2 == 2)
-  //       distance = -1 * distance; 
-  //     else if (dir1 == 6 && dir2 == 4)
-  //       distance = -1 * distance;
-  //     else if (dir1 == 8 && dir2 == 6)
-  //       distance = -1 * distance;
-
-  //     if (distance < 0) 
-  //       console.log("inverted distance");
-  //  }
-
-  console.log(distance);
 
   return {
     weight: weight,
@@ -4087,92 +4022,100 @@ module.exports = cholaEdge;
 "use strict";
 
 
-function nearbyObjectFinder(threshold) {
-  this.threshold = threshold;
-  this.objects = {};
+var LGraph = __webpack_require__(11).LGraph;
+var Integer = __webpack_require__(11).Integer;
+var RectangleD = __webpack_require__(11).RectangleD;
+
+function cholaGraph(parent, graphMgr, vGraph) {
+  LGraph.call(this, parent, graphMgr, vGraph);
 }
 
-nearbyObjectFinder.prototype.addObject = function (point, obj) {
-
-  // We use buckets by storing the object under the rounded integer coordinates...
-  var x = point.x;
-  var y = point.y;
-  var xr = parseInt(Math.round(x));
-  var yr = parseInt(Math.round(y));
-
-  var x_dict = this.objects[xr];
-  if (x_dict == undefined) x_dict = {};
-
-  // ...but we store it along with the given float coordinates.
-
-  var y_list = x_dict[yr];
-  if (y_list == undefined) y_list = [];
-
-  y_list.push([x, y, obj]);
-  x_dict[yr] = y_list;
-
-  this.objects[xr] = x_dict;
+cholaGraph.prototype = Object.create(LGraph.prototype);
+for (var prop in LGraph) {
+  cholaGraph[prop] = LGraph[prop];
 };
 
-nearbyObjectFinder.prototype.findObject = function (point) {
-  var x = point.x;
-  var y = point.y;
+cholaGraph.prototype.updateBounds2 = function (recursive) {
+  // calculate bounds
+  var left = Number.MAX_VALUE;
+  var right = -Number.MAX_VALUE;
+  var top = Number.MAX_VALUE;
+  var bottom = -Number.MAX_VALUE;
+  var nodeLeft;
+  var nodeRight;
+  var nodeTop;
+  var nodeBottom;
+  var margin;
 
-  // Consider the range of all integer coords under which a nearby
-  //- point could have been stored, according to the threshold.
-  var threshold = this.threshold;
-  var u0 = parseInt(Math.round(x - threshold));
-  var u1 = parseInt(Math.round(x + threshold));
-  var v0 = parseInt(Math.round(y - threshold));
-  var v1 = parseInt(Math.round(y + threshold));
+  var nodes = this.nodes;
+  var s = nodes.length;
+  for (var i = 0; i < s; i++) {
+    var lNode = nodes[i];
 
-  //creating range of values
-  var U = Array.from({ length: u1 + 1 - u0 }, function (a, b) {
-    return b + u0;
-  });
-  var V = Array.from({ length: v1 + 1 - v0 }, function (a, b) {
-    return b + v0;
-  });
+    if (recursive && lNode.child != null) {
+      lNode.updateBounds();
+    }
+    nodeLeft = lNode.getLeft();
+    nodeRight = lNode.getRight();
+    nodeTop = lNode.getTop();
+    nodeBottom = lNode.getBottom();
 
-  // Prepare return value.
-  var obj = null;
+    if (left > nodeLeft) {
+      left = nodeLeft;
+    }
 
-  // Check to see if any object was stored with coordinates that are
-  // within the threshold of the given ones.
-  for (var i = 0; i < U.length; i++) {
-    var u = U[i];
-    if (this.objects[u] == undefined) continue;
-    var x_dict = this.objects[u];
-    for (var j = 0; j < V.length; j++) {
-      var v = V[i];
-      if (x_dict[v] == undefined) continue;
-      y_list = x_dict[v];
+    if (right < nodeRight) {
+      right = nodeRight;
+    }
 
-      for (var k = 0; k < y_list.length; k++) {
-        var x1 = y_list[0];
-        var y1 = y_list[1];
-        var obj1 = y_list[2];
-        if (Math.abs(x - x1) < threshold & Math.abs(y - y1) < threshold) {
-          obj = obj1;
-          return obj;
-        }
-      }
+    if (top > nodeTop) {
+      top = nodeTop;
+    }
+
+    if (bottom < nodeBottom) {
+      bottom = nodeBottom;
     }
   }
-  return obj;
+
+  var boundingRect = new RectangleD(left, top, right - left, bottom - top);
+  if (left == Integer.MAX_VALUE) {
+    this.left = this.parent.getLeft();
+    this.right = this.parent.getRight();
+    this.top = this.parent.getTop();
+    this.bottom = this.parent.getBottom();
+  }
+
+  if (nodes[0].getParent().paddingLeft != undefined) {
+    margin = nodes[0].getParent().paddingLeft;
+  } else {
+    margin = this.margin;
+  }
+
+  margin = margin + this.parent.borderWidth / 2 + 1;
+
+  this.left = boundingRect.x - margin;
+  this.right = boundingRect.x + boundingRect.width + margin;
+  this.top = boundingRect.y - margin;
+  this.bottom = boundingRect.y + boundingRect.height + margin;
 };
 
-module.exports = nearbyObjectFinder;
+module.exports = cholaGraph;
 
 /***/ }),
 /* 11 */
+/***/ (function(module, exports) {
+
+module.exports = __WEBPACK_EXTERNAL_MODULE__11__;
+
+/***/ }),
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 var cc = __webpack_require__(5);
-var Event = __webpack_require__(12);
+var Event = __webpack_require__(13);
 
 function edgeSegment(node1, node2) {
     /*
@@ -4261,7 +4204,7 @@ edgeSegment.prototype.getEvents = function () {
 module.exports = edgeSegment;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4287,7 +4230,7 @@ function event(seg, endpoint) {
 module.exports = event;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4314,61 +4257,61 @@ idDispenser.prototype.reset = function () {
 module.exports = idDispenser;
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var Nbr = __webpack_require__(15);
-var Arrangement = __webpack_require__(16);
+var Nbr = __webpack_require__(16);
+var Arrangement = __webpack_require__(17);
 
 function assign() {}
 
 assign.prototype.getCyclicOrder = function (node) {
-  var neighbors = [];
-  for (var i = 0; i < node.edges.length; i++) {
-    var edge = node.edges[i];
-    var other = edge.getOtherEnd(node);
-    var otherLoc = other.getCenter();
-    var nodeLoc = node.getCenter();
-    var dx = otherLoc.x - nodeLoc.x;
-    var dy = otherLoc.y - nodeLoc.y;
-    var moved = other.moved;
-    var degree = other.getDegree();
-    var processd = other.processed;
-    var neighbor = new Nbr(other.id, dx, dy, degree, processd);
-    neighbors.push(neighbor);
-  }
-  var arr = new Arrangement(neighbors, node.getDegree());
-  arr.getArrangement();
-  return arr.getCyclicOrder();
+    var neighbors = [];
+    for (var i = 0; i < node.edges.length; i++) {
+        var edge = node.edges[i];
+        var other = edge.getOtherEnd(node);
+        var otherLoc = other.getCenter();
+        var nodeLoc = node.getCenter();
+        var dx = otherLoc.x - nodeLoc.x;
+        var dy = otherLoc.y - nodeLoc.y;
+        var moved = other.moved;
+        var degree = other.getDegree();
+        var processd = other.processed;
+        var neighbor = new Nbr(other.id, dx, dy, degree, processd);
+        neighbors.push(neighbor);
+    }
+    var arr = new Arrangement(neighbors, node.getDegree());
+    arr.getArrangement();
+    return arr.getCyclicOrder();
 };
 
 assign.prototype.getNeighborAssignments = function (node, cyclicIds, highIds, am) {
-  var neighbors = [];
-  for (var i = 0; i < node.edges.length; i++) {
-    var edge = node.edges[i];
-    var other = edge.getOtherEnd(node);
-    var otherLoc = other.getCenter();
-    var nodeLoc = node.getCenter();
-    var dx = otherLoc.x - nodeLoc.x;
-    var dy = otherLoc.y - nodeLoc.y;
-    var degree = other.getDegree();
-    var processd = other.processed;
-    var neighbor = new Nbr(other.id, dx, dy, degree, processd);
-    neighbors.push(neighbor);
-  }
-  var arr = new Arrangement(neighbors, node.getDegree(), node.id, highIds);
-  arr.getArrangement();
-  var asgns = arr.getAsgns(cyclicIds, am);
-  return asgns;
+    var neighbors = [];
+    for (var i = 0; i < node.edges.length; i++) {
+        var edge = node.edges[i];
+        var other = edge.getOtherEnd(node);
+        var otherLoc = other.getCenter();
+        var nodeLoc = node.getCenter();
+        var dx = otherLoc.x - nodeLoc.x;
+        var dy = otherLoc.y - nodeLoc.y;
+        var degree = other.getDegree();
+        var processd = other.processed;
+        var neighbor = new Nbr(other.id, dx, dy, degree, processd);
+        neighbors.push(neighbor);
+    }
+    var arr = new Arrangement(neighbors, node.getDegree(), node.id, highIds);
+    arr.getArrangement();
+    var asgns = arr.getAsgns(cyclicIds, am);
+    return asgns;
 };
 
 module.exports = assign;
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4489,17 +4432,15 @@ Nbr.prototype.deflectionFromSemi = function (semi, o) {
 module.exports = Nbr;
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-var Nbr = __webpack_require__(15);
-var Perm = __webpack_require__(17);
-var Assignment = __webpack_require__(18);
+var Nbr = __webpack_require__(16);
+var Perm = __webpack_require__(18);
+var Assignment = __webpack_require__(19);
 
 function Arrangement(neighbors, degree, id, highIds) {
   this.div = 4;
@@ -4594,40 +4535,13 @@ Arrangement.prototype.getCyclicOrder = function () {
   return cyclicOrder;
 };
 
-Arrangement.prototype.findCost = function (nbr, semi, lastItem, cyclicIds) {
-  var neighbor = nbr;
-  var o = neighbor.octalCode();
-  var defl = neighbor.deflectionFromSemi(semi, o);
-
-  if (lastItem !== null && typeof lastItem != 'undefined') {
-    var index = cyclicIds.indexOf(neighbor.id);
-    var lastIndex = cyclicIds.indexOf(lastItem.id);
-    var prevIndex = index - 1;
-    var nextIndex = index + 1;
-    if (prevIndex < 0) prevIndex += cyclicIds.length;
-    if (nextIndex >= cyclicIds.length) nextIndex %= cyclicIds.length;
-    if (semi == 1) {
-      if (!(lastIndex == prevIndex || lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
-    } else {
-      if (!(lastIndex == nextIndex)) defl += Math.abs(index - lastIndex);
-    }
-  }
-  return [lastItem, defl];
-};
-
-Arrangement.prototype.factorial = function (num) {
-  var out = 1;
-  for (var i = 2; i <= num; i++) {
-    out = out * i;
-  }return out;
-};
-
 Arrangement.prototype.combination = function (array, k) {
   var combinations = [];
   var temp = [];
-  if (k == 0) return;else if (k > array.length) k = array.length;
-  function run(level, start, c) {
 
+  if (k == 0) return;else if (k > array.length) k = array.length;
+
+  function run(level, start, c) {
     for (var i = start; i < array.length - k + level + 1; i++) {
       temp[level] = array[i];
 
@@ -4653,6 +4567,7 @@ Arrangement.prototype.compareConfiguration = function (finalNode, cyclicNodes, c
       break;
     }
   }
+
   var quadComb = [];
   for (var i = 0; i < this.quads.length; i++) {
     comb.splice(2 * i + 1, 0, null); // at index position 1, remove 0 elements, then add "baz" to that position
@@ -4772,8 +4687,10 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
 
   if (unProcessedNodes.length == 1) {
     var finalNode = startNode;
+
     //check if combination follows the cyclic order
     if (unAvailableSemis.length > 0) finalNode = this.semis[unAvailableSemis[0]][0];
+
     for (var _i7 = 0; _i7 < availableSemis.length; _i7++) {
       var _node2 = unProcessedNodes[0];
       var _o = _node2.octalCode();
@@ -4783,11 +4700,13 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
       _comb[availableSemis[_i7]] = _node2;
       var _cost2 = _node2.deflectionFromSemi(_semiIndex, _o);
       costArr[availableSemis[_i7]] = _cost2;
+
       for (var l = 0; l < unAvailableSemis.length; l++) {
         var _semiIndex2 = unAvailableSemis[l];
         _comb[_semiIndex2] = this.semis[_semiIndex2][0];
         costArr[_semiIndex2] = 0;
       }
+
       var out = this.compareConfiguration(finalNode, cyclicNodes, _comb, _cost2, costArr, quadNodes);
       combinationsArray.push(_comb);
       overallCostArray.push(out[1]);
@@ -4804,26 +4723,8 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
       firstPart.splice(0, 1);
       tempArray = firstPart.concat(secondPart);
 
-      // let comb = [];
-
-
-      // if (tempArray.length == 0)
-      // {
-
-      // }
       //find the possible combinations based on available spaces and unprocessed nodes
       var combinations = this.combination(tempArray, unProcessedNodes.length - 1);
-
-      // if (combinations.length == 0)
-      // {
-      //   if (tempArray.length == 1)
-      //   {
-      //     for (let k = 0; k < unProcessedNodes.length; k++)
-      //     {
-      //       combinations.push(tempArray);
-      //     }
-      //   }
-      // }
 
       for (var k = 0; k < combinations.length; k++) {
         var _cost3 = 0;
@@ -4856,7 +4757,9 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
           _comb2[_index2] = this.semis[_index2][0];
           _costArr[_index2] = 0;
         }
+
         var _finalNode = startNode;
+
         //check if combination follows the cyclic order
         if (unAvailableSemis.length > 0) _finalNode = this.semis[unAvailableSemis[0]][0];
 
@@ -4865,14 +4768,13 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
         overallCostArray.push(out[1]);
         individualCostArray.push(out[0]);
       }
-
-      // if (j == 1)
-      //   break;
     }
   }
+
   var index = overallCostArray.indexOf(Math.min.apply(Math, overallCostArray));
   var comb = combinationsArray[index];
   var cost = individualCostArray[index];
+
   for (var _i8 = 0; _i8 < comb.length; _i8 = _i8 + 2) {
     if (comb[_i8] == null) continue;
     if (cost[_i8] > 100) continue;else {
@@ -4880,155 +4782,20 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
     }
   }
 
-  // //if (processedNodes.length == 0)
-  //   startNode = cyclicNodes[0];
-  // // else
-  // // {
-  // //   for (let i = 0; i < cyclicNodes.length; i++)
-  // //   {
-  // //     if (this.highIds.indexOf(cyclicNodes[i].id) < 0)
-  // //     {
-  // //       startNode = cyclicNodes[i];
-  // //       break;
-  // //     }
-  // //   }
-  // // }
-  // for (let i = 0; i < this.highIds.length; i++)
-  // {
-  //   if (this.highIds == this.ids)
-  //     break;
-  //   for (let j = 0; j < cyclicNodes.length; j++)
-  //   {
-  //     if (this.highIds[i] == cyclicNodes[j].id)
-  //     {
-  //       startNode = cyclicNodes[j];
-  //       check = true;
-  //       break;
-  //     }
-  //   }
-  //   if (check == true)
-  //     break;
-  // }
+  var output = this.makesFlatTriangle(am);
 
-  // //let node = this.nbrs[0];
-  // let costArray = [];
-  // let combinationsArray = [];
-  // let array = [];
-  // // for (let j = 0; j < this.div; j++)
-  // //   array.push(j);
-
-  //   for (let j = 0; j < this.semis.length; j++)
-  //   {
-  //     let indexHighId = this.highIds.indexOf(startNode.id);
-  //     if ((indexHighId > -1) && (indexHighId < this.highIds.indexOf(this.id)))
-
-  //       //a = j + 1;
-  //       let cost = 0;
-  //       let semi = this.semis[j];
-  //       array = [0, 1, 2, 3]
-  //       let index = array.indexOf(j);
-
-  //       let firstPart = array.slice(index)
-  //       let secondPart = array.slice(0, index)
-  //       firstPart.splice(0, 1);
-  //       array = firstPart.concat(secondPart); 
-
-  //       let o = startNode.octalCode();
-  //       cost += startNode.deflectionFromSemi(j, o);
-
-  //       let combinations = this.combination(array, this.nbrs.length - 1);
-
-  //       for (let k = 0; k < combinations.length; k++)
-  //       {
-  //         a = cyclicNodes.indexOf(startNode) + 1;
-  //         let c = combinations[k];
-  //         for (let l = 0; l < c.length; l++)
-  //         {
-  //           if (a > cyclicNodes.length - 1)
-  //               a = a % cyclicNodes.length;
-
-  //           let nextNode = cyclicNodes[a]; 
-  //           let nextSemiIndex = c[l];
-  //           let o = nextNode.octalCode();
-  //           cost += nextNode.deflectionFromSemi(nextSemiIndex, o);
-  //           a = a + 1;
-  //         }
-  //         combinationsArray.push([j].concat(c));
-  //         costArray.push(cost); 
-  //       }
-
-
-  //       // if (j == 1)
-  //       //   break;
-  //   }
-  //   var index = costArray.indexOf(Math.min(...costArray));
-  //   var comb = combinationsArray[index];
-  //   a = cyclicNodes.indexOf(startNode);
-  //   for (let i = 0; i < cyclicNodes.length; i++)
-  //   {
-  //     let semiIndex = comb[i];
-  //     this.semis[semiIndex] = cyclicNodes[a];
-  //     a = a + 1;
-  //     if (a > cyclicNodes.length - 1)
-  //         a = a % cyclicNodes.length;
-  //   }
-
-  // for (let i = 0; i < this.nbrs.length; i++)
-  // {
-  //   var nbr = this.nbrs[i];
-  //   if (this.highIds.indexOf(nbr.id) > -1 && (this.highIds.indexOf(nbr.id) < this.highIds.indexOf(this.id)))
-  //     continue;
-  //   else
-  //   {
-  //     this.semis[0].push(nbr);
-  //     this.semis[1].push(nbr);
-  //     this.semis[2].push(nbr);
-  //     this.semis[3].push(nbr);
-  //   }
-  // }
-  // var lastItem = null;
-
-  // for (let i = 0; i <this.semis.length;i++)
-  // {
-  //   var cost = [];
-  //   var semi = this.semis[i];
-  //   for (let j = 0; j < semi.length; j++)
-  //   {
-  //     let cycleIndex = cyclicIds.indexOf(semi[j].id);
-  //     var out = this.findCost(semi[j], i, lastItem, cyclicIds);
-  //     lastItem = out[0];
-  //     let defl = out[1];
-  //     if (this.highIds.indexOf(semi[j].id) > -1 && (this.highIds.indexOf(semi[j].id) < this.highIds.indexOf(this.id)))
-  //       defl = 0;
-  //     cost.push(defl);
-  //   }
-
-  //   var index = cost.indexOf(Math.min(...cost));
-  //   this.semis[i] = semi[index];
-  //   if (typeof(this.semis[i]) != 'undefined')
-  //     lastItem = this.semis[i];
-  // }
-
-  // var ignoredNodes = this.findAndRemoveDuplicates(cyclicIds);
-  // this.addIgnoredNodes(ignoredNodes, cyclicIds);
-  // this.updateSemisAndQuads(cyclicIds);
-  // this.enforceCyclicOrder(cyclicIds, cycle);
-  // var output = this.makesFlatTriangle(am);
-  // if (output[0])
-  //   this.removeFlatTriangle(output[1]);
+  if (output[0] == true) {
+    var flatTriangle = output[1];
+    this.removeFlatTriangle(flatTriangle);
+  }
 };
 
-Arrangement.prototype.makesFlatTriangle = function (matrix) {
-  var allNodes = matrix[1];
-  var am = matrix[0];
-
+Arrangement.prototype.makesFlatTriangle = function (am) {
   for (var i = 0; i < 2; i++) {
     var s0 = this.semis[i];
     var s1 = this.semis[i + 2];
-    if (s0 != null && s1 != null && typeof s0 != "undefined" && (typeof s1 === 'undefined' ? 'undefined' : _typeof(s1)) != undefined) {
-      var s0Index = allNodes.indexOf(s0.id);
-      var s1Index = allNodes.indexOf(s1.id);
-      if (am[s0Index][s1Index] == true) return [true, [s0, s1]];
+    if (!Array.isArray(s0) && !Array.isArray(s1)) {
+      if (am[s0.id][s1.id] == true) return [true, [s0, s1]];
     }
   }
   return [false, null];
@@ -5087,206 +4854,6 @@ Arrangement.prototype.removeFlatTriangle = function (nodes) {
   }
 };
 
-Arrangement.prototype.updateSemisAndQuads = function (cyclicIds) {
-  for (var i = 0; i < cyclicIds.length; i++) {
-    var id = cyclicIds[i];
-    for (var j = 0; j < this.semis.length; j++) {
-      if (typeof this.semis[j] == 'undefined' || this.semis[j] == null) continue;
-      if (this.semis[j].id == id) {
-        for (var k = 0; k < this.quads.length; k++) {
-          var quad = this.quads[k];
-          for (var l = 0; l < quad.nbrs.length; l++) {
-            if (quad.nbrs[l].id == id) quad.nbrs.splice(l, 1);
-          }
-        }
-      }
-    }
-  }
-};
-
-Arrangement.prototype.enforceCyclicOrder = function (cyclicIds, cycles) {
-  //getting current cyclicOrder from Semis
-  var cyclicOrder = this.getCyclicOrder();
-  if (JSON.stringify(cyclicOrder) == JSON.stringify(cyclicIds)) return;
-
-  var arr = [];
-
-  for (var i = 0; i < cyclicIds.length; i++) {
-    var node = cyclicIds[i];
-    var a = [node];
-    var actualIndex = cyclicOrder.indexOf(node);
-    var j = 0;
-    var k = i;
-    while (j < cyclicIds.length - 1) {
-      actualIndex += 1;
-      k += 1;
-      if (actualIndex >= cyclicIds.length) {
-        actualIndex %= cyclicIds.length;
-      }
-      if (k >= cyclicIds.length) {
-        k %= cyclicIds.length;
-      }
-      if (cyclicIds[k] == cyclicOrder[actualIndex]) a.push(cyclicIds[k]);else {
-        break;
-      }
-      j++;
-    }
-    arr.push(a);
-  }
-
-  var maxLength = 0;
-  var maxIndex1 = 0;
-  var maxIndex2 = 0;
-  var maxIndex = 0;
-  for (var _i9 = 0; _i9 < arr.length; _i9++) {
-    if (arr[_i9].length > maxLength) {
-      maxLength = arr[_i9].length;
-      maxIndex1 = _i9;
-    }
-  }
-  if (maxLength == cyclicIds.length) return;else {
-    var maxDegree = 0;
-    var hdnbr = void 0;
-    for (var _i10 = 0; _i10 < cyclicIds.length; _i10++) {
-      for (var _j6 = 0; _j6 < this.nbrs.length; _j6++) {
-        if (cyclicIds[_i10] == this.nbrs[_j6].id) {
-          if (this.nbrs[_j6].degree > maxDegree) {
-            hdnbr = cyclicIds[_i10];
-            maxDegree = this.nbrs[_j6].degree;
-          }
-        }
-      }
-    }
-    for (var _i11 = 0; _i11 < arr.length; _i11++) {
-      if (arr[_i11][0] == hdnbr) {
-        maxIndex2 = _i11;
-        break;
-      }
-    }
-
-    if (this.highIds.indexOf(hdnbr) > -1 && this.highIds.indexOf(hdnbr) < this.highIds.indexOf(this.id)) {
-      maxIndex = maxIndex2;
-    } else {
-      maxIndex = maxIndex1;
-    }
-    var order = arr[maxIndex];
-    var startIndex = cyclicIds.indexOf(order[0]);
-    startIndex += 1;
-    var semiIndex = 0;
-    for (var _i12 = 0; _i12 < this.semis.length; _i12++) {
-      if (this.semis[_i12] != null && this.semis[_i12].id == order[0]) {
-        semiIndex = _i12;
-        break;
-      }
-    }
-    semiIndex += 1;
-    var insertCount = 0;
-    for (var _i13 = 0; _i13 < this.semis.length - 1; _i13++) {
-      if (startIndex >= cyclicIds.length) {
-        startIndex %= cyclicIds.length;
-      }
-      if (semiIndex >= cyclicIds.length) {
-        semiIndex %= cyclicIds.length;
-      }
-      var semi = this.semis[semiIndex];
-
-      if (_typeof(order[_i13 + 1] == 'undefined') || typeof semi == 'undefined' || semi == null || semi.id != order[_i13 + 1]) {
-        for (var _j7 = 0; _j7 < this.nbrs.length; _j7++) {
-          if (this.nbrs[_j7].id == cyclicIds[startIndex]) {
-            this.semis[semiIndex] = this.nbrs[_j7];
-            insertCount++;
-            break;
-          }
-        }
-      }
-      startIndex += 1;
-      semiIndex += 1;
-      if (insertCount == cyclicIds.length - 1) break;
-    }
-  }
-};
-
-Arrangement.prototype.findAndRemoveDuplicates = function (cyclicIds) {
-  //finding duplicate assignments of same node
-  var ids = [];
-  for (var i = 0; i < this.semis.length; i++) {
-    if (typeof this.semis[i] != 'undefined') ids.push(this.semis[i].id);else {
-      ids.push(null);
-    }
-  }
-
-  var counts = {};
-  ids.forEach(function (el) {
-    return counts[el] = 1 + (counts[el] || 0);
-  });
-
-  var ignoredNodes = [];
-  for (var _i14 = 0; _i14 < this.nbrs.length; _i14++) {
-    var nbrId = this.nbrs[_i14].id;
-    if (typeof counts[nbrId] !== 'undefined' & counts[nbrId] !== null) {
-      //find the indexes of the duplicate assignments
-      if (counts[nbrId] > 1) {
-        var dupIndexes = [];
-        for (var j = 0; j < ids.length; j++) {
-          if (ids[j] == nbrId) dupIndexes.push(j);
-        }
-
-        //calculate the costs for both assignments and remove the one with the larger cost
-        var deflArray = [];
-        var cycleIndex = cyclicIds.indexOf(nbrId);
-        for (var _j8 = 0; _j8 < dupIndexes.length; _j8++) {
-          var defl = 0;
-          var semi = dupIndexes[_j8];
-          var o = this.semis[semi].octalCode();
-          defl += this.semis[semi].deflectionFromSemi(semi, o);
-          deflArray.push(defl);
-        }
-
-        var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
-        for (var _j9 = 0; _j9 < dupIndexes.length; _j9++) {
-          if (_j9 != index) this.semis[dupIndexes[_j9]] = null;
-        }
-      }
-    } else {
-      if (this.nbrs[_i14].degree <= this.nbrs.length) ignoredNodes.push(nbrId);
-    }
-  }
-  return ignoredNodes;
-};
-
-Arrangement.prototype.addIgnoredNodes = function (ignoredNodes /*, direction*/, cyclicIds) {
-  var lastItem = null;
-  for (var j = 0; j < ignoredNodes.length; j++) {
-    var freeIndexes = [];
-    //find the possible empty locations where nodes can be assigned
-    for (var i = 0; i < this.semis.length; i++) {
-      if (this.semis[i] == null) freeIndexes.push([i, lastItem]);else {
-        lastItem = this.semis[i];
-      }
-    }
-
-    var nbr = null;
-    for (var _i15 = 0; _i15 < this.nbrs.length; _i15++) {
-      if (this.nbrs[_i15].id == ignoredNodes[j]) {
-        nbr = this.nbrs[_i15];
-        break;
-      }
-    }
-
-    //calculate the costs for all assignments and assigns to the one with lowest cost
-    var deflArray = [];
-    for (var _i16 = 0; _i16 < freeIndexes.length; _i16++) {
-      var semi = freeIndexes[_i16][0];
-      var o = nbr.octalCode();
-      var out = this.findCost(nbr, semi, freeIndexes[_i16][1], cyclicIds);
-      var defl = out[1];
-      deflArray.push(defl);
-    }
-    var index = deflArray.indexOf(Math.min.apply(Math, deflArray));
-    this.semis[freeIndexes[index][0]] = nbr;
-  }
-};
-
 Arrangement.prototype.vacancy = function () {
   var vec = [];
   for (var i = 0; i < this.semis.length; i++) {
@@ -5306,7 +4873,7 @@ Arrangement.prototype.basicAssignment = function () {
 module.exports = Arrangement;
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5357,50 +4924,33 @@ Perm.prototype.apply = function (a) {
 module.exports = Perm;
 
 /***/ }),
-/* 18 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-//a struct to represent an assignment of neighbors to semiaxes, and the cost of this assignment
-function Assignment(semis, cost) {
-  //semis is a list [a, b, c, d] of lists of neighbors to be assigned to the semiaxes s0, s1, s2, s3 respectively
-  this.semis = semis;
-  this.cost = cost;
-}
-
-Assignment.prototype.union = function (other) {
-  //returns a new assignment by taking a union of this assignment with another
-  var semis = [[], [], [], []];
-  for (var i = 0; i < this.semis.length; i++) {
-    var s = this.semis[i];
-    for (var j = 0; j < s.length; j++) {
-      semis[i].push(s[j]);
-    }
-
-    var o = other.semis[i];
-    for (var _j = 0; _j < o.length; _j++) {
-      semis[i].push(o[_j]);
-    }
-  }
-  var cost = this.cost + other.cost;
-  var asgn = new Assignment(semis, cost);
-  return asgn;
-};
-
-module.exports = Assignment;
-
-/***/ }),
 /* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
+//a struct to represent an assignment of neighbors to semiaxes, and the cost of this assignment
+
+function Assignment(semis, cost) {
+  //semis is a list [a, b, c, d] of lists of neighbors to be assigned to the semiaxes s0, s1, s2, s3 respectively
+  this.semis = semis;
+  this.cost = cost;
+}
+
+module.exports = Assignment;
+
+/***/ }),
+/* 20 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var compass = __webpack_require__(6);
-var LinkShape = __webpack_require__(20);
-var BendSequence = __webpack_require__(21);
+var LinkShape = __webpack_require__(21);
+var BendSequence = __webpack_require__(22);
+var cholaNode = __webpack_require__(8);
 
 function chain(gm, nodes) {
     var cycle = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
@@ -5560,9 +5110,6 @@ chain.prototype.shapeOfLink = function (link) {
     }
     return out;
 };
-// def addRoutePointsInGraph(this, G):
-//     for a in this.aestheticBends:
-//         a.addRoutePointToEdgeInGraph(G)
 
 chain.prototype.getNode = function (i) {
     /*
@@ -6026,10 +5573,11 @@ chain.prototype.possibleBendSeqs = function () {
             var d0 = dIns[i];
             for (var j = 0; j < dOuts.length; j++) {
                 var d1 = dOuts[j];
-                if (d0 == undefined) {
-                    var _b = 3;
-                    var c = 4;
-                }
+                // if (d0 == undefined)
+                // {
+                //     let b = 3; 
+                //     let c = 4; 
+                // }
                 var bendSeqs = this.lookupMinimalBendSeqs(A, d0, Z, d1);
                 for (var k = 0; k < bendSeqs.length; k++) {
                     var _bs = bendSeqs[k];
@@ -6063,18 +5611,10 @@ chain.prototype.lookupMinimalBendSeqs = function (A, d0, Z, d1) {
     var j = 5;
     var n = 2;
 
-    // console.log(A);
-    // console.log(Z);
-    // console.log(d0);
-    // console.log(d1);
-
     var pMap = [[0, 2, 2, 3, 5, 5, 6, 8, 8], //E
     [6, 3, 0, 8, 5, 2, 8, 5, 2], //S
     [8, 8, 6, 5, 5, 3, 2, 2, 0], //W
     [2, 5, 8, 2, 5, 8, 0, 3, 6]][d1]; //N
-
-    // console.log(d1);
-    // console.log(pMap);
 
     var d0Map = [[0, 1, 2, 3], //E
     [3, 0, 1, 2], //S
@@ -6222,6 +5762,8 @@ chain.prototype.takeShapeBasedConfiguration = function (gm, options, layout) {
         this.evaluateBendSeq(bs);
     }
 
+    //console.log(this.nodes);
+
     //finding the index with smallest cost
     var min = seqs[0].cost;
     var index = 0;
@@ -6233,7 +5775,10 @@ chain.prototype.takeShapeBasedConfiguration = function (gm, options, layout) {
         }
     }
     var bestSeq = seqs[index];
+    //console.log(bestSeq);
     var configseq = this.writeConfigSeq(bestSeq);
+
+    //console.log(configseq);
 
     // Now create the configuration.
     var G = this.gm;
@@ -6241,10 +5786,14 @@ chain.prototype.takeShapeBasedConfiguration = function (gm, options, layout) {
         var conf = configseq[j];
         // Get the edge and the links u, v that come before and after
         // it in the chain, respectively.
+
         var k = 2 * j + 1;
         var edge = this.getEdge(k);
         var u = this.getNode(k - 1);
         var v = this.getNode(k + 1);
+
+        // if (u.isCompound() || v.isCompound())
+        //     contin
         if (conf.length == 1) {
             layout.placementConstraints(conf[0], options, u, v);
 
@@ -6261,10 +5810,9 @@ chain.prototype.takeShapeBasedConfiguration = function (gm, options, layout) {
                 }
             }
         } else {
-            if (u.getCenter().x == v.getCenter().x || u.getCenter().y == v.getCenter().y) continue;
-
             // In this case we are to create a bend point.
             // Create a bend point
+
             var bendpoint = {
                 x: null,
                 y: null
@@ -6286,7 +5834,7 @@ chain.prototype.takeShapeBasedConfiguration = function (gm, options, layout) {
 module.exports = chain;
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6327,34 +5875,27 @@ linkShape.straight = [1, 4];
 module.exports = linkShape;
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 function bendSequence(bendtypes) {
-    var dIn = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-    var dOut = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
+   var dIn = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+   var dOut = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
 
-    this.bendtypes = bendtypes;
-    this.bendpoints = [];
-    this.cost = 0;
-    this.incomingDirec = dIn;
-    this.outgoingDirec = dOut;
-};
-
-bendSequence.prototype.repr = function () {
-    var s = this.bendtypes.toString();
-    if (this.incomingDirec != null) s += ' entering ' + this.incomingDirec;
-    if (this.outgoingDirec != null) s += ' exiting ' + this.outgoingDirec;
-    return s;
+   this.bendtypes = bendtypes;
+   this.bendpoints = [];
+   this.cost = 0;
+   this.incomingDirec = dIn;
+   this.outgoingDirec = dOut;
 };
 
 module.exports = bendSequence;
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6445,7 +5986,7 @@ nodeBuckets.prototype.moveNode = function (node, oldDegree, newDegree) {
 module.exports = nodeBuckets;
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6488,13 +6029,13 @@ stem.prototype.addSelfToGraph = function (gm, parent) {
 module.exports = stem;
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var Face = __webpack_require__(25);
+var Face = __webpack_require__(26);
 var compass = __webpack_require__(6);
 
 function faceSet(graph) {
@@ -6770,7 +6311,7 @@ faceSet.prototype.computeFaces = function () {
 module.exports = faceSet;
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6778,10 +6319,10 @@ module.exports = faceSet;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-var side = __webpack_require__(26);
-var Nexus = __webpack_require__(27);
+var side = __webpack_require__(27);
+var Nexus = __webpack_require__(28);
 var compass = __webpack_require__(6);
-var TreePlacement = __webpack_require__(28);
+var TreePlacement = __webpack_require__(29);
 //const BoundarySegment = require('..chola/boundarySegment');
 
 function face(G) {
@@ -6807,125 +6348,6 @@ function face(G) {
 
     this.nodeIDToTreePlacement = {};
 }
-
-// def __repr__(this):
-//     return 'Face%s: %s' % (
-//         ' (external)' if this.external else '',
-//         [node.ID for node in this.nodeseq]
-//     )
-
-// def getAllTreePlacements(this):
-//     return this.nodeIDToTreePlacement.values()
-
-// def applyGeometryToTrees(this, iel=0):
-//     for tp in this.nodeIDToTreePlacement.values():
-//         tp.applyGeometryToTree(iel=iel)
-
-// def insertTreesIntoGraph(this, H):
-//     """
-//     :param H: a Graph
-//     :return: nothing
-
-//     Add the individual nodes of the trees to the graph, and remove the
-//     corresponding treenode.
-//     """
-//     for tp in this.nodeIDToTreePlacement.values():
-//         tp.insertTreeIntoGraph(H)
-
-// def numTreesWithGrowthDirec(this, dg, scaleBySize=False):
-//     tps = this.nodeIDToTreePlacement.values()
-//     tps = filter(lambda tp: tp.growthDirec == dg, tps)
-//     if scaleBySize:
-//         return sum(tp.tree.size() for tp in tps)
-//     else:
-//         return len(tps)
-
-// def getAllTreePlacements(this):
-//     return this.nodeIDToTreePlacement.values()
-
-// def getAllSidesOppositeSegment(this, seg, openInterval=False):
-//     return filter(lambda s: s.liesOppositeSegment(seg, openInterval=openInterval), this.sides)
-
-// def getAllTreenodesOppositeSegment(this, seg, openInterval=False):
-//     return filter(lambda t: t.liesOppositeSegment(seg, openInterval=openInterval), this.treenodes.values())
-
-// def getAllPerimeterNodesOppositeSegment(this, seg, openInterval=False):
-//     return filter(lambda n: n.liesOppositeSegment(seg, openInterval=openInterval), this.nodeseq)
-
-// def buildOrthoRoutingRigForSolidifiedFace(this, iel):
-//     # To ensure that there are alleys between treenodes and edgenodes,
-//     # here we make the edgenodes /half/ as thick as they are when we
-//     # are shaking the graph with solidified edges.
-//     EDGENODE_THICKNESS = Graph.EDGENODE_THICKNESS / 2.0
-//     rr = RoutingRig({
-//         'routing': OrthogonalRouting
-//     })
-//     nodes = {}
-//     maxID = -1
-//     for node in this.nodeseq:
-//         nodes[node.ID] = node
-//         maxID = max(maxID, node.ID)
-//     nextID = maxID + 1
-//     for node in this.nodeseq:
-//         if node.ID in this.nodeIDToTreePlacement:
-//             tp = this.nodeIDToTreePlacement[node.ID]
-//             w, h, u, v = tp.treeBoxWithRootVector(iel=0)
-//             dummy = Node()
-//             dummy.x, dummy.y = node.x + u, node.y + v
-//             dummy.w, dummy.h = w, h
-//             dummy.ID = nextID
-//             nextID += 1
-//             nodes[dummy.ID] = dummy
-//     maxID = nextID - 1
-
-//     baseID = maxID + 1
-//     for i in range(this.n):
-//         u, v = this.nodeseq[i], this.nodeseq[(i + 1) % this.n]
-//         node = Node()
-//         node.ID = baseID + i
-//         direc = Compass.cardinalDirection(u, v)
-//         # Unlike in the Graph.solidifyEdges method, we will make these edgenodes
-//         # overlap their endpoint nodes. This is necessary so that the router
-//         # will not try to thread a path in between.
-//         # These nodes are only going to be used to build ShapeRefs for the
-//         # router, so their overlapping just leaves the router with one giant
-//         # compound shape representing the entire face with nodes and edges.
-//         if direc in Compass.vertical:
-//             node.w = EDGENODE_THICKNESS
-//             node.h = abs(u.y - v.y)
-//         else:
-//             node.h = EDGENODE_THICKNESS
-//             node.w = abs(u.x - v.x)
-//         node.x = (u.x + v.x) / 2.0
-//         node.y = (u.y + v.y) / 2.0
-//         nodes[node.ID] = node
-//     rr.addNodesAndEdges(nodes, {})
-//     return rr
-
-// def initRoutingRig(this, routerOpts, fixedStraightRoutes=False):
-//     """
-//     Set up a RoutingRig object for the nodes and edges of this face.
-//     :param routerOpts: dictionary of options for the router
-//     :param fixedStraightRoutes: set True if you want the edges to have fixed
-//                                 straight routes
-//     :return: a RoutingRig object
-//     """
-//     rr = RoutingRig(routerOpts)
-//     nodes = {}
-//     for node in this.nodeseq:
-//         nodes[node.ID] = node
-//     edges = {}
-//     for i in range(this.n):
-//         u, v = this.nodeseq[i], this.nodeseq[(i + 1) % this.n]
-//         edge = this.graph.getEdgeBtwNodes(u, v)
-//         assert(edge is not None)
-//         edges[repr(edge)] = edge
-//     rr.addNodesAndEdges(nodes, edges, fixedStraightRoutes=fixedStraightRoutes)
-//     return rr
-
-face.prototype.direc = function (u, v) {
-    //return this.graph.nodeConf.getDirec(u, v);
-};
 
 face.prototype.initWithEdgeSeq = function (edges) {
     /*
@@ -7065,73 +6487,8 @@ face.prototype.findIndexOfFirstBend = function () {
         var dvw = this.direc(v, w);
         if (duv != dvw) return i;
     }
-    // else
-    // {
-    // We didn't find a bend. This should never happen, because every
-    // face should have at least one bend.
     return false;
-    //}
 };
-
-// def findBoundaryIntervalsFacingOneDirection(this, facing_direc, ignoreCollateralTreeBoxesForPlacement=None):
-//     """
-//     :param facing_direc: a cardinal compass direction
-//     :param ignoreCollateralTreeBoxesForPlacement: a TreePlacement object, or None.
-//                                                  See WaterGoal.computeContainedSegment for use.
-
-//     :return: pair (cl, op) of lists of ortho.LineSegment objects, representing closed and open
-//              intervals (resp.) in the interior boundary of this Face, but only those facing the
-//              named direction direc.
-
-//              For example, if direc is South, then cl will be a list of LineSegments representing
-//              every horizontal Edge in the Face, while op will be a list of LineSegments representing
-//              the southern boundary of (a) every Node in the Face, and (b) every Tree box in the Face.
-//     """
-//     cl, op = [], []
-//     segs = []
-//     # Since a node may occur twice in the traversal of a face, we keep a list
-//     # of nodes visited.
-//     visitedIDs = set()
-//     # Are we going to be ignoring any tree boxes?
-//     nodesForWhichTreeBoxesShouldBeIgnored = set()
-//     if ignoreCollateralTreeBoxesForPlacement is not None:
-//         tp = ignoreCollateralTreeBoxesForPlacement
-//         sides = tp.face.getRelevantSidesForPlacement(tp)
-//         for s in sides:
-//             nodesForWhichTreeBoxesShouldBeIgnored.update(s.getSetOfNodeIds())
-//     # Begin
-//     node_pairs = zip(this.nodeseq, this.nodeseq[1:]+this.nodeseq[:1])
-//     for u, v in node_pairs:
-//         # Consider edge from u to v.
-//         outdir = this.direc(u, v)
-//         # If it's perpendicular to the facing direction...
-//         if Compass.perpendicular(outdir, facing_direc):
-//             # ...then record a closed interval for it.
-//             p0, p1 = u.getBdryCompassPt(outdir), v.getBdryCompassPt(Compass.flip(outdir))
-//             cl.append(LineSegment(p0, p1))
-//         # Has node u been visited yet?
-//         if u.ID not in visitedIDs:
-//             # Record open interval on facing side of node box.
-//             box = u.boundingBoxxXyY()
-//             op.append(getSideOfBox(box, facing_direc))
-//             # If a tree has been placed here, record open interval for facing side of tree box.
-//             # (unless we're supposed to ignore this tree box)
-//             if u.ID in this.nodeIDToTreePlacement and u.ID not in nodesForWhichTreeBoxesShouldBeIgnored:
-//                 tp = this.nodeIDToTreePlacement[u.ID]
-//                 # We use the /unpadded/ treenodes when considering where the boundary lies:
-//                 padding = 0
-//                 w, h, dx, dy = tp.treeBoxWithRootVector(iel=padding)
-//                 # Create the treenode.
-//                 treenode = Node()
-//                 treenode.w, treenode.h = w, h
-//                 treenode.x, treenode.y = u.x + dx, u.y + dy
-//                 # Get box
-//                 box = treenode.boundingBoxxXyY()
-//                 op.append(getSideOfBox(box, facing_direc))
-//             # Record node u as visited.
-//             visitedIDs.add(u.ID)
-//     # Return the two lists of intervals.
-//     return (cl, op)
 
 face.prototype.computeBoundarySegments = function (iel, gm) {
     var segs = [];
@@ -7222,168 +6579,6 @@ face.prototype.computeBoundarySegments = function (iel, gm) {
         }
     }
     return segs;
-};
-
-// def insertTreeNode(this, tp, iel):
-//     """
-//     To be used after the face has been expanded to make room for the tree.
-//     This method adds a large node to the graph, representing the bounding
-//     box of the tree, with padding.
-//     The treenode is constrained to lie beside its root node.
-
-//     :param tp: a TreePlacement object
-//     :param iel: ideal edge length for the graph
-//     :return: nothing
-//     """
-//     # Ask Side object(s) to note the placement.
-//     for S in this.getRelevantSidesForPlacement(tp):
-//             S.addTreePlacement(tp)
-//     # Now insert the treenode.
-//     w, h, u, v = tp.treeBoxWithRootVector(iel=iel)
-//     # Create the treenode and add it to the graph.
-//     root = tp.node
-//     treenode = Node()
-//     treenode.w, treenode.h = w, h
-//     treenode.x, treenode.y = root.x + u, root.y + v
-//     treenode.ID = this.graph.getNextID()
-//     treenode.fill = '#C0804080'  # alpha = 0.5 for transparency
-//     treenode.setIDAsLabel()
-//     this.graph.addNode(treenode)
-//     # Make records
-//     this.treenodes[treenode.ID] = treenode
-//     tp.boxNode = treenode
-//     this.nodeIDToTreePlacement[root.ID] = tp
-//     # Constrain the treenode to sit beside the root node.
-//     d = tp.growthDirec
-//     offset = u if d in Compass.vertical else v
-//     this.graph.nodeConf.setDirec(root, treenode, d + 8,
-//                                  alignOffsets=(0, offset))
-
-// def applyPS(this, ps, iel):
-//     """
-//     :param ps: a ProjSeq object
-//     :param iel: ideal edge length
-//     :return: boolean saying whether all the projections were successful
-
-//     Convenience function for applying a projseq with all the necessary options
-//     """
-//     return this.graph.applyProjSeq(ps, this.logger, iel=iel, opx=True, opy=True,
-//                                 solidEdgesX=True, solidEdgesY=True,
-//                                 accept=0)
-
-// def evaluateExpansionOptions(this, tp, iel):
-//     """
-//     :param tp: a TreePlacement object
-//     :param iel: ideal edge length for the graph
-//     :return: list of ProjSeq objects, with stress costs
-//     """
-//     logger = this.logger
-//     # Save initial node positions.
-//     this.graph.pushNodePoses()
-//     # Start by removing any overlaps with collateral treenodes.
-//     ps0 = this.doCollateralExpansion(tp, iel)
-//     # Now consider the options for removing remaining overlaps.
-//     projseqs = []
-//     if this.config.HEURISTIC_CHOICE_FOR_PRIMARY_EXPANSION_DIMENSION:
-//         wd = WaterDivide(tp, XDIM, iel, logger)
-//         xEst, yEst = wd.estimateCostByDimension(use_old_heuristic=this.config.USE_OLD_COST_ESTIMATE_HEURISTIC)
-//         if this.config.HCPED_COSTLIER_DIMENSION_FIRST:
-//             # We work in the coslier dimension first, hoping that the bigger
-//             # change that it makes will already handle the other dimension.
-//             dims = [XDIM] if xEst > yEst else [YDIM]
-//         else:
-//             # We work in the cheaper dimension first, hoping it's enough and
-//             # we get away with it.
-//             dims = [XDIM] if xEst < yEst else [YDIM]
-//     else:
-//         # We'll try each dimension as the initial dimension.
-//         dims = [XDIM, YDIM]
-//     this.graph.pushNodePoses()
-//     if logger.level >= LogLevel.TIMING:
-//         suffix = logger.lastSuffix
-//     for dim in dims:
-//         this.graph.popNodePoses()
-//         this.graph.pushNodePoses()
-//         if logger.level >= LogLevel.TIMING:
-//             logger.lastSuffix = suffix
-//         wd = WaterDivide(tp, dim, iel, logger)
-//         projseqs.extend(wd.buildProjSeqs(ps0))
-//     this.graph.dropNodePoses()
-//     # Restore node positions and return.
-//     this.graph.popNodePoses()
-//     return projseqs
-
-// def doCollateralExpansion(this, tp, iel, testFeasibility=True):
-//     """
-//     :param tp: a TreePlacement object
-//     :param iel: ideal edge length for the graph
-//     :return: an optimal ProjSeq with which to remove/prevent overlap
-//              with nodes and treenodes belonging to the same side or sides
-//              to which the root node of the TreePlacement belongs.
-
-//              The returned ProjSeq has already been evaluated and applied.
-
-//              Raises an exception if any of the ProjSeqs attempted is
-//              infeasible.
-//     """
-//     logger = this.logger
-
-//     def tryProjSeq(ps, idx):
-//         if logger.level >= LogLevel.TIMING:
-//             suffix = '_exp_N%s_P%s_G%s_%s_col%d' % (
-//                 tp.node.ID, tp.placementDirec, tp.growthDirec,
-//                 'fl' if tp.flip else 'nf',
-//                 idx
-//             )
-//             if logger.level >= LogLevel.PROGRESS:
-//                 print suffix
-//             logger.startNewTimer('projection')
-//         ok = this.applyPS(ps, iel)
-//         if logger.level >= LogLevel.TIMING:
-//             logger.stopLastTimer()
-//         if logger.level >= LogLevel.FINER_STAGE_GRAPHS:
-//             logger.writeGML(suffix)
-//         if not ok:
-//             raise Exception('Infeasible collateral tree sep!')
-
-//     PS = this.getCollateralProjSeqs(tp, iel)
-//     if len(PS) == 1:
-//         ps0 = PS[0]
-//         if testFeasibility:
-//             tryProjSeq(ps0, 0)
-//     else:
-//         raise Exception('Did not get unique collateral projseq.')
-//     return ps0
-
-face.prototype.getCollateralProjSeqs = function (tp, iel) {
-    /*
-    :param tp: a TreePlacement object
-    :param iel: ideal edge length for the graph
-    :return: a list of ProjSeqs to remove overlaps with pre-existing treenodes
-     NB: In the case where tp's root lies on two sides of the face, these two
-    sides must be aligned in complementary dimensions (i.e. one in x, and one
-    in y), so the sepcos generated here are always independent.
-     That is, if each side has an existing treenode that must be pushed away,
-    the sepco for one tree will never achieve the push for the other, since
-    these pushes /must/ be done in complementary dimensions.
-     Therefore there is no need to wait until after the first removal has been
-    actually performed to compute the sepco for the second removal; it cannot
-    be affected by the first one.
-     I don't think it matters the order in which we do these two projections either.
-    */
-
-    var pses = [];
-    var sides = this.getRelevantSidesForPlacement(tp);
-
-    //assert(len(sides) in [1, 2])
-    if (sides.length == 1) pses.push(sides[0].computeCollateralProjSeq(tp, iel));
-    // else:
-    //     Q = [S.computeCollateralProjSeq(tp, iel) for S in sides]
-    //     ps = ProjSeq()
-    //     for qs in Q:
-    //         ps += qs
-    //     pses.append(ps)
-    return pses;
 };
 
 face.prototype.inwardDirsAvail = function (node) {
@@ -7496,7 +6691,7 @@ face.prototype.allPossibleTreePlacements = function (tree, node) {
 module.exports = face;
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7782,7 +6977,7 @@ side.prototype.computeCollateralProjSeq = function (tp0, iel) {
 module.exports = side;
 
 /***/ }),
-/* 27 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7900,7 +7095,7 @@ nexus.EXIT_TO = 1;
 module.exports = nexus;
 
 /***/ }),
-/* 28 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7908,7 +7103,7 @@ module.exports = nexus;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-var WaterDivide = __webpack_require__(29);
+var WaterDivide = __webpack_require__(30);
 var cholaConstants = __webpack_require__(5);
 //const TwinBox = require('..chola/twinBox');
 var compass = __webpack_require__(6);
@@ -8340,7 +7535,7 @@ treePlacement.prototype.estimateCost = function (gm, iel) {
 module.exports = treePlacement;
 
 /***/ }),
-/* 29 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8349,7 +7544,7 @@ module.exports = treePlacement;
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 var compass = __webpack_require__(6);
-var WaterGoal = __webpack_require__(30);
+var WaterGoal = __webpack_require__(31);
 var cholaConstants = __webpack_require__(5);
 /*
 An instance of this class is meant to manage the combination of all the
@@ -8625,7 +7820,7 @@ waterDivide.prototype.computeGoals = function (dim, iel) {
 module.exports = waterDivide;
 
 /***/ }),
-/* 30 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9046,7 +8241,7 @@ waterGoal.prototype.computeLevels = function (gm) {
 module.exports = waterGoal;
 
 /***/ }),
-/* 31 */
+/* 32 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9069,7 +8264,7 @@ module.exports = Object.assign != null ? Object.assign.bind(Object) : function (
 };
 
 /***/ }),
-/* 32 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9246,6 +8441,8 @@ tree.prototype.applyGeometry = function (iel, dp, root) {
 
     // Do this last, after we have rotated the tree.
     this.growthDir = dg;
+
+    this.sortRankNodes(dp);
 };
 
 tree.prototype.treeBoxWithRootVector = function (placementDirec) {
@@ -9457,8 +8654,15 @@ tree.prototype.createIntraRankConstraints = function (placementDir, options, cho
                 var nextNode = value[j + 1];
 
                 if (nextNode != undefined) {
-                    var dir = placementDir - 1;
-                    if (dir < 0) dir = dir + 4;
+                    var dir = placementDir - 1;;
+                    // if (placementDir == 1 || placementDir == 3)
+                    //     dir = 0;
+                    // else if (placementDir == 0)
+                    //     dir = 3;
+                    // else if (placementDir == 2)
+                    //     dir = 1;
+                    // if (dir < 0)
+                    //     dir = dir + 4;
 
                     cholaLayout.placementConstraints(dir, options, prevNode, nextNode);
                 }
@@ -9475,274 +8679,6 @@ tree.createSpecialConstraints = function (placementDir, options, cholaLayout) {
     //if a node is horizontally or vertically aligned to its parent node
     //create horizontal or vertical constraints for it as needed
 };
-
-// //     def setHolaConfig(this, hc):
-// //         this.holaConfig = hc
-
-// //     def cmpRankmates(this, u, v):
-// //         """
-// //         If u and v are two nodes belonging to the same rank in this tree,
-// //         then return -1, 0, 1 to indicate their order, so that the rank can
-// //         be sorted. This ordering is based on the ordering numbers that should
-// //         have been assigned by now, by the computeOrderingNumbers function.
-// //         """
-// //         pu, pv = this.parent[u.id], this.parent[v.id]
-// //         if pu == pv:
-// //             return this.orderingNumbers[u.id] - this.orderingNumbers[v.id]
-// //         else:
-// //             return this.cmpRankmates(pu, pv)
-
-// //     def computeAlignedSets(this, root):
-// //         """
-// //         :param root: a Node
-// //         :return: dictionary {'h': Hsets, 'v': Vsets}, where Hsets is a list of lists,
-// //                  each memeber of which is a list of nodes that are horizontally aligned;
-// //                  likewise with Vsets.
-
-// //                  The supplied root is substituted for this tree's root node.
-// //         """
-// //         nodes = []
-// //         for id, node in this.graph.nodes.items():
-// //             if id == this.root.id:
-// //                 nodes.append(root)
-// //             else:
-// //                 nodes.append(node)
-// //         Vsets = tolerantPartition(nodes, lambda u: u.x)
-// //         Hsets = tolerantPartition(nodes, lambda u: u.y)
-// //         return {'h': Hsets, 'v': Vsets}
-
-// //     def getCCs(this, rs=None, ix=None):
-// //         ccs = []
-// //         for pc in this.pcs:
-// //             ccs.extend(pc.buildCCs(rs=rs, ix=ix))
-// //         return ccs
-
-// //     def buildBufferNodesAndPCs(this, iel, dp, doBuildBufferNodes=True):
-// //         """
-// //         :param iel: ideal edge length for the graph
-// //         :param dp: placement direction for this tree
-
-// //         This method will be for the more complicated set of buffer
-// //         nodes, which fit closer to the shape of the tree, if we decide
-// //         to try that.
-// //         See method by same name in TreePlacement class.
-
-// //         We build buffer nodes to go on top of leaves and on the outside sides
-// //         of nodes at the ends of ranks.
-
-// //         The PCs will not only constrain the buffer nodes beside tree nodes, but
-// //         will also maintain the shape of the tree: an alignment for each rank,
-// //         sepcos maintaining both ordering and gaps within each rank, and either
-// //         a rigid distribution on the ranks, or at least min gaps between them.
-// //         """
-// //         bns = []
-// //         pcs = []
-// //         if this.growthDir in Compass.vertical:
-// //             axialDim, transDim = adg.YDIM, adg.XDIM
-// //             axialCoord, transCoord = (lambda u: u.y), (lambda u: u.x)
-// //             axialMeasure, transMeasure = (lambda u: u.h), (lambda u: u.w)
-// //         else:
-// //             axialDim, transDim = adg.XDIM, adg.YDIM
-// //             axialCoord, transCoord = (lambda u: u.x), (lambda u: u.y)
-// //             axialMeasure, transMeasure = (lambda u: u.w), (lambda u: u.h)
-// //         # Build buffer nodes if requested.
-// //         if doBuildBufferNodes:
-// //             pad = iel/4.0
-// //             def makeNode(x, X, y, Y, node=None):
-// //                 if node is not None:
-// //                     u = node
-// //                 else:
-// //                     u = Node()
-// //                     u.id = this.graph.getNextid()
-// //                     u.fill = '#C0804080'
-// //                     u.setidAsLabel()
-// //                 u.w, u.h = X - x, Y - y
-// //                 u.x, u.y = x + u.w/2.0, y + u.h/2.0
-// //                 return u
-// //             existingBNs = Deque(this.bufferNodes)
-// //             # Pads on tops of leaves:
-// //             for id in this.leaves:
-// //                 leaf = this.nodes[id]
-// //                 x, X, y, Y = leaf.boundingBoxxXyY()
-
-// //                 bn = existingBNs.popleft() if len(existingBNs) > 0 else None
-
-// //                 if this.growthDir == Compass.NORTH:
-// //                     bn = makeNode(x, X, y - pad, y, node=bn)
-// //                 elif this.growthDir == Compass.SOUTH:
-// //                     bn = makeNode(x, X, Y, Y + pad, node=bn)
-// //                 elif this.growthDir == Compass.EAST:
-// //                     bn = makeNode(X, X + pad, y, Y, node=bn)
-// //                 else:
-// //                     assert(this.growthDir == Compass.WEST)
-// //                     bn = makeNode(x - pad, x, y, Y, node=bn)
-
-// //                 L, R = (leaf, bn) if this.growthDir in Compass.increasing else (bn, leaf)
-// //                 bns.append(bn)
-// //                 axialGap = pad/2.0 + axialMeasure(leaf)/2.0
-// //                 pcs.append(SepCo(axialDim, L, R, axialGap, exact=True))
-// //                 pcs.append(SepCo(transDim, L, R, 0, exact=True))
-// //             # Pads on outsides of ranks:
-// //             for i in range(1, this.depth):
-// //                 rank = this.nodesByRank[i]
-// //                 S = sorted(rank, key=transCoord)
-// //                 first, last = S[0], S[-1]
-// //                 x, X, y, Y = first.boundingBoxxXyY()
-// //                 u, U, v, V = last.boundingBoxxXyY()
-
-// //                 a = existingBNs.popleft() if len(existingBNs) > 0 else None
-// //                 b = existingBNs.popleft() if len(existingBNs) > 0 else None
-
-// //                 if this.growthDir in Compass.vertical:
-// //                     a, b = makeNode(x - pad, x, y, Y, node=a), makeNode(U, U + pad, v, V, node=b)
-// //                 else:
-// //                     assert(this.growthDir in Compass.horizontal)
-// //                     a, b = makeNode(x, X, y - pad, y, node=a), makeNode(u, U, V, V + pad, node=b)
-
-// //                 bns.extend([a, b])
-// //                 firstGap = pad/2.0 + transMeasure(first)/2.0
-// //                 lastGap = pad/2.0 + transMeasure(last)/2.0
-// //                 pcs.append(SepCo(transDim, a, first, firstGap, exact=True))
-// //                 pcs.append(SepCo(axialDim, a, first, 0, exact=True))
-// //                 pcs.append(SepCo(transDim, last, b, lastGap, exact=True))
-// //                 pcs.append(SepCo(axialDim, last, b, 0, exact=True))
-// //         # Generate the basic tree constraints.
-// //         tallestNodes = []
-// //         for i in range(this.depth):
-// //             rank = this.nodesByRank[i]
-// //             tallestNodes.append(max(rank, key=axialMeasure))
-// //             # Align all nodes within the rank.
-// //             pcs.append(AlignCo(axialDim, shapes=[(u, 0) for u in rank]))
-// //             # Separate them.
-// //             S = sorted(rank, key=transCoord)
-// //             for L, R in zip(S[:-1], S[1:]):
-// //                 gap = transMeasure(L)/2.0 + iel/2.0 + transMeasure(R)/2.0
-// //                 pcs.append(SepCo(transDim, L, R, gap))
-// //         # Rank separations:
-// //         for i in range(this.depth - 1):
-// //             A, B = tallestNodes[i:i+2]
-// //             L, R = (A, B) if this.growthDir in Compass.increasing else (B, A)
-// //             gap = axialMeasure(L)/2.0 + iel/2.0 + axialMeasure(R)/2.0
-// //             pcs.append(SepCo(axialDim, L, R, gap, exact=this.holaConfig.RIGid_RANK_SEP))
-// //         # Alignments with centre children:
-// //         for p in this.nodes.values():
-// //             if p == this.root and dp in Compass.cwOrds: continue
-// //             Ch = p.getChildren()
-// //             Ch.sort(key=transCoord)
-// //             n = len(Ch)
-// //             m = (n - (n % 2)) / 2
-// //             if n % 2 == 1:
-// //                 pcs.append(AlignCo(transDim, shapes=[(p, 0), (Ch[m], 0)]))
-// //             # Try flexible distributions on the "mirror triples?"
-// //             if this.holaConfig.TRY_MIRROR_TRIPLES:
-// //                 for i in range(m):
-// //                     a, z = Ch[i], Ch[n - 1 - i]
-// //                     pcs.append(FlexDistCo(transDim, a, p, z))
-// //         DEBUG = False
-// //         if DEBUG:
-// //             print
-// //             print 'Tree constraints for tree rooted at %d:' % this.root.id
-// //             for pc in pcs:
-// //                 print pc
-// //         this.pcs = pcs
-// //         this.bufferNodes = bns
-// //         return (bns, pcs)
-
-// //     def writeFixedRelCo(this, root, extraNodes={}):
-// //         """
-// //         :param root: a Node
-// //         :return: an adg.FixedRelativeConstraint, with the supplied root
-// //                  substituted for this tree's root node
-// //         """
-// //         nodes = this.graph.nodes.copy()
-// //         del nodes[this.root.id]
-// //         nodes[root.id] = root
-// //         for id, u in extraNodes.items():
-// //             nodes[id] = u
-// //         frc = FixedRelCo(nodes)
-// //         return frc
-
-// //     def insertIntoGraph(this, G):
-// //         """
-// //         :param G: a Graph
-// //         :return: nothing
-
-// //         Insert the tree graph into the given graph G, except for the root node.
-// //         We assume the corresponding root node in G has the same id.
-// //         """
-// //         H = this.graph
-// //         for id in H.nodes:
-// //             if id == this.root.id: continue
-// //             if G.nodes.has_key(id):
-// //                 raise Exception("Inserting node %d. Graph already using that id." % id)
-// //             G.nodes[id] = H.nodes[id]
-// //         for edge in H.edges.values():
-// //             s, t = edge.srcid, edge.tgtid
-// //             G.addEdgeByNodeids(s, t)
-
-// //     def size(this):
-// //         return len(this.graph.nodes.keys())
-
-// //     def buildOwnRoutingRig(this, rig, permissive=0):
-// //         rig.addNodesAndEdges({this.root.id:this.root}, {})
-// //         this.addInternalNodesAndEdgesToRoutingRig(rig, permissive=permissive)
-// //         return rig
-
-// //     def addInternalNodesAndEdgesToRoutingRig(this, rig, core=None, permissive=0):
-// //         # Get all nodes other than the root.
-// //         nodes = {id:node for id, node in this.nodes.items() if id != this.root.id}
-// //         # Get edges.
-// //         edges = this.graph.edges
-// //         # Set connection directions.
-// //         connDirs = {}
-// //         up = this.growthDir
-// //         down = Compass.flip(up)
-// //         upperDirs = Compass.libavoidVisibility[down]
-// //         ordinalRootDirs = adg.ConnDirAll ^ upperDirs
-// //         if permissive >= 2:
-// //             lowerDirs = ordinalRootDirs
-// //         else:
-// //             lowerDirs = Compass.libavoidVisibility[up]
-// //         dirs = (lowerDirs, upperDirs)
-// //         rev = (upperDirs, lowerDirs)
-// //         # If the tree is ordinally placed, then its root node
-// //         # is in a different position than the root node belonging to the core.
-// //         # So in order for the connectors in the router to get the proper endpts,
-// //         # we temporarily move the root node to the position of the core root.
-// //         coreroot = core.nodes[this.root.id] if core is not None else this.root
-// //         corerootpt = coreroot.centre()
-// //         rootpt = this.root.centre()
-// //         this.root.x, this.root.y = corerootpt
-// //         # Compute just once the boolean to say whether we use permissive directions for
-// //         # connection to the root node:
-// //         permissiveRootDirections = (
-// //             permissive >= 2 or
-// //             (permissive == 1 and rootpt != corerootpt and len(this.nodesByRank[1]) == 1)
-// //         )
-// //         for rep, edge in edges.items():
-// //             # Determine the ranks of the source and target ends, so that we can set the
-// //             # conndirs in the right order.
-// //             rs = this.rankByNodeid[edge.srcid]
-// //             rt = this.rankByNodeid[edge.tgtid]
-// //             # Use more permissive directions for root node if it is an ordinal placement.
-// //             if permissiveRootDirections and this.root.id in [edge.srcid, edge.tgtid]:
-// //                 d = (ordinalRootDirs, upperDirs) if rs < rt else (upperDirs, ordinalRootDirs)
-// //             else:
-// //                 d = dirs if rs < rt else rev
-// //             connDirs[rep] = d
-// //         rig.addNodesAndEdges(nodes, edges, connDirs=connDirs)
-// //         # Retore root position.
-// //         this.root.x, this.root.y = rootpt
-
-// //     def setEdgeRoutesInGraph(this, G):
-// //         for e in this.graph.edges.values():
-// //             f = G.getEdgeBtwNodes(e.src, e.tgt)
-// //             #f = G.edges.get(rep, None)
-// //             if f is not None:
-// //                 if f.srcid == e.srcid:
-// //                     f.route = e.route
-// //                 else:
-// //                     f.route = list(reversed(e.route))
 
 tree.prototype.getBoundingBoxXYWHWithoutRoot = function () {
     var growthDir = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
@@ -10089,144 +9025,6 @@ tree.prototype.computeIsomString = function () {
     return levelIsomStrings.join(":");
 };
 
-// //     def computeOrderingNumbers(this):
-// //         """
-// //         Assign each node an "ordering number," storing these in this.orderingNumbers.
-// //         These numbers are to be used by the this.cmpRankmates function in order to sort
-// //         the nodes of each rank when it comes time to generate constraints for the tree.
-
-// //         :return: nothing
-// //         """
-// //         # Leaves are simple.
-// //         if this.depth == 1:
-// //             this.isSymmetric = True
-// //             return
-// //         # Proceed for nonleaves:
-// //         C = this.getCTrees()
-// //         # Layout the C-Trees, recursively.
-// //         for t in C: t.computeOrderingNumbers()
-// //         # Sort the C-trees into isomorphism classes.
-// //         classes = {}
-// //         for t in C:
-// //             isomstr = t.computeIsomString()
-// //             A = classes.get(isomstr, [])
-// //             A.append(t)
-// //             classes[isomstr] = A
-// //         # Now sort the classes.
-// //         isoms = classes.keys()
-// //         def isomCmp(I,J):
-// //             c = classes[I]; d = classes[J]
-// //             cd = c[0].depth; dd = d[0].depth
-// //             cb = c[0].breadth; db = d[0].breadth
-// //             # Put narrower trees first.
-// //             if cb > db: return 1
-// //             if cb < db: return -1
-// //             # For same breadth, put shallower trees first.
-// //             if cd > dd: return 1
-// //             if cd < dd: return -1
-// //             # Otherwise just compare the isomorphism strings for some
-// //             # way to make this relation deterministic.
-// //             if I < J: return -1
-// //             if I > J: return 1
-// //             return 0
-// //         isoms.sort(cmp=isomCmp)
-// //         # Which classes have odd order?
-// //         oddOrder = {}
-// //         for I in isoms:
-// //             c = classes[I]
-// //             if len(c) % 2 == 1:
-// //                 oddOrder[I] = c
-// //         # Determine whether our layout is going to be symmetric or not.
-// //         numOdd = len(oddOrder)
-// //         haveCentralTree = False
-// //         # If there are no odd-order classes, then we are symmetric.
-// //         if numOdd == 0:
-// //             this.isSymmetric = True
-// //         # If there are two or more odd-order classes, then we are not symmetric.
-// //         elif numOdd > 1:
-// //             this.isSymmetric = False
-// //         # Else there is exactly one odd-order class.
-// //         # In this case we are symmetric if and only if (any representative of) the one
-// //         # odd order class is symmetric.
-// //         else:
-// //             this.isSymmetric = oddOrder.values()[0][0].isSymmetric
-// //             # For symmetric layout the trees of odd-order class need to go in the centre,
-// //             # so we put them first in the list, since we work our way outward from the centre
-// //             # when placing the trees.
-// //             oddIsom = oddOrder.keys()[0]
-// //             isoms.remove(oddIsom)
-// //             isoms.insert(0, oddIsom)
-// //         # Now order the trees alternating around the centre, flipping the trees that get placed
-// //         # on the left hand side.
-// //         signedtrees = Deque()
-// //         nextsign = 1
-// //         for I in isoms:
-// //             c = classes[I]
-// //             for t in c:
-// //                 op = signedtrees.append if nextsign == 1 else signedtrees.appendleft
-// //                 op((nextsign, t))
-// //                 nextsign *= -1
-// //         # Set ordering numbers.
-// //         for i, st in enumerate(signedtrees):
-// //             s, t = st
-// //             this.orderingNumbers[t.root.id] = i
-// //             for id, j in t.orderingNumbers.items():
-// //                 this.orderingNumbers[id] = s*j
-
-// //     def writeConstraints(this, iel, dp, rigidRankSep=False):
-// //         pcs = []
-// //         if this.growthDir in Compass.vertical:
-// //             axialDim, transDim = adg.YDIM, adg.XDIM
-// //             axialCoord, transCoord = (lambda u: u.y), (lambda u: u.x)
-// //             axialMeasure, transMeasure = (lambda u: u.h), (lambda u: u.w)
-// //         else:
-// //             axialDim, transDim = adg.XDIM, adg.YDIM
-// //             axialCoord, transCoord = (lambda u: u.x), (lambda u: u.y)
-// //             axialMeasure, transMeasure = (lambda u: u.w), (lambda u: u.h)
-// //         doReverse = this.growthDir in Compass.decreasing
-// //         # Generate the basic tree constraints.
-// //         tallestNodes = []
-// //         for i in range(1, this.depth):
-// //             rank = this.nodesByRank[i]
-// //             tallestNodes.append(max(rank, key=axialMeasure))
-// //             # Align all nodes within the rank.
-// //             pcs.append(AlignCo(axialDim, shapes=[(u, 0) for u in rank]))
-// //             # Separate them.
-// //             S = sorted(rank, cmp=this.cmpRankmates, reverse=doReverse)
-// //             for L, R in zip(S[:-1], S[1:]):
-// //                 gap = transMeasure(L)/2.0 + iel/2.0 + transMeasure(R)/2.0
-// //                 pcs.append(SepCo(transDim, L, R, gap))
-// //         # Rank separations:
-// //         for i in range(this.depth - 1):
-// //             A, B = tallestNodes[i:i+2]
-// //             L, R = (A, B) if this.growthDir in Compass.increasing else (B, A)
-// //             gap = axialMeasure(L)/2.0 + iel/2.0 + axialMeasure(R)/2.0
-// //             pcs.append(SepCo(axialDim, L, R, gap, exact=rigidRankSep))
-// //         # Alignments with centre children:
-// //         for p in this.nodes.values():
-// //             if p == this.root and dp in Compass.cwOrds: continue
-// //             Ch = p.getChildren()
-// //             Ch.sort(cmp=this.cmpRankmates, reverse=doReverse)
-// //             n = len(Ch)
-// //             m = (n - (n % 2)) / 2
-// //             if n % 2 == 1:
-// //                 pcs.append(AlignCo(transDim, shapes=[(p, 0), (Ch[m], 0)]))
-// //             # Try flexible distributions on the "mirror triples?"
-// //             if this.holaConfig.TRY_MIRROR_TRIPLES:
-// //                 for i in range(m):
-// //                     a, z = Ch[i], Ch[n - 1 - i]
-// //                     pcs.append(DistCo(transDim, [a, p, z],
-// //                                       iel*2*(m-i),  # actually shouldn't matter
-// //                                       flexible=True))
-// //         DEBUG = False
-// //         if DEBUG:
-// //             print
-// //             print 'Tree constraints for tree rooted at %d:' % this.root.id
-// //             for pc in pcs:
-// //                 print pc
-// //         this.pcs = pcs
-// //         return pcs
-
 tree.prototype.createOrthogonalEdges = function (gm) {
     var edges = Object.values(this.edges);
     for (var i = 0; i < edges.length; i++) {
@@ -10236,21 +9034,27 @@ tree.prototype.createOrthogonalEdges = function (gm) {
         var node1 = void 0,
             node2 = void 0;
 
-        if (edge.source.getCenterX() == edge.target.getCenterX()) {
+        //round off the values to two digits for better results
+        var edgeSrcX = Math.round(edge.source.getCenterX() * 100 + Number.EPSILON) / 100;
+        var edgeSrcY = Math.round(edge.source.getCenterY() * 100 + Number.EPSILON) / 100;
+        var edgeTgtX = Math.round(edge.target.getCenterX() * 100 + Number.EPSILON) / 100;
+        var edgeTgtY = Math.round(edge.target.getCenterY() * 100 + Number.EPSILON) / 100;
+
+        if (edgeSrcX == edgeTgtX) {
             continue;
-        } else if (edge.source.getCenterY() == edge.target.getCenterY()) {
+        } else if (edgeSrcY == edgeTgtY) {
             continue;
         }
 
         //we take the node which is at the top as the source, and the lower one as the target
         var dir1 = void 0,
             dir2 = void 0;
-        if (edge.source.getCenterY() < edge.target.getCenterY()) {
+        if (edgeSrcY < edgeTgtY) {
             sourceLoc = edge.source.getCenter();
             targetLoc = edge.target.getCenter();
             node1 = edge.source;
             node2 = edge.target;
-        } else if (edge.source.getCenterY() > edge.target.getCenterY()) {
+        } else if (edgeSrcY > edgeTgtY) {
             sourceLoc = edge.target.getCenter();
             targetLoc = edge.source.getCenter();
             node2 = edge.source;
@@ -10272,15 +9076,22 @@ tree.prototype.createOrthogonalEdges = function (gm) {
         bendpoint.x = targetLoc.x;
         bendpoint.y = sourceLoc.y + (targetLoc.y - sourceLoc.y) / 2;
 
-        edge.createBendPoint(bendpoint, dir1, dir2, node1, node2, true);
+        edge.createBendPoint(bendpoint, dir1, dir2, node1, node2);
         gm.edgesWithBends.push(edge);
 
-        console.log(edge.id);
-        console.log(edge.weight);
-        console.log(edge.distance);
-        console.log(sourceLoc);
-        console.log(targetLoc);
+        console.log("making tree edges orthogonal");
+        console.log(node1.id);
+        console.log(node1.getCenter());
+        console.log(node2.id);
+        console.log(node2.getCenter());
         console.log(bendpoint);
+
+        // console.log(edge.id);
+        // console.log(edge.weight);
+        // console.log(edge.distance);
+        // console.log(sourceLoc);
+        // console.log(targetLoc);
+        // console.log(bendpoint);
     }
 };
 
@@ -10480,10 +9291,10 @@ tree.prototype.symmetricLayout = function (growthDir, nodeSep, rankSep) {
     // Restore configuration
     this.boundaryInfinite = givenBoundaryInfiniteValue;
 
-    this.sortRankNodes();
+    this.sortRankNodes(growthDir);
 };
 
-tree.prototype.sortRankNodes = function (first_argument) {
+tree.prototype.sortRankNodes = function (dp) {
     //At this point, trees have been grown into the south direction
     //we sort the nodes of each rank from left to right according to their positions
     //this is done by sorting them in ascending order of their x values
@@ -10491,15 +9302,42 @@ tree.prototype.sortRankNodes = function (first_argument) {
     var ranks = Object.values(this.nodesByRank);
     for (var i = 1; i < ranks.length; i++) {
         var nodes = ranks[i];
-        nodes.sort(function (a, b) {
-            return a.getCenterX() - b.getCenterX();
-        });
+        //for south, nodes are sorted from left to right
+        if (dp == 1) {
+            nodes.sort(function (a, b) {
+                return a.getCenterX() - b.getCenterX();
+            });
+        }
+        //for west, nodes are sorted from top to bottom
+        else if (dp == 2) {
+                nodes.sort(function (a, b) {
+                    return a.getCenterY() - b.getCenterY();
+                });
+            }
+            //for north, nodes are sorted from right to left
+            else if (dp == 3) {
+                    nodes.sort(function (a, b) {
+                        return b.getCenterX() - a.getCenterX();
+                    });
+                }
+                //for east, nodes are sorted from bottom to top
+                else if (dp == 0) {
+                        nodes.sort(function (a, b) {
+                            return b.getCenterY() - a.getCenterY();
+                        });
+                    }
 
         this.nodesByRank[i] = nodes;
     }
 };
 
 module.exports = tree;
+
+/***/ }),
+/* 34 */
+/***/ (function(module, exports) {
+
+
 
 /***/ })
 /******/ ]);
