@@ -10,6 +10,9 @@ const PROD = NODE_ENV === 'production';
 
 let config = {
   devtool: PROD ? false : 'inline-source-map',
+  node: {
+    fs: "empty"
+  },
   entry: './src/index.js',
   output: {
     path: path.join( __dirname ),
@@ -17,7 +20,7 @@ let config = {
     library: camelcase( pkg.name ),
     libraryTarget: 'umd'
   },
-    mode: 'none',
+  mode: 'none',
   module: {
     rules: [
       { test: /\.js$/, exclude: /node_modules/, use: 'babel-loader' }
@@ -29,7 +32,13 @@ let config = {
           commonjs: 'cose-base',
           amd: 'cose-base',
           root: 'coseBase'
-      }
+     },
+     'layout-base': {
+          commonjs2: 'layout-base',
+          commonjs: 'layout-base',
+          amd: 'layout-base',
+          root: 'layoutBase'
+     }
   } : {},
   plugins: MIN ? [
     new webpack.optimize.UglifyJsPlugin({
