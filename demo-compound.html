@@ -4,9 +4,8 @@
     <title>cytoscape-chola.js demo (compound)</title>
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
     <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
-    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+    <script src="layout-base.js"></script>
     <script src="https://raw.githack.com/iVis-at-Bilkent/cose-base/constraint-support/cose-base.js"></script>
-    <!-- <script src="cose-base.js"></script> -->
     <script src="https://unpkg.com/cytoscape-cose-bilkent/cytoscape-cose-bilkent.js"></script>
     <script src="demoControl.js" defer></script>
     <meta charset="UTF-8" />
@@ -45,6 +44,9 @@
 
   <body>
     <h1>cytoscape-chola-bilkent demo (compound)</h1>
+    <button id="importGraphML" type="button" class="btn-dark btn-sm py-0" onclick="document.getElementById('importGraphML-input').click();">Load Graph</button>
+    <input id="importGraphML-input" type="file" name="name" style="display: none;" /> 
+    
     <button id = "randomize" type = "button"> Randomize </button>
     <button id = "cose" type = "button"> COSE </button>
     <button id = "cholaLayoutButton" type = "button"> C-HOLA</button>
@@ -55,7 +57,11 @@
        <option value = "3">Sample Graph 3</option>
        <option value = "4">Sample Graph 4</option>
      </select>
-    <div id="cy"></div>
-  </body>
 
+    <br>
+
+    <div id="cy"></div>
+
+
+  </body>
 </html>
