@@ -7,7 +7,7 @@
 		exports["cytoscapeChola"] = factory(require("cose-base"), require("layout-base"));
 	else
 		root["cytoscapeChola"] = factory(root["coseBase"], root["layoutBase"]);
-})(window, function(__WEBPACK_EXTERNAL_MODULE__4__, __WEBPACK_EXTERNAL_MODULE__11__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE__4__, __WEBPACK_EXTERNAL_MODULE__11__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
