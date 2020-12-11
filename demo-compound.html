@@ -4,12 +4,15 @@
     <title>cytoscape-chola.js demo (compound)</title>
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
     <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+    <!-- <script src="https://unpkg.com/layout-base/layout-base.js"></script> -->
     <script src="layout-base.js"></script>
     <script src="https://raw.githack.com/iVis-at-Bilkent/cose-base/constraint-support/cose-base.js"></script>
+    <!-- <script src="cose-base.js"></script> -->
     <script src="https://unpkg.com/cytoscape-cose-bilkent/cytoscape-cose-bilkent.js"></script>
     <script src="demoControl.js" defer></script>
     <meta charset="UTF-8" />
     <script src="cytoscape-chola.js"></script>
+    <script src="https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-layvo/unstable/cytoscape-layvo.js"></script>
     <style>
       body {
         font-family: helvetica;
@@ -50,6 +53,7 @@
     <button id = "randomize" type = "button"> Randomize </button>
     <button id = "cose" type = "button"> COSE </button>
     <button id = "cholaLayoutButton" type = "button"> C-HOLA</button>
+    <button id = "testing" type = "button"> Run Tests </button>
      <label>Load sample graph:</label>
      <select id = "sampleGraphs">
        <option value = "1">Sample Graph 1</option>
@@ -60,6 +64,24 @@
 
     <br>
 
+    <table style="width:100%">
+        <tr>
+          <td>Evaluation: <input type="checkbox" id="evaluate" checked></td>
+          <td>Time:</td>
+          <td><span id="layoutTime"></span></td>
+          <td>Node Overlap:</td>
+          <td><span id="numberOfNodeOverlaps"></span></td>
+          <td>Edge Crosses:</td>
+          <td><span id="numberOfEdgeCrosses"></span></td> 
+          <td>Avg. Edge Length:</td>
+          <td><span id="averageEdgeLength"></span></td>
+          <td>Total Area:</td>
+          <td><span id="totalArea"></span></td>           
+        </tr>
+      </table>      
+
+  <!--   <button id = "step" type = "button"> Step </button>
+    <button id = "continue" type = "button"> Continue </button> -->
     <div id="cy"></div>
 
 
