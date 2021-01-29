@@ -59,6 +59,9 @@
     "jquery": "^1.7.0 || ^2.0.0 || ^3.0.0"
   },
   "dependencies": {
-    "cose-base": "https://github.com/iVis-at-Bilkent/cose-base#constraint-support"
+    "cose-base": "https://github.com/iVis-at-Bilkent/cose-base#constraint-support",
+    "file-saver": "^2.0.5",
+    "path": "^0.12.7",
+    "socket.io": "^3.0.3"
   }
 }
