@@ -12,16 +12,93 @@
     <script src="demoControl.js" defer></script>
     <meta charset="UTF-8" />
     <script src="cytoscape-chola.js"></script>
-    <script src="https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-layvo/unstable/cytoscape-layvo.js"></script>
+    <script src="https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-layvo/master/cytoscape-layvo.js"></script>
+    <script src="https://unpkg.com/cytoscape-canvas/dist/cytoscape-canvas.js"></script>
+    <script src = "path.js>" type = "module" ></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <style>
+      html {
+        /*overflow: hidden;*/
+      }
       body {
         font-family: helvetica;
         font-size: 14px;
       }
-      #cy {
-        width: 100%;
+      #cy 
+      {
         height: 90%;
-        z-index: 999;
+        width: 100%;
+        position: absolute;
+        left: 0;
+        top: 10%;
+        background-color: #FAEDEF;
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      #cyHD 
+      {
+        height: 90%;
+        width: 100%;
+        position: absolute;
+        left: 33.3%;
+        right: 33.3%;
+        top: 10%;
+        background-color: #B7F1FA;
+        border-top: 1px solid #ccc;
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      #cyHDConstraint {
+        height: 90%;
+        width: 100%;
+        position: absolute;
+        left: 66.6%;
+        right: 0;
+        top: 10%;
+        background-color: #FAEDEF;
+        border-top: 1px solid #ccc;
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      #cyChains {
+        height: 90%;
+        width: 100%;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 55%;
+        background-color: #B7F1FA;
+        border-top: 1px solid #ccc;
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      #cyTrees {
+        height: 90%;
+        width: 100%;
+        position: absolute;
+        left: 33.3%;
+        right: 33.3%;
+        top: 55%;
+        background-color: #FAEDEF;
+        border-top: 1px solid #ccc;
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      #cyfinal {
+        height: 90%;
+        width: 100%;
+        position: absolute;
+        left: 0%;
+        top: 10%;
+        background-color: #B7F1FA;
+        border-top: 1px solid #ccc;
+        font-size: 10px;
+        font-weight: bold;
       }
       h1 {
         opacity: 0.5;
@@ -30,6 +107,7 @@
       button {
         margin-right: 10px;
       }
+      
     </style>
     <script>
       document.addEventListener('DOMContentLoaded', function(){
@@ -46,6 +124,7 @@
   </head>
 
   <body>
+
     <h1>cytoscape-chola-bilkent demo (compound)</h1>
     <button id="importGraphML" type="button" class="btn-dark btn-sm py-0" onclick="document.getElementById('importGraphML-input').click();">Load Graph</button>
     <input id="importGraphML-input" type="file" name="name" style="display: none;" /> 
@@ -53,37 +132,52 @@
     <button id = "randomize" type = "button"> Randomize </button>
     <button id = "cose" type = "button"> COSE </button>
     <button id = "cholaLayoutButton" type = "button"> C-HOLA</button>
-    <button id = "testing" type = "button"> Run Tests </button>
-     <label>Load sample graph:</label>
-     <select id = "sampleGraphs">
-       <option value = "1">Sample Graph 1</option>
-       <option value = "2">Sample Graph 2</option>
-       <option value = "3">Sample Graph 3</option>
-       <option value = "4">Sample Graph 4</option>
+
+    <button id = "stepGraphs" type = "button"> Get Step Graphs </button>
+
+     <label id = "stepLabel" >Choose step:</label>
+     <select id = "outputGraphs" disabled = "disabled">
+       <option value = "1"> Stress Minimizing Layout </option>
+       <option value = "2"> Higher Nodes Configuration </option>
+       <option value = "3"> Constraint Layout (CL) 1 </option>
+       <option value = "4"> Chain nodes + CL </option>
+       <option value = "5"> Tree Placement </option>
+       <option value = "6"> Final Layout </option>
      </select>
 
-    <br>
 
     <table style="width:100%">
-        <tr>
-          <td>Evaluation: <input type="checkbox" id="evaluate" checked></td>
-          <td>Time:</td>
-          <td><span id="layoutTime"></span></td>
-          <td>Node Overlap:</td>
-          <td><span id="numberOfNodeOverlaps"></span></td>
-          <td>Edge Crosses:</td>
-          <td><span id="numberOfEdgeCrosses"></span></td> 
-          <td>Avg. Edge Length:</td>
-          <td><span id="averageEdgeLength"></span></td>
-          <td>Total Area:</td>
-          <td><span id="totalArea"></span></td>           
-        </tr>
-      </table>      
+      <tr>
+        <td>Evaluation-> Time:</td>
+        <td><span id="layoutTime"></span></td>
+        <td>Node Overlap:</td>
+        <td><span id="numberOfNodeOverlaps"></span></td>
+        <td>Edge Crosses:</td>
+        <td><span id="numberOfEdgeCrosses"></span></td> 
+        <td>Avg. Edge Length:</td>
+        <td><span id="averageEdgeLength"></span></td>
+        <td>Total Area:</td>
+        <td><span id="totalArea"></span></td>           
+      </tr>
+    </table>      
 
-  <!--   <button id = "step" type = "button"> Step </button>
-    <button id = "continue" type = "button"> Continue </button> -->
-    <div id="cy"></div>
 
+
+
+
+        <div id = "cy"   1   > </div>
+
+        <div id = "cyHD"  2  ></div>
+
+        <div id = "cyHDConstraint">  3 </div>
+
+        <div id = "cyChains"  >4</div>
+
+        <div id = "cyTrees" > </div>
+
+        <div id = "cyfinal" > </div>
+
+    
 
   </body>
 </html>
