@@ -165,7 +165,7 @@ var defaults = Object.freeze((_Object$freeze = {
   quality: 'default',
   // use random node positions at beginning of layout
   // if this is set to false, then quality option must be "proof"
-  randomize: true,
+  randomize: false,
   // whether or not to animate the layout
   animate: true,
   // duration of animation in ms, if enabled
@@ -192,7 +192,7 @@ var defaults = Object.freeze((_Object$freeze = {
   padding: 10,
   // Node repulsion (non overlapping) multiplier
   nodeRepulsion: 4500
-}, _defineProperty(_Object$freeze, 'animate', 'end'), _defineProperty(_Object$freeze, 'animationDuration', 500), _defineProperty(_Object$freeze, 'idealEdgeLength', 50), _defineProperty(_Object$freeze, 'edgeGap', 50), _defineProperty(_Object$freeze, 'edgeElasticity', 0.45), _defineProperty(_Object$freeze, 'nestingFactor', 0.1), _defineProperty(_Object$freeze, 'gravity', 0.25), _defineProperty(_Object$freeze, 'numIter', 2500), _defineProperty(_Object$freeze, 'tile', false), _defineProperty(_Object$freeze, 'tilingPaddingVertical', 10), _defineProperty(_Object$freeze, 'tilingPaddingHorizontal', 10), _defineProperty(_Object$freeze, 'gravityRangeCompound', 1.5), _defineProperty(_Object$freeze, 'gravityCompound', 1.0), _defineProperty(_Object$freeze, 'gravityRange', 3.8), _defineProperty(_Object$freeze, 'initialEnergyOnIncremental', 0.5), _defineProperty(_Object$freeze, 'maxNodeDimension', 0), _defineProperty(_Object$freeze, 'fixedNodeConstraint', undefined), _defineProperty(_Object$freeze, 'alignmentConstraint', undefined), _defineProperty(_Object$freeze, 'relativePlacementConstraint', undefined), _defineProperty(_Object$freeze, 'verticalAlignment', []), _defineProperty(_Object$freeze, 'horizontalAlignment', []), _defineProperty(_Object$freeze, 'relativeAlignment', []), _defineProperty(_Object$freeze, 'placementDict', {}), _defineProperty(_Object$freeze, 'graphOutput', false), _defineProperty(_Object$freeze, 'debug', true), _defineProperty(_Object$freeze, 'ready', function ready() {}), _defineProperty(_Object$freeze, 'stop', function stop() {}), _Object$freeze));
+}, _defineProperty(_Object$freeze, 'animate', 'end'), _defineProperty(_Object$freeze, 'animationDuration', 500), _defineProperty(_Object$freeze, 'idealEdgeLength', 50), _defineProperty(_Object$freeze, 'edgeGap', 50), _defineProperty(_Object$freeze, 'edgeElasticity', 0.45), _defineProperty(_Object$freeze, 'nestingFactor', 0.1), _defineProperty(_Object$freeze, 'gravity', 0.25), _defineProperty(_Object$freeze, 'numIter', 2500), _defineProperty(_Object$freeze, 'tile', false), _defineProperty(_Object$freeze, 'tilingPaddingVertical', 10), _defineProperty(_Object$freeze, 'tilingPaddingHorizontal', 10), _defineProperty(_Object$freeze, 'gravityRangeCompound', 1.5), _defineProperty(_Object$freeze, 'gravityCompound', 1.0), _defineProperty(_Object$freeze, 'gravityRange', 3.8), _defineProperty(_Object$freeze, 'initialEnergyOnIncremental', 0.5), _defineProperty(_Object$freeze, 'maxNodeDimension', 0), _defineProperty(_Object$freeze, 'fixedNodeConstraint', undefined), _defineProperty(_Object$freeze, 'alignmentConstraint', undefined), _defineProperty(_Object$freeze, 'relativePlacementConstraint', undefined), _defineProperty(_Object$freeze, 'verticalAlignment', []), _defineProperty(_Object$freeze, 'horizontalAlignment', []), _defineProperty(_Object$freeze, 'relativeAlignment', []), _defineProperty(_Object$freeze, 'placementDict', {}), _defineProperty(_Object$freeze, 'compoundEdgeBends', undefined), _defineProperty(_Object$freeze, 'normalEdgeBends', undefined), _defineProperty(_Object$freeze, 'graphOutput', false), _defineProperty(_Object$freeze, 'debug', false), _defineProperty(_Object$freeze, 'ready', function ready() {}), _defineProperty(_Object$freeze, 'stop', function stop() {}), _Object$freeze));
 
 var chola = function () {
   function chola(options) {
@@ -218,13 +218,13 @@ var chola = function () {
       var layout = this.layout = new cholaLayout();
       var self = this;
 
-      this.cy = this.options.cy;
-      this.cy.trigger({ type: 'layoutstart', layout: this });
+      cyfinal = this.options.cy;
+      cyfinal.trigger({ type: 'layoutstart', layout: this });
 
       var gm = layout.newGraphManager();
 
-      var nodes = this.options.eles.nodes();
-      var edges = this.options.eles.edges();
+      var nodes = cyfinal.nodes();
+      var edges = cyfinal.edges();
 
       if (nodes.length == 0 || edges.length == 0) return;
 
@@ -232,6 +232,9 @@ var chola = function () {
       var topMostNodes = layout.getTopMostNodes(nodes);
       layout.processChildrenList(this.options, gm.addRoot(), topMostNodes, layout, "chola", cholaIdToLNode, cholaNodesMap);
       layout.processEdges(layout, "chola", gm, edges, cholaIdToLNode, this.cholaEdgesMap);
+
+      this.options.compoundEdgeBends = [];
+      this.options.normalEdgeBends = [];
 
       //set the parents of the nodes
       layout.setParents(gm);
@@ -247,6 +250,8 @@ var chola = function () {
         var theId = ele.data('id');
         //take the chola node
         var lNode = self.cholaIdToLNode[theId];
+        console.log(theId);
+        console.log(lNode.getCenter());
 
         return {
           x: lNode.getRect().getCenterX(),
@@ -260,6 +265,7 @@ var chola = function () {
       var parentList = {};
 
       //removes the leaf nodes and return the graph components
+      var prunedNodes = [];
       var output = layout.prune(gm, compoundNodes, this.idList, parentList);
       var c = output[0];
       var graphIsTree = output[1];
@@ -276,9 +282,9 @@ var chola = function () {
         t.createOrthogonalEdges(newgm);
 
         //replicate the changes back to the original gm
-        var allNodes = Object.values(t.nodes);
-        for (var i = 0; i < allNodes.length; i++) {
-          var treeNode = allNodes[i];
+        var _allNodes = Object.values(t.nodes);
+        for (var i = 0; i < _allNodes.length; i++) {
+          var treeNode = _allNodes[i];
           var node = cholaIdToLNode[treeNode.id];
           var treeNodeLoc = treeNode.getLocation();
           node.setLocation(treeNodeLoc.x, treeNodeLoc.y);
@@ -304,15 +310,12 @@ var chola = function () {
         return;
       }
 
-      // this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
-      //   return;
-
       //core graph manager
       var coreGm = c[0];
       c.shift();
       var treeGraphs = c;
 
-      // applying cose on the core
+      // // applying cose on the core
       var coseLayout = layout.coseOnCore(options, coseIdToLNode, cholaNodesMap, this.cholaEdgesMap, this.cholaNodeToCoseNode, this.cholaEdgeToCoseEdge);
 
       // Reflect changes back to chola nodes
@@ -324,6 +327,13 @@ var chola = function () {
         var loc = coseNode.getCenter();
         cholaNode.setCenter(loc.x, loc.y);
       }
+
+      var allNodes = cy.nodes();
+      for (var _i3 = 0; _i3 < allNodes.length; _i3++) {
+        if (!(parentList[allNodes[_i3].id()] == undefined)) allNodes[_i3].css("display", "none");
+      }
+
+      cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
       output = layout.getHighDegreeNodes(coreGm);
       var highDegreeNodes = output[0];
@@ -337,15 +347,12 @@ var chola = function () {
         // // applying cose on the core
         coseLayout = layout.constraintCoseLayout(coreGm, coseLayout, options, turn);
 
-        // if (options.debug)
-        //   return;
-
         var cholaNodesDict = {};
 
         // Reflect changes back to chola nodes
         var cholaNodes = coreGm.getAllNodes();
-        for (var _i3 = 0; _i3 < cholaNodes.length; _i3++) {
-          var _cholaNode = cholaNodes[_i3];
+        for (var _i4 = 0; _i4 < cholaNodes.length; _i4++) {
+          var _cholaNode = cholaNodes[_i4];
           var _coseNode = self.cholaNodeToCoseNode[_cholaNode.id];
 
           if (_cholaNode.isCompound()) {
@@ -364,50 +371,41 @@ var chola = function () {
         return cholaNodesDict;
       };
 
-      var download = function download(filename, text) {
-        var pom = document.createElement('a');
-        pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-        pom.setAttribute('download', filename);
-
-        if (document.createEvent) {
-          var event = document.createEvent('MouseEvents');
-          event.initEvent('click', true, true);
-          pom.dispatchEvent(event);
-        } else {
-          pom.click();
-        }
-      };
-
-      // if (options.debug)
+      // allNodes = gm.getAllNodes();
+      // for (let i = 0; i < allNodes.length; i++)
       // {
-      //   console.log(options.horizontalAlignment);
-      //   console.log(options.verticalAlignment);
-      //   console.log(options.relativeAlignment);
+      //   let node = allNodes[i];
+      //   let locX = node.getCenterX();
+      //   let locY = node.getCenterY();
+      //   node.setCenter(locX*2, locY*2);
       // }
 
       //creating orthogonal layout for higher degree nodes
+
       layout.higherNodesConfiguration(coreGm, highDegreeNodes, options);
-      var nodesDict = constraintLayout(coreGm, coseLayout, options, 0);
 
-      // this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
-      // return;
+      //let nodesDict = constraintLayout(coreGm, coseLayout, options, 0);
 
-      if (options.graphOutput) {
-        var constraintsS1 = { alignmentConstraint: null, relativePlacementConstraint: null };
-        constraintsS1.alignmentConstraint = options.alignmentConstraint;
-        constraintsS1.relativePlacementConstraint = options.relativePlacementConstraint;
+      console.log(cyHD.nodes());
 
-        var constraintStringS1 = JSON.stringify(constraintsS1, null, 2);
-        download('constraintsStep1.json', constraintStringS1);
-
-        var dataS1 = JSON.stringify(this.cy.json().elements);
-        download('cyElementsStep1.json', dataS1);
-
-        options.alignmentConstraint = undefined;
-        options.relativePlacementConstraint = undefined;
+      allNodes = cyHD.nodes();
+      for (var _i5 = 0; _i5 < allNodes.length; _i5++) {
+        if (!(parentList[allNodes[_i5].id()] == undefined)) allNodes[_i5].css("display", "none");
       }
 
-      //return;
+      cyHD.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+
+      // return;
+
+
+      var nodesDict = constraintLayout(coreGm, coseLayout, options, 0);
+
+      allNodes = cyHDConstraint.nodes();
+      for (var _i6 = 0; _i6 < allNodes.length; _i6++) {
+        if (!(parentList[allNodes[_i6].id()] == undefined)) allNodes[_i6].css("display", "none");
+      }
+
+      cyHDConstraint.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
       //orthogonal layout for lower degree nodes
       layout.chainNodesConfiguration(coreGm, options);
@@ -420,10 +418,17 @@ var chola = function () {
       layout.oneDegreeNodesConfiguration(coreGm, oneDegreeNodes, options);
       constraintLayout(coreGm, coseLayout, options, 1);
 
+      allNodes = cyChains.nodes();
+      for (var _i7 = 0; _i7 < allNodes.length; _i7++) {
+        if (!(parentList[allNodes[_i7].id()] == undefined)) allNodes[_i7].css("display", "none");
+      }
+
+      cyChains.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
+
       //create adjusted bendpoints for cholaedges from cose
       var cholaEdges = coreGm.edgesWithBends;
-      for (var _i4 = 0; _i4 < cholaEdges.length; _i4++) {
-        var _cholaEdge = cholaEdges[_i4];
+      for (var _i8 = 0; _i8 < cholaEdges.length; _i8++) {
+        var _cholaEdge = cholaEdges[_i8];
         var coseDummyNode = edgeToDummyNodes[_cholaEdge.id];
         var bendpoint = coseDummyNode[0].getCenter();
         var relativeBendPosition = _cholaEdge.convertToRelativeBendPosition(bendpoint);
@@ -446,15 +451,13 @@ var chola = function () {
         options.relativePlacementConstraint = undefined;
       }
 
-      // this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
-
       //turning non-orthogonal edges to orthogonal edges
       var newEdgesWithBends = layout.createOrthogonalEdges(coreGm, 1);
 
       //copying the id, source and target of the edges with bends
       var edgesWithBends = [];
-      for (var _i5 = 0; _i5 < coreGm.edgesWithBends.length; _i5++) {
-        var edge = coreGm.edgesWithBends[_i5];
+      for (var _i9 = 0; _i9 < coreGm.edgesWithBends.length; _i9++) {
+        var edge = coreGm.edgesWithBends[_i9];
         edgesWithBends.push([edge.id, edge.source, edge.target, edge.bendpoints]);
       }
 
@@ -465,41 +468,31 @@ var chola = function () {
       var cholaEdgeToDummyNodes = void 0;
       cholaEdgeToDummyNodes = layout.removeEdgeOverlaps(coreGm, coseLayout, this.cholaNodeToCoseNode, this.cholaEdgeToCoseEdge);
 
-      //introducing dummy node at each edge crossing
-      //layout.removeEdgeCrossings(coreGm, coseLayout, options);
-
       constraintLayout(coreGm, coseLayout, options, 2);
 
-      if (options.graphOutput) {
-        var constraintsS3 = { alignmentConstraint: null, relativePlacementConstraint: null };
-        constraintsS3.alignmentConstraint = options.alignmentConstraint;
-        constraintsS3.relativePlacementConstraint = options.relativePlacementConstraint;
+      // allNodes = cyPlan.nodes();
+      // for (let i = 0; i < allNodes.length; i++)
+      // {
+      //   if (!(parentList[allNodes[i].id()] == undefined))
+      //       allNodes[i].css("display", "none");
+      // }
 
-        var constraintStringS3 = JSON.stringify(constraintsS3, null, 2);
-        download('constraintsStep3.json', constraintStringS3);
+      // cyTrees.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
-        var dataS3 = JSON.stringify(this.cy.json().elements);
-        download('cyElementsStep3.json', dataS3);
-
-        options.alignmentConstraint = undefined;
-        options.relativePlacementConstraint = undefined;
-      }
-
-      //this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
       //apply symmetric layout to the trees
       var trees = [];
       var growthDir = cholaConstants.DEFAULT_TREE_DIREC;
-      for (var _i6 = 0; _i6 < treeGraphs.length; _i6++) {
-        var g = treeGraphs[_i6];
+      for (var _i10 = 0; _i10 < treeGraphs.length; _i10++) {
+        var g = treeGraphs[_i10];
         var _t = new tree(g, g.rootNode);
         trees.push(_t);
         _t.symmetricLayout(growthDir, options.edgeGap, 1.5 * options.edgeGap);
 
         //replicate the changes back to the original gm
-        var _allNodes = Object.values(_t.nodes);
-        for (var _i7 = 0; _i7 < _allNodes.length; _i7++) {
-          var _treeNode = _allNodes[_i7];
+        var _allNodes2 = Object.values(_t.nodes);
+        for (var _i11 = 0; _i11 < _allNodes2.length; _i11++) {
+          var _treeNode = _allNodes2[_i11];
           if (_t.root == _treeNode) continue;
           var _node = cholaIdToLNode[_treeNode.id];
           var _treeNodeLoc = _treeNode.getLocation();
@@ -512,31 +505,16 @@ var chola = function () {
 
       var cholaNodesDict = constraintLayout(coreGm, coseLayout, options, 3);
 
-      this.cy.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
-      //return;
+      cyTrees.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
 
-      if (options.graphOutput) {
-        var constraintsS4 = { alignmentConstraint: null, relativePlacementConstraint: null };
-        constraintsS4.alignmentConstraint = options.alignmentConstraint;
-        constraintsS4.relativePlacementConstraint = options.relativePlacementConstraint;
-
-        var constraintStringS4 = JSON.stringify(constraintsS4, null, 2);
-        download('constraintsStep4.json', constraintStringS4);
-
-        var dataS4 = JSON.stringify(this.cy.json().elements);
-        download('cyElementsStep4.json', dataS4);
-      }
-
-      for (var _i8 = 0; _i8 < trees.length; _i8++) {
-        var _t2 = trees[_i8];
+      for (var _i12 = 0; _i12 < trees.length; _i12++) {
+        var _t2 = trees[_i12];
         var _nodes = Object.values(_t2.nodes);
         if (_nodes.length > 2) {
           //transfer the positions after constraint layout back to the tree nodes
           for (var _k = 0; _k < _nodes.length; _k++) {
             var _treeNode2 = _nodes[_k];
             var _cholaNode2 = cholaNodesDict[_treeNode2.id];
-            // console.log(cholaNode.id);
-            // console.log(cholaNode.getCenter());
 
             var cholaLocX = _cholaNode2.getCenterX();
             var cholaLocY = _cholaNode2.getCenterY();
@@ -547,11 +525,11 @@ var chola = function () {
       }
 
       //replace dummy nodes and edges of cholagm with edges with bendpoints
-      for (var _i9 = 0; _i9 < edgesWithBends.length; _i9++) {
-        var cholaEdgeId = edgesWithBends[_i9][0];
-        var source = edgesWithBends[_i9][1];
-        var target = edgesWithBends[_i9][2];
-        var bendpoints = edgesWithBends[_i9][3];
+      for (var _i13 = 0; _i13 < edgesWithBends.length; _i13++) {
+        var cholaEdgeId = edgesWithBends[_i13][0];
+        var source = edgesWithBends[_i13][1];
+        var target = edgesWithBends[_i13][2];
+        var bendpoints = edgesWithBends[_i13][3];
 
         var dummyNodes = cholaEdgeToDummyNodes[cholaEdgeId][0];
         var dummyEdges = cholaEdgeToDummyNodes[cholaEdgeId][1];
@@ -596,66 +574,44 @@ var chola = function () {
       coreGm.resetAllEdges();
       coreGm.getAllEdges();
 
-      // //Printing For debugging
-      // for (let i = 0; i < compoundNodes.length; i++)
-      // {
-      //   let cholaNode = compoundNodes[i];
-      //   let id = compoundNodes[i].id;
-      //   console.log("before changing dimensions");
-      //   console.log(cholaNode.id);
-      //   console.log(cholaNode.getCenter());
-      //   console.log(cholaNode.getWidth());
-      //   console.log(cholaNode.getHeight()); 
-      // }
-
-
       //updating the positions, widths and heights of the compounds nodes
       //FUTURE FIX: MAKE IT WORK FOR LABELS
       layout.updateCompoundDimensions(compoundNodes);
 
-      // //Printing For debugging
-      // for (let i = 0; i < compoundNodes.length; i++)
-      // {
-      //     let cholaNode = compoundNodes[i];
-      //     let id = compoundNodes[i].id;
-      //     console.log("after changing dimensions");
-      //     console.log(cholaNode.id);
-      //     console.log(cholaNode.getCenter());
-      //     console.log(cholaNode.getWidth());
-      //     console.log(cholaNode.getHeight()); 
-      // }
-
-
       //now creating bendpoints for edges connected with compound nodes
       var compoundEdges = layout.createOrthogonalEdges(coreGm, 2);
-      for (var _i10 = 0; _i10 < compoundEdges.length; _i10++) {
-        var _edge3 = compoundEdges[_i10];
+      for (var _i14 = 0; _i14 < compoundEdges.length; _i14++) {
+        var _edge3 = compoundEdges[_i14];
         var _bendpoints = _edge3.bendpoints;
-        for (var _k2 = 0; _k2 < this.cy.edges().length; _k2++) {
-          var _cyEdge = this.cy.edges()[_k2];
+        for (var _k2 = 0; _k2 < cyfinal.edges().length; _k2++) {
+          var _cyEdge = cyfinal.edges()[_k2];
           if (_edge3.id == _cyEdge.id()) {
-            var relativePos = _edge3.source.getRelativeRatiotoNodeCenter(_edge3.sourcePort);
-            _cyEdge.style({ 'source-endpoint': +relativePos.x + "% " + +relativePos.y + '%' });
-            relativePos = _edge3.target.getRelativeRatiotoNodeCenter(_edge3.targetPort);
-            _cyEdge.style({ 'target-endpoint': +relativePos.x + "% " + +relativePos.y + '%' });
+            var relativePos1 = _edge3.source.getRelativeRatiotoNodeCenter(_edge3.sourcePort);
+            _cyEdge.style({ 'source-endpoint': +relativePos1.x + "% " + +relativePos1.y + '%' });
+            var relativePos2 = _edge3.target.getRelativeRatiotoNodeCenter(_edge3.targetPort);
+            _cyEdge.style({ 'target-endpoint': +relativePos2.x + "% " + +relativePos2.y + '%' });
+            options.compoundEdgeBends.push([_cyEdge, relativePos1, relativePos2]);
           }
         }
       }
 
       //Last step: finally create edges with bends in cytoscape
       var cholaEdges2 = coreGm.edgesWithBends;
-      for (var _i11 = 0; _i11 < cholaEdges2.length; _i11++) {
-        var _cholaEdge2 = cholaEdges2[_i11];
-        for (var _k3 = 0; _k3 < this.cy.edges().length; _k3++) {
-          var _cyEdge2 = this.cy.edges()[_k3];
+      for (var _i15 = 0; _i15 < cholaEdges2.length; _i15++) {
+        var _cholaEdge2 = cholaEdges2[_i15];
+        for (var _k3 = 0; _k3 < cyfinal.edges().length; _k3++) {
+          var _cyEdge2 = cyfinal.edges()[_k3];
           if (_cholaEdge2.id == _cyEdge2.id()) {
             _cyEdge2.css("curve-style", "segments");
             _cyEdge2.css("segment-weights", _cholaEdge2.weight);
             _cyEdge2.css("segment-distances", _cholaEdge2.distance);
+            options.normalEdgeBends.push([_cyEdge2, _cholaEdge2.weight, _cholaEdge2.distance]);
             break;
           }
         }
       }
+
+      cyfinal.nodes().not(":parent").layoutPositions(this, this.options, getPositions);
     }
   }]);
 
@@ -943,6 +899,7 @@ cholaLayout.prototype.processEdges = function (layout, layoutType, gm, edges, id
     if (sourceNode !== targetNode && sourceNode.getEdgesBetween(targetNode).length == 0) {
       var e = gm.add(layout.newEdge(), sourceNode, targetNode);
       e.id = edge.id();
+      e.width = parseInt(edge.css('width'));
       if (layoutType == "chola") {
         cholaEdgesMap.put(e.id, e);
       } else {
@@ -999,15 +956,17 @@ cholaLayout.prototype.constraintCoseLayout = function (cholaGm, coseLayout, opti
 
   options.alignmentConstraint = { vertical: options.verticalAlignment, horizontal: options.horizontalAlignment };
   options.relativePlacementConstraint = options.relativeAlignment;
-  processConstraints(coseLayout, options);
 
-  // if (options.debug)
-  // {
-  //   console.log(options.horizontalAlignment);
-  //   console.log(options.verticalAlignment);
-  //   console.log(options.relativeAlignment);
-  //   //return;
-  // }
+  console.log(options.relativeAlignment);
+  console.log(options.alignmentConstraint);
+
+  console.log(CoSEConstants.DEFAULT_INCREMENTAL);
+
+  options.randomize = false;
+
+  //options.relativePlacementConstraint = undefined;
+
+  processConstraints(coseLayout, options);
 
   coseLayout.getGraphManager().allNodesToApplyGravitation = null;
   coseLayout.runLayout();
@@ -1034,8 +993,7 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
     if (turn == 1 && !edge.isOrthogonal() || turn == 2) {
       var source = edge.source;
       var target = edge.target;
-      var c = new compass();
-      var dir = c.direction(source, target);
+
       var bbox = void 0;
 
       if (turn == 1 && (source.isCompound() || target.isCompound())) continue;else if (turn == 2 && !source.isCompound() && !target.isCompound()) continue;
@@ -1045,6 +1003,8 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
       //b is the direction from target to bendpoint
       //c is the direction from bendpoint to target (opposide to b)
       var possibleDirections = [];
+      var c = new compass();
+      var dir = c.direction(source, target);
       if (dir == c.SE) {
         possibleDirections.push([0, 3, 1]);
         possibleDirections.push([1, 2, 0]);
@@ -1062,10 +1022,26 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
       var srcFreeLocs = source.getFreeSemiLocations(false, true);
       var tgtFreeLocs = target.getFreeSemiLocations(false, true);
       var option = void 0;
+      var createBend = false;
 
       for (var k = 0; k < possibleDirections.length; k++) {
         option = possibleDirections[k];
-        if (srcFreeLocs.includes(option[0]) && tgtFreeLocs.includes(option[1])) break;
+        // console.log(source.id);
+        // console.log(srcFreeLocs);
+        // console.log(target.id);
+        // console.log(tgtFreeLocs);
+        // console.log(option);
+        //if these locs are free for both src and target, then we create the edge with bend
+        if (srcFreeLocs.includes(option[0]) && tgtFreeLocs.includes(option[1])) {
+          // console.log("Creating bend");
+          createBend = true;
+          break;
+        }
+        //if the locs are not free, we do not create a bend
+        else {
+            // console.log("NOT Creating bend");
+            createBend = false;
+          }
       }
 
       var bendpoint = { x: null, y: null };
@@ -1074,7 +1050,7 @@ cholaLayout.prototype.createOrthogonalEdges = function (gm, turn) {
       if (edge.bendpoints.length != null) edge.resetBendpoints(gm);
 
       if (!source.isCompound() && !target.isCompound()) {
-        createBp = true;
+        if (createBend) createBp = true;
       }
       //if any of the incident nodes is compound, then we create source and target ports
       else {
@@ -1279,6 +1255,8 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes, 
     cyclicIds.push(asgn.getCyclicOrder(node));
   }
 
+  // console.log("Higher Nodes Configuration");
+
   options.placementDict = {};
 
   for (var _i3 = 0; _i3 < highDegreeNodes.length; _i3++) {
@@ -1323,9 +1301,6 @@ cholaLayout.prototype.higherNodesConfiguration = function (gm, highDegreeNodes, 
 cholaLayout.prototype.placementConstraints = function (newLoc, options, node1, node2) {
   var ignoreDuplicates = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
 
-  // console.log(node1.id);
-  // console.log(node2.id);
-  // console.log(newLoc);
   if (newLoc == 0) {
     this.addPlacementConstraints(options, node1, node2, 0, ignoreDuplicates);
   } else if (newLoc == 1) {
@@ -1488,7 +1463,6 @@ cholaLayout.prototype.addPlacementConstraints = function (options, node1, node2,
     if (ignoreDuplicates) temp = { top: node1, bottom: node2, gap: options.edgeGap / 2 };else temp = { top: node1, bottom: node2, gap: options.edgeGap };
     options.relativeAlignment.push(temp);
   }
-  //console.log(temp);
 
   if (options.placementDict[node1] == undefined) options.placementDict[node1] = [temp];else options.placementDict[node1].push(temp);
 
@@ -1581,7 +1555,7 @@ cholaLayout.prototype.createDummyNodesAndEdges = function (cholaNodeToCoseNode, 
     // }
 
     // create new dummy node
-    var dummyNode = coseGm.getRoot().add(new CoSENode(coseGm, bendpoint, new DimensionD(1, 1)));
+    var dummyNode = coseGm.getRoot().add(new CoSENode(coseGm, bendpoint, new DimensionD(_cholaEdge.width, _cholaEdge.width)));
     dummyNode.id = "dnode:" + coseEdge.source.id + "to" + coseEdge.target.id + ":" + j.toString();
     cholaNodeToCoseNode[dummyNode.id] = dummyNode;
 
@@ -3110,15 +3084,7 @@ cholaGraphManager.prototype.severNodes = function (nodes, buckets, compoundNodes
     for (var i = 0; i < nodes.length; i++) {
         var node = nodes[i];
 
-        //check here again if a node is the last node inside a compound node
-        //if the compound node includes just 2 2 nodes connected to each other, then they will both be removed in pruning
-        //this has to be prevented by checking here again
-        // if (node.getParent().id !== 'undefined' && compoundNodes.includes(node.getParent()) && node.getParent().child.nodes.length === 1)
-        // {
-        //     //the node will already be a zero degree node now, so we do nothing
-        //     continue;
-        // }
-        /*else */if (!compoundNodes.includes(node)) {
+        if (!compoundNodes.includes(node)) {
             var edge = node.edges[0];
             if (edge == undefined) continue;
 
@@ -3797,6 +3763,8 @@ function cholaEdge(source, target, vEdge) {
   //stores the location of the ports on the source or target (if any) 
   this.sourcePort = null;
   this.targetPort = null;
+
+  this.width = null;
 }
 
 cholaEdge.prototype = Object.create(LEdge.prototype);
@@ -4654,6 +4622,7 @@ Arrangement.prototype.getAssignment = function (cyclicNodes, am) {
   var availableSemis = [];
   var unAvailableSemis = [];
   var array = [];
+
   ///determine available semis
   for (var _i4 = 0; _i4 < this.semis.length; _i4++) {
     if (this.semis[_i4].length == 0 || this.semis[_i4].length > 0 && this.semis[_i4][0].processed == false) {
@@ -5258,7 +5227,7 @@ chain.prototype.nextLocalOptimalPoint = function (i0, bendtype) {
     var check = false;
     for (var i = i0; i < M; i++) {
         cost = this.bendCost(bendtype, i);
-        if (i % 0 == 1) cost = cost + 3;
+        if (i % 2 == 1) cost = cost + 3;
         if (candidate != null && cost > bestCost) {
             i1 = candidate;
             cost = bestCost;
@@ -5268,7 +5237,7 @@ chain.prototype.nextLocalOptimalPoint = function (i0, bendtype) {
         // To even be considered a candidate for optimal position, the cost
         // has to be less than 0.5. Else we might start at bad and go to worse,
         // and thereby accept bad.
-        if (cost < 0.5 && cost < bestCost) {
+        if ( /*cost < 0.5 & */cost < bestCost) {
             candidate = i;
             bestCost = cost;
         }
@@ -5731,6 +5700,9 @@ chain.prototype.takeShapeBasedConfiguration = function (gm, options, layout) {
     // to be configured).
 
     var seqs = this.possibleBendSeqs();
+
+    // console.log(this);
+    // console.log(seqs);
     for (var i = 0; i < seqs.length; i++) {
         var bs = seqs[i];
         //find the cost for each bend sequence
