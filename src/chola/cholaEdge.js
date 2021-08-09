@@ -3,18 +3,115 @@ var IGeometry = require('cose-base').layoutBase.IGeometry;
 const PointD = require('cose-base').layoutBase.PointD;
 const DimensionD = require('cose-base').layoutBase.DimensionD;
 
-function cholaEdge(source, target, vEdge) {
+function cholaEdge(source, target, vEdge) 
+{
   LEdge.call(this, source, target, vEdge);
   this.weight = 0.5;
   this.distance = 0;
+
+  //each entry in this.bendpoint contains [bendpoint, [dir1, dir2], [node1, node2]]
   this.bendpoints = [];
-  this.routePoints = [];
+
+  //stores the location of the ports on the source or target (if any) 
+  this.sourcePort = null;
+  this.targetPort = null;
+
+  //stores the other half of the edge that is split after introducing a crossing dummy node
+  this.coupleEdge = null;
+
+  this.isDummy = false;
+  this.parentEdge = null;
+  this.parentNode = null;
+
+  this.sourcePoint = null;
+  this.targetPoint = null;
+
+  this.sourcePointId = null;
+  this.targetPointId = null;
 }
 
 cholaEdge.prototype = Object.create(LEdge.prototype);
-for (var prop in LEdge) {
+for (var prop in LEdge) 
+{
   cholaEdge[prop] = LEdge[prop];
 }
+
+cholaEdge.prototype.resetBendpoints = function (gm) {
+  this.weight = 0.5;
+  this.distance = 0;
+
+  this.bendpoints = [];
+  this.routePoints = [];
+
+  var edgesWithBends = gm.edgesWithBends;
+  for (var i = 0; i < edgesWithBends.length; i++) {
+    var edge = edgesWithBends[i];
+    if (edge.id == this.id) edgesWithBends.splice(i, 1);
+  }
+};
+
+
+cholaEdge.prototype.getEndpoint = function(node1Bbox, node2Loc) 
+{
+  let x = node2Loc.x;
+  let y = node2Loc.y;
+
+  //center of the node
+  var midX = (node1Bbox.x1 + node1Bbox.x2) / 2;
+  var midY = (node1Bbox.y1 + node1Bbox.y2) / 2;
+
+  //slope of the line from source to target
+  var m = (midY - y) / (midX - x);
+
+  let endpoint;
+
+  if (x <= midX) 
+  { // check "left" side
+    var minXy = m * (node1Bbox.x1 - x) + y;
+    if (node1Bbox.y1 <= minXy && minXy <= node1Bbox.y2)
+      endpoint = {x: node1Bbox.x1, y: minXy};
+  }
+
+  if (x >= midX) 
+  { // check "right" side
+    var maxXy = m * (node1Bbox.x2 - x) + y;
+    if (node1Bbox.y1 <= maxXy && maxXy <= node1Bbox.y2)
+      endpoint = {x: node1Bbox.x2, y: maxXy};
+  }
+
+  if (y <= midY) 
+  { // check "top" side
+    var minYx = (node1Bbox.y1 - y) / m + x;
+    if (node1Bbox.x1 <= minYx && minYx <= node1Bbox.x2)
+      endpoint = {x: minYx, y: node1Bbox.y1};
+  }
+
+  if (y >= midY) 
+  { // check "bottom" side
+    var maxYx = (node1Bbox.y2 - y) / m + x;
+    if (node1Bbox.x1 <= maxYx && maxYx <= node1Bbox.x2)
+      endpoint = {x: maxYx, y: node1Bbox.y2};
+  }
+
+  return endpoint;
+
+}
+
+cholaEdge.prototype.sourceEndpoint = function() 
+{
+  //this assumes that the source or target of the edge is a rectangular node
+
+  var sourceEndpoint = this.getEndpoint(this.source.getBbox(), this.target.getCenter());
+  return sourceEndpoint;
+};
+
+cholaEdge.prototype.targetEndpoint = function() 
+{
+  //this assumes that the source or target of the edge is a rectangular node
+
+  let targetEndpoint = this.getEndpoint(this.target.getBbox(), this.source.getCenter());
+  return targetEndpoint;
+};
 
 /*Get the other end to which an edge is connected with*/
 cholaEdge.prototype.getOtherEnd = function(node)
@@ -31,88 +128,6 @@ cholaEdge.prototype.getOtherEnd = function(node)
   {
     return this.source;
   }
-};
-
-cholaEdge.prototype.createDummyNodesForBendpoints = function(gm, layout)
-{
-  let edge = this;
-  var dummyNodes = [];
-  var prev = edge.source;
-
-  var graph = gm.calcLowestCommonAncestor(edge.source, edge.target);
-
-  for (var i = 0; i < edge.bendpoints.length; i++)
-  {
-    // create new dummy node
-    var dummyNode = gm.getRoot().add(new cholaNode(gm, new PointD(0, 0), new DimensionD(1, 1)));
-    dummyNode.id = edge.source + "to" + edge.target + toString(i);
-    //layout.newNode(null);
-    //dummyNode.setRect(new PointD(0, 0), new DimensionD(1, 1));
-
-    //graph.add(dummyNode);
-
-    // create new dummy edge between prev and dummy node
-    let dummyEdge = gm.add(gm.getLayout().newEdge(), prev, dummyNode);
-    //layout.newEdge(null);
-    //gm.add(dummyEdge, prev, dummyNode);
-
-    dummyNodes.add(dummyNode);
-    prev = dummyNode;
-  }
-
-  let dummyEdge = gm.add(gm.getLayout().newEdge(), prev, edge.target);
-  //gm.add(dummyEdge, prev, edge.target);
-
-  gm.edgeToDummyNodes[edge] = dummyNodes;
-
-  // remove real edge from graph manager if it is inter-graph
-  // if (edge.isInterGraph())
-  // {
-  //   layout.graphManager.remove(edge);
-  // }
-  // else, remove the edge from the current graph
- 
-    graph.remove(edge);
- 
-
-  return dummyNodes;
-};
-
-cholaEdge.prototype.isOrthogonal = function()
-{
-  //if edge has a bendpoint, it has been orthogonalized
-  if (this.bendpoints.length > 0)
-    return true;
-  //if source and target both lie on the same axis, they are orthogonalized
-  else if (Math.round(this.source.getCenterX()) == Math.round(this.target.getCenterX()))
-    return true;
-  else if (Math.round(this.source.getCenterY()) == Math.round(this.target.getCenterY()))
-    return true; 
-  else
-    return false;
-};
-
-cholaEdge.prototype.createBendPoint = function(bendpoint, dir1, dir2, node1, node2, tree = false)
-{  
-
-  var relativeBendPosition;
-  if (!tree)
-    relativeBendPosition = this.convertToRelativeBendPosition(bendpoint);
-    //let srcPoint = this.sourceEndpoint();
-    //let trgtPoint = this.targetEndpoint();
-
-    // console.log("source");
-    // console.log(node1.id);
-    // console.log("target");
-    // console.log(node2.id);
-  else
-  {
-    relativeBendPosition = this.getDistWeight(node1.getCenterX(), node1.getCenterY(), node2.getCenterX(), node2.getCenterY(),
-      bendpoint.x, bendpoint.y);
-  }
-    this.weight = relativeBendPosition.weight;
-    this.distance = relativeBendPosition.distance;
-    this.bendpoints.push([bendpoint, [dir1, dir2], [node1, node2]]);
 };
 
 cholaEdge.prototype.getDistWeight = function(sX, sY, tX, tY, PointX, PointY){
@@ -149,77 +164,79 @@ cholaEdge.prototype.getDistWeight = function(sX, sY, tX, tY, PointX, PointY){
     W = W * delta2;
 
     return {
-        ResultDistance: D, 
-        ResultWeight: W
+        distance: D, 
+        weight: W
     };
 };
 
-cholaEdge.prototype.convertToRelativeBendPosition = function(bendpoint) 
+
+
+cholaEdge.prototype.convertToRelativeBendPosition = function() 
 {
-  var srcTgtPointsAndTangents = this.getSrcTgtPointsAndTangents(); 
-  var intersectionPoint = this.getIntersection(bendpoint, srcTgtPointsAndTangents);
-  var intersectX = intersectionPoint.x;
-  var intersectY = intersectionPoint.y;
-  
-  var srcPoint = srcTgtPointsAndTangents.srcPoint;
-  var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
-  
-  var weight;
-  
-  if( intersectX != srcPoint.x ) {
-    weight = (intersectX - srcPoint.x) / (tgtPoint.x - srcPoint.x);
-  }
-  else if( intersectY != srcPoint.y ) {
-    weight = (intersectY - srcPoint.y) / (tgtPoint.y - srcPoint.y);
-  }
-  else {
-    weight = 0;
-  }
-  
-  var distance = Math.sqrt(Math.pow((intersectY - bendpoint.y), 2)
-      + Math.pow((intersectX - bendpoint.x), 2));
-  
-  //Get the direction of the line form source point to target point
-  var dir1 = this.getLineDirection(srcPoint, tgtPoint);
-  //Get the direction of the line from intesection point to bend point
-  var dir2 = this.getLineDirection(intersectionPoint, bendpoint);
+  var srcTgtPointsAndTangents = this.getSrcTgtPointsAndTangents(this);
 
-  console.log(this.id);
+  let edgeWeight = "";
+  let edgeDistance = "";
 
-  console.log(dir1);
-  console.log(dir2);
-  
-  //If the difference is not -2 and not 6 then the direction of the distance is negative
-  if(dir1 - dir2 != -2 && dir1 - dir2 != 6)
+  for (let i = 0; i < this.bendpoints.length; i++)
   {
-    if(distance != 0)
-    {
-      distance = -1 * distance;
-      console.log("inverted distance");
+    let bendpoint = this.bendpoints[i];
+
+    var intersectionPoint = this.getIntersection(bendpoint, srcTgtPointsAndTangents);
+    var intersectX = intersectionPoint.x;
+    var intersectY = intersectionPoint.y;
+    
+    var srcPoint = srcTgtPointsAndTangents.srcPoint;
+    var tgtPoint = srcTgtPointsAndTangents.tgtPoint;
+    
+    var weight;
+    
+    if( intersectX != srcPoint.x ) {
+      weight = (intersectX - srcPoint.x) / (tgtPoint.x - srcPoint.x);
     }
+    else if( intersectY != srcPoint.y ) {
+      weight = (intersectY - srcPoint.y) / (tgtPoint.y - srcPoint.y);
+    }
+    else {
+      weight = 0;
+    }
+    
+    var distance = Math.sqrt(Math.pow((intersectY - bendpoint.y), 2) + Math.pow((intersectX - bendpoint.x), 2));
+    
+    //Get the direction of the line form source point to target point
+    var dir1 = this.getLineDirection(srcPoint, tgtPoint);
+    //Get the direction of the line from intesection point to bend point
+    var dir2 = this.getLineDirection(intersectionPoint, bendpoint);
+    
+    //If the difference is not -2 and not 6 then the direction of the distance is negative
+    if(dir1 - dir2 != -2 && dir1 - dir2 != 6)
+    {
+      if(distance != 0)
+      {
+        distance = -1 * distance;
+      }
+    }
+
+    this.bendpoints[i].weight = weight;
+    this.bendpoints[i].distance = distance;
+
+    if (i == 0)
+      this.bendpoints[i].srcId = this.source.id;
+    else
+      this.bendpoints[i].srcId = this.bendpoints[i - 1].id;
+
+    if (i == this.bendpoints.length - 1)
+      this.bendpoints[i].tgtId = this.target.id;
+    else
+      this.bendpoints[i].tgtId = this.bendpoints[i + 1].id;
+
+    edgeWeight = edgeWeight.concat(weight.toString()).concat(" ");
+    edgeDistance = edgeDistance.concat(distance.toString()).concat(" ");
+
   }
+  this.weight = edgeWeight;
+  this.distance = edgeDistance;
 
-  // if (distance != 0)
-  //  {
-  //     //if (dir1 == 2 && dir2 == 8)
-  //       //distance = -1 * distance;
-  //     if (dir1 == 4 && dir2 == 2)
-  //       distance = -1 * distance; 
-  //     else if (dir1 == 6 && dir2 == 4)
-  //       distance = -1 * distance;
-  //     else if (dir1 == 8 && dir2 == 6)
-  //       distance = -1 * distance;
-      
-  //     if (distance < 0) 
-  //       console.log("inverted distance");
-  //  }
-
-  console.log(distance);
-  
-  return {
-    weight: weight,
-    distance: distance
-  };
 };
 
 cholaEdge.prototype.getLineDirection = function(srcPoint, tgtPoint)
@@ -250,19 +267,15 @@ cholaEdge.prototype.getLineDirection = function(srcPoint, tgtPoint)
 
 cholaEdge.prototype.getSrcTgtPointsAndTangents = function()
 {
-  var sourceNode = this.source;
-  var targetNode = this.target;
-  
-  var srcPoint = sourceNode.getCenter();
-  var tgtPoint = targetNode.getCenter();
+  let srcPoint = this.source.getCenter();
+  let tgtPoint = this.target.getCenter();
 
   //m1 is the slope of the line passing through source and target
   var m1 = (tgtPoint.y - srcPoint.y) / (tgtPoint.x - srcPoint.x);
-  var m2 = -1 / m1;
 
   return {
     m1: m1,
-    m2: m2,
+    m2: -1 / m1,
     srcPoint: srcPoint,
     tgtPoint: tgtPoint
   };
@@ -312,5 +325,78 @@ cholaEdge.prototype.getIntersection = function(point, srcTgtPointsAndTangents)
   
   return intersectionPoint;
 };
+
+cholaEdge.prototype.getLine = function()
+{
+  let sourceLoc = this.source.getCenter();
+  let targetLoc = this.target.getCenter();
+
+  let slope = (sourceLoc.y - targetLoc.y) / (sourceLoc.x - targetLoc.x);
+
+  let c = sourceLoc.y - slope*sourceLoc.x;
+
+  return {
+    m: slope,
+    c: c
+  };
+};
+
+cholaEdge.prototype.findIntersection = function(otherEdge)
+{
+  let intersectionPoint;
+  let intersectX;
+  let intersectY;
+
+  let x1 = this.source.getCenterX();
+  let y1 = this.source.getCenterY();
+
+  let x2 = this.target.getCenterX();
+  let y2 = this.target.getCenterY();
+
+  let x3 = otherEdge.source.getCenterX();
+  let y3 = otherEdge.source.getCenterY();
+
+  let x4 = otherEdge.target.getCenterX();
+  let y4 = otherEdge.target.getCenterY();
+
+  let m1 = (y2 - y1) / (x2 - x1);
+  let m2 = (y4 - y3) / (x4 - x3);
+
+  if (m1 == Infinity || m1 == -Infinity)
+  {
+    //first line with x1, y1 and x2, y2 is vertical
+    let c2 = y3 - m2*x3;
+    intersectX = x1;
+    intersectY = m2*intersectX + c2;
+
+  }
+  else if (m2 == Infinity|| m2 == -Infinity)
+  {
+    let c1 = y1 - m1*x1;
+    intersectX = x3;
+    intersectY = m1*intersectX + c1;
+  }
+  else
+  {
+    let c1 = y1 - m1*x1;
+    let c2 = y3 - m2*x3;
+
+    intersectX = (c2 - c1) / (m1 - m2);
+    intersectY = m1*intersectX + c1;
+
+    
+  }
+
+  intersectionPoint = {
+      x: intersectX,
+      y: intersectY
+    };
+
+
+
+  return intersectionPoint;
+
+}
+
 
 module.exports = cholaEdge

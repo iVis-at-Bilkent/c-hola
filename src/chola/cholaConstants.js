@@ -1,11 +1,12 @@
 var LayoutConstants = require('cose-base').layoutBase.LayoutConstants;
-const compass = require('../chola/compass');
 
-function cholaConstants() {
+function cholaConstants() 
+{
 }
 
 //cholaConstants inherits static props in FDLayoutConstants
-for (var prop in LayoutConstants) {
+for (var prop in LayoutConstants) 
+{
   cholaConstants[prop] = LayoutConstants[prop];
 }
 
@@ -16,7 +17,6 @@ cholaConstants.TILE = true;
 cholaConstants.TILING_PADDING_VERTICAL = 10;
 cholaConstants.TILING_PADDING_HORIZONTAL = 10;
 
-cholaConstants.DEFAULT_TREE_DIREC = compass.SOUTH;
 /*
 Ideal edge length will be a multiple of the average node dimension.
 Set the multiplier here.
@@ -195,6 +195,11 @@ cholaConstants.EAST = 0;
 cholaConstants.SOUTH = 1;
 cholaConstants.WEST = 2;
 cholaConstants.NORTH = 3;
+
+cholaConstants.SE = 4;
+cholaConstants.SW = 5;
+cholaConstants.NW = 6;
+cholaConstants.NE = 7;
 
 cholaConstants.XDIM = 0;
 cholaConstants.YDIM = 1;

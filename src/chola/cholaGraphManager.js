@@ -1,18 +1,13 @@
 const LGraphManager = require('cose-base').layoutBase.LGraphManager;
 const cholaNode = require('../chola/cholaNode');
-const nearbyObjectFinder = require('../chola/nearbyObjectFinder');
-const edgeSegment = require('../chola/edgeSegment');
 const DimensionD = require('cose-base').layoutBase.DimensionD;
-const idDispenser = require('../chola/idDispenser');
-//const nodeConfig = require('../chola/nodeConfig');
 
-function cholaGraphManager(layout) {
+function cholaGraphManager(layout) 
+{
   LGraphManager.call(this, layout);
   this.nextTreeSerialNum = 1;
   this.maxDegree = 0;
   this.rootNode;
-  this.idDisp = new idDispenser(0);
-  //this.nodeConf = new nodeConfig(this);
   this.edgeToDummyNodes = {};
   this.edgesWithBends = [];
   this.nodes = {};
@@ -38,6 +33,68 @@ cholaGraphManager.prototype.getMaxDegree = function()
 
 	return maxDegree;
 };
+
+//return the list of compound nodes
+cholaGraphManager.prototype.findCompoundNodes = function(gm) 
+{
+    var allNodes = this.getAllNodes();
+    var compoundNodes = [];
+
+    for (var i = 0; i < allNodes.length; i++) 
+    {
+        var node = allNodes[i];
+        if (node.isCompound())
+        {
+          compoundNodes.push(node);
+        }
+    }
+
+    //sort compounds from inside to outside
+    compoundNodes = this.sortCompounds(compoundNodes);
+    return compoundNodes;
+};
+
+cholaGraphManager.prototype.sortCompounds = function(compoundNodes)
+{
+  var hierarchyList = [];
+
+  compoundNodes.sort(function (a, b) {
+    return b.getArea() - a.getArea();
+  });
+
+  //create a hierarchy list for the compound nodes
+  for (var i = 0; i < compoundNodes.length; i++) {
+    var node = compoundNodes[i];
+    var children = node.getChildren();
+
+    var childList = [];
+
+    //check if any children of the compound node is a compound node
+    for (var j = 0; j < children.length; j++) {
+      var child = children[j];
+      if (child.isCompound()) childList.push(child);
+    }
+    hierarchyList.push([node, childList.length]);
+    node.childList = childList;
+  }
+
+  function compareSecondColumn(a, b) {
+    if (a[1] === b[1]) {
+      return 0;
+    } else {
+      return a[1] < b[1] ? -1 : 1;
+    }
+  };
+
+  hierarchyList.sort(compareSecondColumn);
+
+  compoundNodes = [];
+  for (let i = 0; i < hierarchyList.length; i++)
+    compoundNodes.push(hierarchyList[i][0]);
+
+  return compoundNodes;
+};
+
 
 cholaGraphManager.prototype.boundingBoxxXyY = function(ignore = [], includeBends = false)
 {
@@ -156,20 +213,23 @@ cholaGraphManager.prototype.getNode = function(node)
 	return null;
 };
 
-cholaGraphManager.prototype.severNodes = function(nodes, buckets, compoundNodes, idList)
+cholaGraphManager.prototype.severNodes = function(nodes, buckets, compoundNodes, idList, parentList)
 {
 	for (let i = 0; i < nodes.length; i++)
 	{
         let node = nodes[i];
-        //console.log("severing node");
+
         if (!compoundNodes.includes(node)) 
 	    {
 	        let edge = node.edges[0];
             if (edge == undefined)
                 continue;
-            //console.log(edge);
+
 	        let otherNode = edge.getOtherEnd(node);
             let degree = otherNode.getDegree();
+
+            parentList[node.id] = [node, node.getEdges()[0], node.getOwner()];
+
 	        node.owner.remove(node);
             delete this.nodes[node.id];
 
@@ -225,6 +285,7 @@ cholaGraphManager.prototype.getConnectedComponents = function()
             let n1 = queue[0][1];   //node in original gm
             tempNode1 = gm.getNode(n1);     //node in newGm
             queue.splice(0,1);
+            
             let n2 = edge.getOtherEnd(n1);  //node in original gm
             let tempNode2 = gm.getNode(n2); //node in newGm
             if (tempNode2 != null)
