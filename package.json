@@ -60,6 +60,12 @@
   },
   "dependencies": {
     "cose-base": "https://github.com/iVis-at-Bilkent/cose-base#constraint-support",
+<<<<<<< HEAD
     "path": "^0.12.7"
+=======
+    "file-saver": "^2.0.5",
+    "path": "^0.12.7",
+    "socket.io": "^3.0.3"
+>>>>>>> 87b82d68aad27ca2205e5ff1513e0132bd5760c9
   }
 }

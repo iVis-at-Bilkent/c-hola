@@ -4,7 +4,7 @@ cytoscape-chola
 
 ## Description
 
-Othogonal layout extension for Cytoscape.js ([demo](https://raw.githack.com/iVis-at-Bilkent/cytoscape-chola.js/unstable/demo-compound.html))
+Othogonal layout extension for Cytoscape.js ([demo](https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-chola/unstable/demo-compound.html))
 
 ## Dependencies
 

@@ -38,12 +38,15 @@ let config = {
           commonjs: 'layout-base',
           amd: 'layout-base',
           root: 'layoutBase'
+<<<<<<< HEAD
      },
      'path': {
           commonjs2: 'path',
           commonjs: 'path',
           amd: 'path',
           root: 'path'
+=======
+>>>>>>> 87b82d68aad27ca2205e5ff1513e0132bd5760c9
      }
   } : {},
   plugins: MIN ? [
